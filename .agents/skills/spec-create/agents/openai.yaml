@@ -1,4 +1,4 @@
 interface:
-  display_name: "SDD Specify"
-  short_description: "Turn user stories into specs, plans, and tasks"
-  default_prompt: "Use $sdd-specify to turn the user stories in the developer guide into spec.md, plan.md, and task.md for each story."
+  display_name: "Spec Create"
+  short_description: "Create story specs, plans, and tasks for Homebrew"
+  default_prompt: "Use $spec-create to turn developer-guide user stories into SPEC.md, PLAN.md, and TASK.md using workflow/templates and workflow/specs conventions."
