@@ -1,0 +1,14 @@
+prefix_rule(
+    pattern = ["bun", "run", "verify"],
+    decision = "allow",
+    justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks, and verify only runs lint, typecheck and build.",
+    match = ["bun run verify"],
+    not_match = [
+        "bun run dev",
+        "bun run build",
+        "bun run lint",
+        "bun install",
+        "bunx vercel deploy",
+        "bun run verify-all",
+    ],
+)
