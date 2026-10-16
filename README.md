@@ -12,11 +12,11 @@ Homebrew is a web app for home cafés: small coffee setups run from someone's ki
 
 ## Getting started
 
-Requires Node.js 20.9 or later.
+Requires [Bun](https://bun.sh) (package manager) and Node.js 20.9 or later.
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Then open <http://localhost:3000>.
