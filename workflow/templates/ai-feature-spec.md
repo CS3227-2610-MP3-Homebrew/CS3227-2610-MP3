@@ -1,7 +1,5 @@
 # [Story ID]: [Feature name]
 
-- **Status:** [draft | approved]
-- **Owner:** [owner]
 - **Last updated:** [YYYY-MM-DD]
 - **Related specs:** [links]
 - **Role:** [role]
@@ -10,7 +8,6 @@
 Replace placeholders. Repeat the requirement block as needed.
 Use one requirement per user-visible capability. Criteria must be testable
 without asking the author. Describe behaviour, not implementation.
-Open questions must be empty before approval.
 Exact prompt text and schemas belong in INTEGRATION-SPEC.md.
 -->
 
@@ -100,8 +97,3 @@ Every adversarial case maps to a row in the guardrails table.
 
 - **ASM-nn:** [Assumption; why it is needed; effect if wrong.]
 <!-- Write "None" if there are no assumptions. -->
-
-## Open questions
-
-<!-- Resolve and remove all questions before approval. -->
-[Unresolved questions.]

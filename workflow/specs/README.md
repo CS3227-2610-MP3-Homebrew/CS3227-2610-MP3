@@ -19,11 +19,11 @@ workflow/
 
 | File (relative to `workflow/specs/`) | Scope | Template | Status |
 | --- | --- | --- | --- |
-| `PRODUCT-SPEC.md` | Product overview; roles, including what each can and cannot access; navigation per role; and a "User stories" section grouped by role with each story's ID (for example `CUS-03`), story text and priority. This section is the source of story specs. | Coverage rules below; no separate template. | Planned |
+| `PRODUCT-SPEC.md` | Product overview; roles, including what each can and cannot access; navigation per role; and a "User stories" section grouped by role with each story's ID (for example `CUS-03`), story text and priority. This section is the source of story specs. | Coverage rules below; no separate template. | Written |
 | `TECHNICAL-SPEC.md` | Architecture, data model, row-level security, configuration and `SYS-nn` requirements. | Coverage rules below; no separate template. | Planned |
 | `INTEGRATION-SPEC.md` | API contracts, exact LLM prompt text and LLM input/output schemas. | Coverage rules below; no separate template. | Planned |
 | `AI-SECURITY-SPEC.md` | Attack surfaces, mitigations, usage control, security test plan and `SEC-nn` requirements. | Coverage rules below; no separate template. | Planned |
-| `stories/<ID>-<slug>.md` | One user story per file, with its story ID as the primary requirement ID (`CUS-nn`, `OWN-nn` or `ADM-nn`). | `workflow/templates/story-spec.md` for ordinary stories; `workflow/templates/ai-feature-spec.md` for AI stories. | Planned |
+| `stories/<ID>-<slug>.md` | One user story per file, with its story ID as the primary requirement ID (`CUS-nn`, `OWN-nn`, `ADM-nn`, or `SYS-nn` for shared user-facing stories: sign up, sign in, and role-based navigation). | `workflow/templates/story-spec.md` for ordinary stories; `workflow/templates/ai-feature-spec.md` for AI stories. | Planned |
 
 Order of work: PRODUCT-SPEC → TECHNICAL-SPEC and INTEGRATION-SPEC → story specs
 → PLAN.md. Cover AI-SECURITY-SPEC.md before work depending on its contracts.
@@ -74,8 +74,11 @@ Acceptance criteria must be testable without asking the author.
 
 ## Approval and changes
 
-The spec owner agrees the spec with the team before work starts from it. A spec
-is approved when its PR is merged.
+A spec is approved when its PR is merged. Specs carry no status, owner or
+open questions. Unresolved points are listed in the spec agent's report under
+**Open issues for the next step** and in the PR description, and resolved before
+merge. Testing and implementation agents work only from specs on master.
+Changes to an approved spec go through a new spec PR.
 
 For changes: spec PR merged → PLAN.md updated by the spec agent → tests for the affected IDs updated → code updated.
 Code never moves ahead of its spec. Report ambiguity as `awaiting-decision`;

@@ -34,18 +34,22 @@ as story specs are written.
   Use SYS-nn for system requirements and SEC-nn for security requirements.
 
 Never invent product facts, numbers, or scope absent from inputs or existing
-specs. Gaps become Open questions or marked `[ASSUMPTION ASM-nn]` statements
-with rationale and effect if wrong; report `awaiting-decision`. Pause affected
-work and continue independent drafting. A missing source story is `blocked`
+specs. Gaps become marked `[ASSUMPTION ASM-nn]` statements with rationale and
+effect if wrong, or items under **Open issues for the next step** in the agent's
+report; report `awaiting-decision`. Pause affected work and continue independent
+drafting. A missing source story is `blocked`
 under spec-create. If a story bundles independently testable capabilities,
-propose a split under Open questions and do not draft a combined story spec.
+propose a split in the agent's report, marked `awaiting-decision`, and do not
+draft a combined story spec.
 
 Requirement IDs (CUS/OWN/ADM/SYS/SEC-nn), criterion IDs (for example CUS-03.1),
 and task IDs (T-nn) are never reused or renumbered. Keep removed entries marked
 removed and link authoritative owners rather than duplicating definitions.
-New specs and proposed amendments remain draft until their spec PR is merged
-after the owner agrees them with the team. Resolve behavioral assumptions and
-Open questions before approval. Never claim approval without merge evidence.
+A spec is approved when its PR is merged; changes to an approved spec go through
+a new spec PR. Unresolved points are listed in the agent's report and PR
+description and resolved, along with behavioral assumptions, before merge.
+Never claim approval without merge evidence. Testing and implementation agents
+work only from specs on master.
 
 The testing agent reads the story spec, its linked contracts, and only its own
 test task in PLAN.md; it never reads implementation tasks. The implementation

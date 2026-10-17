@@ -37,9 +37,9 @@ author executable tests, create issues, or dispatch agents.
 ## Check story scope before drafting
 
 If a story bundles several independently testable capabilities, propose a split
-under **Open questions**, mark the result `awaiting-decision`, and do not draft
-the combined spec. Use the existing story's Open questions when updating, or the
-report's Open questions when no story file exists yet. Continue independent work.
+in the spec agent's report under **Open issues for the next step**, mark the
+result `awaiting-decision`, and do not draft the combined spec. Continue
+independent work.
 
 ## Keep one file per story
 
@@ -81,11 +81,10 @@ Adapt the applicable template to the individual story while retaining its
 relevant sections and requirement-block structure. Do not turn a single-story
 assignment into a full role or product specification.
 
-Start with title and metadata: **Status** (`draft` or `approved`), **Owner**,
-**Last updated** (`YYYY-MM-DD`), **Related specs**, and **Role**.
-Include source story/path/section and requirement ownership links. Do not invent
-an owner; mark an unknown owner as `[ASSUMPTION ASM-nn]` and list it under
-Assumptions and Open questions.
+Start with title and metadata: **Last updated** (`YYYY-MM-DD`), **Related specs**,
+and **Role**. Include source story/path/section and requirement ownership links.
+Do not invent an owner; record unknown owners in the spec agent's report under
+**Open issues for the next step**, marked `awaiting-decision`.
 
 For ordinary stories, include:
 
@@ -102,14 +101,14 @@ For ordinary stories, include:
   and extensions linked to scenario steps.
 - **Permissions:** own-data and other-users'-data action scopes needed for this
   story in a table.
-- **Out of scope**, **Assumptions**, and **Open questions**.
+- **Out of scope** and **Assumptions**.
 
 For AI stories, retain the AI template's **Purpose** (including why an LLM is
 needed), **User experience**, **Inputs** table (source, trust, limit, handling),
 **What is never sent to the LLM**, **Output** (shape, validation, plain-text use),
 **Requirements** with the same nested blocks, **Guardrails** (threat/control/SEC
 ID), **Usage control**, **Failure modes and fallbacks**, **Evaluation cases**,
-**Out of scope**, **Assumptions**, and **Open questions**. Cover unavailable/disabled
+**Out of scope** and **Assumptions**. Cover unavailable/disabled
 LLM, invalid output, and rate limits. Map each adversarial evaluation case to a
 specific guardrail row. Treat user-written content as untrusted.
 
@@ -129,17 +128,19 @@ performance targets, access rules, or product scope.
 
 Mark every inferred statement inline as `[ASSUMPTION ASM-nn]`. Add an
 **Assumptions** list with rationale and impact, or `None`. Assumptions are
-proposals, not accepted requirements. Record conflicts,
-missing behavior, unconfirmed priorities/risks, and consequential assumptions
-under **Open questions**, with affected IDs. Do not silently resolve them or ask
-the user questions; report them as `awaiting-decision` and block affected work.
+proposals, not accepted requirements. Record gaps, conflicts, missing behavior,
+and unconfirmed priorities/risks with affected IDs in the spec agent's report
+under **Open issues for the next step**, never in the spec. Also report decisions
+needed on consequential assumptions there. Do not silently resolve them or ask
+the user questions; mark them `awaiting-decision` and block affected work.
 Continue independent drafting.
 
-New specs and proposed changes are `draft`. A spec is `approved` only when its
-spec PR has been merged; never infer approval from document completeness or
-claim a merge without evidence. An edited approved spec becomes a draft pending
-the change flow. Open questions must be empty and behavioral assumptions resolved
-before approval. Implementation waits for approval. For changes, preserve:
+A spec is approved only when its spec PR has been merged; never infer approval
+from document completeness or claim a merge without evidence. Changes to an
+approved spec go through a new spec PR. Unresolved points are also listed in the
+PR description and resolved, along with behavioral assumptions, before merge.
+Testing and implementation agents work only from specs on master. For changes,
+preserve:
 **spec PR merged → PLAN.md updated by the spec agent → tests for affected IDs
 updated → code updated**.
 

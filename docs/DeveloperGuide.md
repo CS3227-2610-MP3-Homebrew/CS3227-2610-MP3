@@ -39,7 +39,9 @@ the current scaffolding from agent definitions and commands still to be added.
 
 ### The per-feature loop, in order
 
-1. The spec PR is merged after its owner has agreed it with the team.
+1. The spec is approved when its PR is merged, after unresolved points in the
+   spec agent's report and PR description are resolved. Testing and
+   implementation agents work only from specs on master.
 2. The spec agent updates the single `workflow/PLAN.md` from the specs, adding
    foundation tasks and a test task before each story's implementation task.
 3. Each task becomes a GitHub issue naming the task and requirement IDs it covers.
@@ -87,7 +89,7 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Agents write their own reports to `workflow/handoffs/`; review rounds are appended by the review command. | Evidence of every step without manual copying; the same approach worked in MP2. |
 | The reviewer runs as a separate read-only process. | An agent's read and write limits are instructions, not enforced permissions, and Codex subagents inherit the parent session's sandbox; a separate read-only process actually cannot edit files. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
-| Spec PRs are merged after the owner agrees them with the team; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
+| Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
 | Codex execution rules allow only `bun run verify` outside the sandbox and forbid the commands `AGENTS.md` prohibits. | Verification must run for every agent, and the forbidden rules turn `AGENTS.md` instructions into enforced blocks. |
 
