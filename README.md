@@ -8,11 +8,11 @@ Homebrew is a web app for home cafés: small coffee setups run from someone's ki
 | --- | --- |
 | **Customer** | Browse approved cafés, pre-order with a pickup slot, track and cancel orders, review collected orders |
 | **Café owner** | Register a café, manage menu, prices and opening hours, run the order queue, view sales |
-| **Admin** | Approve or suspend cafés, moderate reviews, approve featured-café boosts |
+| **Admin** | Approve, suspend or un-suspend cafés, moderate reviews |
 
 ## Getting started
 
-Requires [Bun](https://bun.sh) (package manager) and Node.js 20.9 or later.
+Requires [Bun](https://bun.sh) (package manager) and Node.js 24.
 
 ```bash
 bun install
