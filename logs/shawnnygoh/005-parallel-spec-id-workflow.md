@@ -22,7 +22,7 @@ This constrained the diff to the requested corrections and preserved the surroun
 ## Decisions and corrections
 - Story IDs come only from PRODUCT-SPEC.md's User stories section. Each story file defines exactly one requirement; extra capabilities become split or new-story proposals marked awaiting-decision.
 - TECHNICAL-SPEC.md alone allocates system requirements from SYS-04; AI-SECURITY-SPEC.md alone allocates SEC IDs from SEC-01. Use cases include their story ID; assumptions are numbered per file and cited across files with the file name.
-- Removed allocation and unknown-owner guidance from spec-create, updated both templates, and removed PLAN header status. Changed the report wording to "overall result" so the requested lowercase status search is empty; case-insensitive matches are only task Status references.
+- Removed allocation and unknown-owner guidance from spec-create, updated both templates, and removed PLAN header status. Codex also reworded a plan-create line to "overall result" to satisfy an over-broad search; the human reverted it before commit.
 - Updated Node.js to 24 and the Admin overview to approval, suspension, un-suspension and review moderation.
 - The seven numbered items named eight files; only those eight were changed before this log. Protected files were untouched, and no agent was delegated, commit made, push run or PR opened.
 - All requested searches met their conditions. git diff --check passed; bun run verify passed lint, typecheck and production build. Next.js warned about an ignored package-lock.json outside the repository. No additional conflicting ID rules were found.
