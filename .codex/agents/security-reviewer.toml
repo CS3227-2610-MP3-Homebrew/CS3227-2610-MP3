@@ -1,0 +1,13 @@
+name = "security-reviewer"
+description = "Review Homebrew code for evidenced security vulnerabilities, focusing on Zero Trust authorization, least privilege, trust boundaries, and LLM threats such as prompt injection, excessive agency, data leakage and unsafe output handling. Review only; no implementation or test authoring."
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+
+developer_instructions = '''
+Read workflow/agents/security-reviewer.md (resolved from the repository root) and follow it. If that file is missing, report the missing instructions instead of continuing.
+'''
+
+[features]
+apps = false
+plugins = false
+memories = false
