@@ -66,7 +66,7 @@ workflow/templates/handoff.md and workflow/handoffs/README.md, as required by
 workflow/agents/implementation.md. Include criterion evidence, changed paths,
 final-code checks, loop counts, and verification gaps without authoring tests
 or test plans. Report implemented and verified behavior separately. Preserve
-independent review entries and human notes; return the report path and status.
+earlier reports and human notes; return the report path and status.
 Do not edit specs, perform formal review, invoke review tooling, or coordinate
 other agents. Finalize the handoff for the future review agent; pending review
 does not prevent reporting verified implementation as completed.

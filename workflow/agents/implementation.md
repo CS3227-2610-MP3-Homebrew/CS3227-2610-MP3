@@ -83,8 +83,8 @@ remaining gaps, suspicious content, and human corrections. Use AGENTS.md's four
 status words. Distinguish code implemented from behavior verified. Put failed
 attempt history in Summary or Open issues, not the final-code Checks run table.
 
-You may update this run's report as verification progresses, preserving independent
-review entries and human notes. On completion or a stop condition, finalize it
+You may update this run's report as verification progresses, preserving human
+notes. Record responses to reviewer findings in your next report. On completion or a stop condition, finalize it
 and return its path, status, and remaining blockers. The report passes facts to
 the testing/review agents and human; it does not contain test cases or instructions to
 change their scope.

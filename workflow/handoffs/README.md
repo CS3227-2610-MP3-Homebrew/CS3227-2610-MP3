@@ -22,9 +22,16 @@ This fallback does not authorize starting feature implementation without an issu
 
 ## Review and human comments
 
-The review command appends independent review rounds to the implementation
-report's "Independent review" section, for at most three rounds. Nobody edits a
-review round after it is written. Record responses in "Review responses".
+The reviewer writes `NN-reviewer.md` using the next number across all agents in
+the issue directory. It references the implementation report and records a
+Review round (1–3). Each round is a separate immutable report; implementation
+handoffs are never changed by review. Prerequisite-failure reports have no
+numbered Review round and do not consume one.
+
+If the issue is unknown, use
+`workflow/handoffs/reviewer-<target-slug>/NN-reviewer.md` for the blocked report.
+Record fixes or rejections in the implementation agent's next report under
+"Review responses", referencing the reviewer report and finding ID.
 
 Humans may add comments under a `## Human note` heading at the end of a report.
 

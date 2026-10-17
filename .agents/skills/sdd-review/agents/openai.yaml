@@ -1,0 +1,4 @@
+interface:
+  display_name: "SDD Review"
+  short_description: "Review Homebrew code against approved acceptance criteria"
+  default_prompt: "Use $sdd-review to independently review the assigned implementation handoff and code against its approved specs and acceptance criteria."
