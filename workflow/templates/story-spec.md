@@ -1,26 +1,28 @@
-# [Role] specification
+# [Story ID]: [Title]
 
 - **Status:** [draft | approved]
 - **Owner:** [owner]
 - **Last updated:** [YYYY-MM-DD]
 - **Related specs:** [links]
+- **Role:** [role]
 
 <!-- How to use:
-Replace placeholders. Repeat the requirement and use-case blocks as needed.
+Describe one user story. Replace placeholders. Repeat the requirement and
+use-case blocks as needed for this story.
 Use one requirement per user-visible capability. Criteria must be testable
 without asking the author. Describe behaviour, not implementation.
 Open questions must be empty before approval.
 -->
 
-## Role overview
+## Overview
 
-[Who uses this role, why, and its functional and non-functional needs.]
+[The user need and intended outcome for this story.]
 
 ## Access
 
-- **How a user gets the role:** [entry and approval conditions]
-- **What it can see and change:** [scope]
-- **What it can never do:** [boundaries]
+- **How a user gets the role:** [entry and approval conditions needed for this story]
+- **What it can see and change:** [scope needed for this story]
+- **What it can never do:** [boundaries relevant to this story]
 
 ## Requirements
 
@@ -64,11 +66,16 @@ Open questions must be empty before approval.
 
 | Action | Own data | Other users' data |
 | --- | --- | --- |
-| [action] | [allowed scope or denied] | [allowed scope or denied] |
+| [action needed for this story] | [allowed scope or denied] | [allowed scope or denied] |
 
-## Role-level out of scope
+## Out of scope
 
 [Excluded capabilities.]
+
+## Assumptions
+
+- **ASM-nn:** [Assumption; why it is needed; effect if wrong.]
+<!-- Write "None" if there are no assumptions. -->
 
 ## Open questions
 

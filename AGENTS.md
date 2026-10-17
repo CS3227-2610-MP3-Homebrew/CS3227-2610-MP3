@@ -21,7 +21,7 @@ the rules every agent follows, whatever its role.
 | Path | What lives there |
 |---|---|
 | `src/` | All application code. Next.js App Router pages and route handlers in `src/app/`. |
-| `workflow/` | Agentic-workflow files: specs (`workflow/specs/`), agent definitions, templates, handoffs and scripts, described in `docs/DeveloperGuide.md`. |
+| `workflow/` | Agentic-workflow files: specs (`workflow/specs/`), the plan (`workflow/PLAN.md`), agent definitions, templates, handoffs and scripts, described in `docs/DeveloperGuide.md`. |
 | `.agents/skills/` | Skills shared by all agents. |
 | `.codex/agents/` | Codex agent definitions. |
 | `docs/` | User Guide, Developer Guide and Reflections. |

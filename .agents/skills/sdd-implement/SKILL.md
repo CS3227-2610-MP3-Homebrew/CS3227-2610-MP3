@@ -11,7 +11,7 @@ services. Follow the implementation agent's boundaries and applicable AGENTS.md.
 
 ## Establish scope
 
-Read the supplied feature SPEC.md and PLAN.md  and its linked contracts/tasks. If only a feature
+Read the assigned implementation task in workflow/PLAN.md, its linked story spec in workflow/specs/stories/, and the contracts they link to. If only a feature
 name is supplied, locate the spec using repository conventions; do not assume a
 spec directory exists. If no applicable spec exists, request its location or
 content before implementing. Do not invent a substitute spec.
@@ -42,7 +42,7 @@ from the repository and spec rather than assuming them.
 
 ## Implement and verify
 
-Implement assigned feature by following its TASK.md. Follow
+Implement that task with the smallest coherent diff. Follow
 the project's stack conventions in AGENTS.md. Add only dependencies required by
 the feature; the target stack does not imply every library is already installed.
 

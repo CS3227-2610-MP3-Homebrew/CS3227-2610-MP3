@@ -1,4 +1,4 @@
 interface:
   display_name: "Spec Create"
-  short_description: "Create story specs, plans, and tasks for Homebrew"
-  default_prompt: "Use $spec-create to turn developer-guide user stories into SPEC.md, PLAN.md, and TASK.md using workflow/templates and workflow/specs conventions."
+  short_description: "Create one Homebrew spec per product user story"
+  default_prompt: "Use $spec-create to turn selected user stories from workflow/specs/PRODUCT-SPEC.md into single story files in workflow/specs/stories/ using workflow/templates and workflow/specs conventions."
