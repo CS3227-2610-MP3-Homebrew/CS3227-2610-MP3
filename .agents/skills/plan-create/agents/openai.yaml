@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Create"
+  short_description: "Create Homebrew's product plan and issue tasks"
+  default_prompt: "Use $plan-create to build or update workflow/PLAN.md from workflow/specs/, preserving task IDs and pairing test and implementation tasks for each criterion."

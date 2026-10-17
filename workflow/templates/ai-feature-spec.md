@@ -1,4 +1,4 @@
-# [AI feature] specification
+# [Story ID]: [Feature name]
 
 - **Status:** [draft | approved]
 - **Owner:** [owner]
@@ -95,6 +95,11 @@ Every adversarial case maps to a row in the guardrails table.
 ## Out of scope
 
 [Excluded capabilities.]
+
+## Assumptions
+
+- **ASM-nn:** [Assumption; why it is needed; effect if wrong.]
+<!-- Write "None" if there are no assumptions. -->
 
 ## Open questions
 
