@@ -1,5 +1,7 @@
 # Homebrew technical specification
 
+**Last updated:** 2026-10-18
+
 ## Purpose and boundaries
 
 This specification defines the shared architecture, data ownership, RLS,
@@ -209,6 +211,7 @@ deployment configuration, not inferred from an API key's contents.
 | Model and reasoning configuration | Team-tested model `qwen3.5:9b` with `reasoning_effort: "none"`; the model remains configurable. Exact provider request schema belongs to INTEGRATION-SPEC. |
 | Environment identity | Distinguishes local, CI, dev and prod; selects the correct provider/database/limit configuration and cache/counter namespace. |
 | Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Final values and meanings belong to AI-SECURITY-SPEC; no proposed product number becomes final by appearing here. |
+| `AI_GLOBAL_CALLS_PER_DAY` | Server-only nonnegative integer global provider-attempt cap per environment/Singapore day, enforced atomically alongside other call limits. Values and validation policy belong to [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration). |
 | Timezone | `Asia/Singapore` for daily resets and opening-hours/business-date calculations. |
 | Deployment credentials | Environment-specific Supabase migration database URL and Vercel deployment credentials held only in GitHub environment secrets for Actions. Never part of public application configuration. |
 
@@ -261,10 +264,13 @@ The app enforces caps below documented defaults and handles provider throttling
 through fallbacks. It stores token counts from responses where present, without
 inventing tokens or cost when absent. Because provider cost is not reported,
 the product's proposed $5/$2 daily quota budgets remain planning inputs, not
-measurable spend counters. The human decision on 2026-10-17 removes the proposed
-global daily provider-call cap; no replacement cap or monetary guarantee is
-introduced. Adopted per-user, per-feature and global-minute limits are defined
-in [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md#limits-and-configuration).
+measurable spend counters. The human decision on 2026-10-18 supersedes the
+2026-10-17 removal of the global daily provider-call cap. As specified by the
+authoritative [AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration),
+`AI_GLOBAL_CALLS_PER_DAY` limits provider attempts to 100 in prod and 40 in dev
+per Singapore calendar day. These are call-count limits, not monetary budgets
+or guarantees about provider quota consumption. Adopted per-user, per-feature,
+global-minute and global-daily limits remain defined by that security policy.
 Actual per-key quota confirmation is still unavailable.
 
 ### Admission and windows
@@ -299,6 +305,18 @@ call requires its own admission. Reusing the same admission identity does not
 authorize a second dispatch. The provider may have consumed quota even when the
 result is unavailable. This confirmed counting mechanism does not define a
 user-facing AI action.
+
+The same atomic reservation includes the environment's global daily
+provider-attempt counter alongside global-minute, feature and operation call
+limits. Every dispatched attempt consumes daily capacity, including errors,
+429s, timeouts and invalid output. Cache hits consume no provider-attempt
+capacity. Daily-cap exhaustion denies dispatch and uses the authorized feature's
+non-AI fallback. The database clock selects the Singapore-day window defined
+above; midnight creates a new window, while restart/deploy/cleanup never reset
+active capacity. Zero denies dispatch; missing/invalid required limit
+configuration or unavailable admission fails closed with the fallback, following
+the security policy. Local/CI checks use explicit synthetic caps and the fake
+provider, never a dev/prod namespace or a live exhaustion probe.
 
 The feature boundary records an authorized operation event before cache lookup;
 a cache hit is distinguishable from a provider attempt. A manual refresh records
@@ -461,8 +479,15 @@ availability target is introduced.
   its own reservation under the
   [provider-call accounting decision](#provider-call-accounting). Action/refresh
   events remain distinguishable without an additional charging policy.
-- **SYS-09.5:** Usage admission uses the adopted configured limits, never
-  fabricated monetary cost or a global daily provider-call cap.
+- **SYS-09.5:** Usage admission uses the adopted configured limits, including
+  `AI_GLOBAL_CALLS_PER_DAY` under the
+  [AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration).
+  Concurrent provider attempts cannot exceed the environment's daily cap;
+  exhausted capacity denies dispatch and offers the authorized non-AI fallback.
+  Every dispatched attempt, including failures, consumes daily capacity; cache
+  hits make no attempt. Database-clock Singapore-midnight rollover creates a
+  new daily window without resetting active counters. Limits/counts are never
+  represented as measured monetary cost or confirmed provider entitlements.
   Returned token counts are preserved where present;
   missing cost/token information remains unknown. Provider 429 results use the
   non-AI fallback without requiring a real quota-exhaustion test.

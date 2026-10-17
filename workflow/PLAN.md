@@ -1,11 +1,16 @@
 # Homebrew product plan
 
-Last updated: 2026-10-17.
+Last updated: 2026-10-18.
 
 Sources: merged, approved [PRODUCT-SPEC.md](specs/PRODUCT-SPEC.md) and
-[TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md). Foundations cover SYS-04–SYS-11.
-INTEGRATION-SPEC.md and AI-SECURITY-SPEC.md remain unwritten prerequisites;
-no story specs exist. This draft awaits human review and merge.
+[TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md), the master version of
+[AI-SECURITY-SPEC.md](specs/AI-SECURITY-SPEC.md), its unmerged 2026-10-18 daily-cap
+amendment, and the unmerged [INTEGRATION-SPEC.md](specs/INTEGRATION-SPEC.md).
+Foundations cover SYS-04–SYS-11 and SEC-01–SEC-09. Integration ASM-02, ASM-05
+and ASM-06 remain unconfirmed; former ASM-01/03/04 are adopted decisions.
+No story specs exist. Dependent execution waits for consistent required specs
+on master; written drafts and human-confirmed decisions alone do not satisfy
+that gate. This plan update awaits human review and merge.
 
 ## Conventions
 
@@ -13,11 +18,12 @@ no story specs exist. This draft awaits human review and merge.
   strict TypeScript, Tailwind 4 and Bun 1.4.3. `next.config.ts` enables
   cacheComponents and partialPrefetching; existing CI selects Node 24.
   Supabase/SSR, Zod and openai are intended integrations, not installed dependencies.
-- Vitest, Playwright and a `test` script are absent. Their separate workflow
-  PR must merge before any testing/implementation pair executes; this is a
-  global prerequisite, not a task here. Suite commands follow that PR;
-  `bun run test` is proposed. Every implementation requires its own tests
-  and `bun run verify`; testing records expected failing-first evidence.
+- Vitest, Playwright and Testing Library are declared; `bun run test`,
+  `bun run test:e2e` and `bun run check:traceability` exist. CI runs
+  `bun run verify` and `bun run test:e2e`. The former missing-tooling gate is
+  satisfied. Every implementation requires its own tests and `bun run verify`;
+  testing records expected failing-first evidence. Database/accessibility tooling
+  needed by a task remains part of that task's separate testing file scope.
 - Follow [AGENTS.md](../AGENTS.md), [spec rules](specs/README.md),
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
@@ -32,8 +38,8 @@ no story specs exist. This draft awaits human review and merge.
   dependency. Each pair owns its listed surface; later work extends it rather
   than duplicating it. Testing owns tests/fixtures/mocks; implementation owns
   application/configuration/migration code.
-- `todo` means specified queued work subject to the global tooling prerequisite.
-  `blocked` means named missing integration/security contracts or core screens.
+- `todo` means specified queued work subject to its explicit prerequisites.
+  `blocked` means named unmerged/unconfirmed/conflicting contracts or core screens.
   Only Requirements fields allocate criteria: each has one testing and one
   implementation owner. Spec tasks replace neither. Each task fits one agent run;
   each test/implementation pair shares one branch and one PR (two issues, one PR),
@@ -53,12 +59,33 @@ no story specs exist. This draft awaits human review and merge.
   [accounting](specs/TECHNICAL-SPEC.md#provider-call-accounting),
   [cache scopes](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope),
   [accessibility/responsiveness](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior).
-- Missing planned INTEGRATION-SPEC.md: T-01 owns proposed API/error, prompt,
-  provider and cache-schema contracts. Missing planned AI-SECURITY-SPEC.md:
-  T-02 owns proposed security/charging/kill-switch contracts and the Admin
-  provisioning proposal. Both use the existing
-  [planned-spec registry](specs/README.md#planned-specifications) until written.
-  No missing-document links or contracts are fabricated.
+- Integration: [HTTP/errors/fallbacks](specs/INTEGRATION-SPEC.md#shared-http-boundary),
+  [bounds/Singapore interpretation](specs/INTEGRATION-SPEC.md#schema-vocabulary-and-bounds),
+  [provider wire contract](specs/INTEGRATION-SPEC.md#soclaas-transport),
+  [prompts/schemas](specs/INTEGRATION-SPEC.md#exact-feature-prompts-and-schemas),
+  [cache identity/payload](specs/INTEGRATION-SPEC.md#cache-payload-fingerprints-and-source-revisions).
+  T-01 retains the [unconfirmed assumptions](specs/INTEGRATION-SPEC.md#assumptions)
+  and [story dependencies](specs/INTEGRATION-SPEC.md#contract-dependencies).
+- Security: [trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries),
+  [data allowlists](specs/AI-SECURITY-SPEC.md#feature-data-boundaries),
+  [limits/configuration](specs/AI-SECURITY-SPEC.md#limits-and-configuration),
+  [disable/fallback precedence](specs/AI-SECURITY-SPEC.md#disable-failure-and-fallback-behavior),
+  [retention](specs/AI-SECURITY-SPEC.md#audit-retention-and-operational-response),
+  [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria)
+  and [evaluation cases](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
+- Contract conflict: current SEC-06.2 requires the daily provider-call cap;
+  SYS-09.5 and the technical usage-control prose still prohibit it. T-02 owns
+  the prerequisite technical amendment and consistent spec merge. T-11/T-12
+  and their dependents remain blocked; the plan cannot select between contracts.
+  No additional action/cache-hit/refresh charging policy is required by the
+  security spec. PLAN ASM-01's production Admin provisioning proposal remains
+  unconfirmed and is separate from local seed work.
+- SEC ownership extends existing pairs: T-11/T-12 own SEC-06.1/06.2/06.3;
+  T-13/T-14 own SEC-02.1, SEC-03.1/03.2, SEC-04.1, SEC-05.1, SEC-08.1/08.2;
+  T-15/T-16 own SEC-07.1/07.2 and SEC-09.1/09.2. New T-21/T-22 own application
+  integration criteria SEC-01.1/01.2, SEC-02.2, SEC-04.2 and SEC-05.2 after
+  story endpoints/screens exist. Other tasks may exercise a shared control
+  without acquiring that criterion's ownership.
 
 ## Foundations
 
@@ -67,14 +94,14 @@ no story specs exist. This draft awaits human review and merge.
 - **Depends on:** None
 - **Owner role:** spec
 - **Requirements:** SYS-04, SYS-08, SYS-10 — [contract boundaries](specs/TECHNICAL-SPEC.md#purpose-and-boundaries); prerequisite, no criterion ownership.
-- **Description:** Define shared contracts reserved by the [LLM design](specs/TECHNICAL-SPEC.md#llm-module).
-- **Work:** Draft HTTP/errors, three feature prompts/input/output/fallback schemas, provider requests and cache payload/fingerprint/source-version contracts. Link story-owned details without inventing them.
-- **File scope:** Proposed `workflow/specs/INTEGRATION-SPEC.md` and own handoff.
-- **Prerequisite:** Approved product/technical sources; dependent execution waits for this spec on master.
+- **Description:** Finalize the written [integration draft](specs/INTEGRATION-SPEC.md) reserved by the shared LLM design.
+- **Work:** Preserve adopted HTTP, bounds/Singapore-time and provider decisions. Resolve INTEGRATION-SPEC ASM-02/05/06 and linked story-owned fields without inventing them; finalize routes/envelopes, exact prompts/schemas and cache identities before merge.
+- **File scope:** Existing `workflow/specs/INTEGRATION-SPEC.md` and own handoff.
+- **Prerequisite:** Human decisions on remaining integration assumptions and required story contracts; dependent execution waits for this spec on master.
 - **Acceptance criteria:**
   - [ ] Contracts are traceable; remaining story/security gaps are explicit.
   - [ ] Human-reviewed spec merges before dependent execution.
-- **Status:** todo
+- **Status:** awaiting-decision
 - **Issue:** unassigned
 
 ### T-02: Specify AI security and production Admin provisioning
@@ -82,14 +109,14 @@ no story specs exist. This draft awaits human review and merge.
 - **Depends on:** None
 - **Owner role:** spec
 - **Requirements:** SYS-06, SYS-08–SYS-10 — [security boundary](specs/TECHNICAL-SPEC.md#purpose-and-boundaries); prerequisite, no criterion ownership.
-- **Description:** Resolve [usage/security policy](specs/TECHNICAL-SPEC.md#usage-control-and-cache-enforcement) and credential-safe seed-only Admin provisioning.
-- **Work:** Specify final limits/keys, daily call caps, action/cache-hit/refresh charging, kill-switch/error precedence, safeguards, retention and security tests. **[ASSUMPTION ASM-01] Proposed, awaiting approval:** provision production seed Admins through a human-triggered production-environment workflow using environment secrets. Rationale: preserve seed-only creation without committed credentials. Effect if rejected: replace this provisioning contract before implementation; local seed/RLS work continues.
-- **File scope:** Proposed `workflow/specs/AI-SECURITY-SPEC.md` and own handoff; no workflow execution.
-- **Prerequisite:** Drafting may proceed; human decides ASM-01 before spec approval/provisioning implementation. Dependent AI execution waits for the approved spec on master.
+- **Description:** Reconcile the [written security policy](specs/AI-SECURITY-SPEC.md) with the technical contract and resolve credential-safe seed-only production Admin provisioning.
+- **Work:** Carry the unmerged daily-cap amendment into consistent technical usage-control prose and SYS-09.5 through spec review. Preserve the security spec's existing limits, kill switch, no-retry/bounded failures, retention and evaluations; do not recreate the removed additional charging policy. **[ASSUMPTION ASM-01] Proposed, awaiting approval:** provision production seed Admins through a human-triggered production-environment workflow using environment secrets. Rationale: preserve seed-only creation without committed credentials. Effect if rejected: replace this provisioning contract before implementation; local seed/RLS work continues. This PLAN assumption is not an AI-SECURITY-SPEC assumption.
+- **File scope:** Existing `workflow/specs/AI-SECURITY-SPEC.md`, affected usage-control/SYS-09.5 sections of `workflow/specs/TECHNICAL-SPEC.md`, and own handoff; no workflow execution.
+- **Prerequisite:** Conflicting daily-cap contracts require a consistent spec amendment on master before T-11/T-12 execute. Human decides PLAN ASM-01 before production provisioning implementation; unrelated local seed/RLS work remains independent.
 - **Acceptance criteria:**
-  - [ ] Final policies preserve fixed technical windows/accounting and quota uncertainty.
+  - [ ] Security amendment and technical criteria agree on daily-cap admission while preserving fixed windows, per-attempt accounting and quota uncertainty.
   - [ ] Human approves or replaces ASM-01; approved spec merges without credentials or known hosted passwords.
-- **Status:** todo
+- **Status:** awaiting-decision
 - **Issue:** unassigned
 
 ### T-03: Test runtime, configuration and import isolation
@@ -100,7 +127,7 @@ no story specs exist. This draft awaits human review and merge.
 - **Description:** Verify [configuration](specs/TECHNICAL-SPEC.md#configuration) and server/client boundaries.
 - **Work:** Test stack/runtime declarations, invalid environment/provider combinations, prod fake refusal, missing-key disablement/fallback availability, key-free local fake mode, local-only Supabase, distinct dev/prod bindings and secret redaction. Negative fixtures reject openai outside server-only `src/server/llm/` and privileged client imports/artifacts.
 - **File scope:** Proposed `tests/foundations/config/` and synthetic configuration/import fixtures.
-- **Prerequisite:** Global test tooling; no live keys or hosted checks.
+- **Prerequisite:** Existing test tooling; no live keys or hosted checks.
 - **Acceptance criteria:**
   - [ ] Contract-derived positive/negative tests and synthetic artifact scans record expected failures.
   - [ ] `bun run verify` result is recorded.
@@ -113,9 +140,9 @@ no story specs exist. This draft awaits human review and merge.
 - **Owner role:** implementation
 - **Requirements:** SYS-04.1, SYS-04.3; SYS-07.2, SYS-07.3 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Establish [validated configuration](specs/TECHNICAL-SPEC.md#configuration) and import checks.
-- **Work:** Align declared stack/Node 24; add server-only Zod configuration, public allowlist, environment isolation/redaction and the openai import-boundary check. Preserve missing-key disablement and fake/disabled selection; defer final policy/kill-switch contracts to T-02.
+- **Work:** Align declared stack/Node 24; add server-only Zod configuration, public allowlist, environment isolation/redaction and the openai import-boundary check. Preserve missing-key disablement and fake/disabled selection; policy/kill-switch orchestration belongs to T-12/T-14 under the linked security contracts.
 - **File scope:** Existing manifest/lockfile, TypeScript/Next/ESLint configuration and CI; proposed `src/server/` config and `scripts/` boundary checks.
-- **Prerequisite:** T-03 evidence and global tooling; shared-file serialization applies.
+- **Prerequisite:** T-03 evidence; shared-file serialization applies.
 - **Acceptance criteria:**
   - [ ] Configuration/import/artifact tests pass with synthetic credentials.
   - [ ] `bun run verify` passes; no secrets enter client/error/audit output.
@@ -130,7 +157,7 @@ no story specs exist. This draft awaits human review and merge.
 - **Description:** Verify the fixed [core entities/relationships](specs/TECHNICAL-SPEC.md#data-model-and-ownership) independently of later story fields.
 - **Work:** Test local replay and core profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Counter/admission and cache/audit tables belong to their later pairs.
 - **File scope:** Proposed `tests/foundations/schema/` and local migration/catalogue fixtures.
-- **Prerequisite:** Global tooling; story-specific fields, states and transitions are later additive work, not blockers.
+- **Prerequisite:** Existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
 - **Acceptance criteria:**
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
@@ -190,7 +217,7 @@ no story specs exist. This draft awaits human review and merge.
 - **Description:** Verify [request-time authentication](specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches) without account screens.
 - **Work:** Use local sessions and component/route harnesses for cookie refresh propagation, unauthenticated redirect, wrong-role denial, expired/invalid prefetched sessions and independent guarded data/mutation access. Assert private data is absent from shells, both rendering flags remain true and instant=false exceptions are per-route with PR reasons. Do not invent a public redirect destination.
 - **File scope:** Proposed `tests/foundations/auth/` and local session/harness fixtures.
-- **Prerequisite:** Global tooling; no sign-up/sign-in/navigation screen prerequisite.
+- **Prerequisite:** Existing test tooling; no sign-up/sign-in/navigation screen prerequisite.
 - **Acceptance criteria:**
   - [ ] Session, gate, shell and exception cases have recorded tests/evidence.
   - [ ] No SYS-01–SYS-03 screen contract is introduced.
@@ -214,43 +241,43 @@ no story specs exist. This draft awaits human review and merge.
 
 ### T-11: Test durable admission, windows and quota telemetry
 
-- **Depends on:** T-06
+- **Depends on:** T-06, T-02
 - **Owner role:** testing
-- **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement).
+- **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5; SEC-06.1, SEC-06.2, SEC-06.3 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SEC-06](specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 - **Description:** Verify fixed [atomic admission/window mechanics](specs/TECHNICAL-SPEC.md#admission-and-windows).
-- **Work:** With synthetic configured caps, test independent instances/restarts, concurrent all-or-none multi-scope reservations, duplicate identities and before/at/after minute/Singapore-midnight boundaries. Verify daily call-count enforcement, preserved returned tokens, unknown absent cost/tokens and fake-429 non-AI fallback using a local provider harness. No real quota exhaustion or final production values.
+- **Work:** With synthetic configured caps, test independent instances/restarts, concurrent all-or-none reservations, user/action/refresh/run and provider-attempt limits, duplicate identities and minute/Singapore-midnight boundaries. Derive configuration validity and zero/missing/invalid-limit cases from the security limits contract. After T-02 resolves the conflict, test daily provider-cap exhaustion/concurrency/rollover, failed-attempt accounting, preserved returned tokens, unknown absent cost/tokens and fake-429/denied/unavailable-admission fallback. No real quota exhaustion or monetary guarantee.
 - **File scope:** Proposed `tests/foundations/usage/` and local concurrency/clock/provider fixtures.
-- **Prerequisite:** Global tooling; final values/AI-action policy remain T-02, not blockers for these mechanics.
+- **Prerequisite:** BLOCKED: T-02's consistent daily-cap amendment must be on master; current SEC-06.2 conflicts with SYS-09.5. Synthetic limits do not resolve that conflict.
 - **Acceptance criteria:**
   - [ ] Concurrency, persistence, boundary, telemetry and fake-429 cases record deterministic results.
   - [ ] No cleanup reset or fabricated monetary cost is assumed.
-- **Status:** todo
+- **Status:** blocked
 - **Issue:** unassigned
 
 ### T-12: Implement durable admission, windows and quota telemetry
 
-- **Depends on:** T-11, T-06
+- **Depends on:** T-11, T-06, T-02
 - **Owner role:** implementation
-- **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement).
-- **Description:** Implement the [durable admission mechanism](specs/TECHNICAL-SPEC.md#provider-call-accounting) independently of final policy.
-- **Work:** Add server-only Postgres counters/admissions and atomic reservations with environment/scope/event/window identities. Derive scopes from verified actors, fail closed for invalid required caps, preserve unknown telemetry and expose fake-429 fallback behavior through the local seam. Use database-clock fixed minutes/Singapore days; no real caps or AI-action charging are selected.
+- **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5; SEC-06.1, SEC-06.2, SEC-06.3 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SEC-06](specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
+- **Description:** Implement [durable admission](specs/TECHNICAL-SPEC.md#provider-call-accounting) and the reconciled [usage policy](specs/AI-SECURITY-SPEC.md#limits-and-configuration).
+- **Work:** Add server-only Postgres counters/admissions and atomic reservations with environment/scope/event/window identities. Enforce the approved configurable user/action/refresh/run and per-attempt limits, including the daily provider cap only after contract reconciliation. Derive scopes from verified actors, fail closed for invalid required caps/unavailable admission, preserve unknown telemetry and expose fake-429 fallback behavior through the local seam. Use database-clock fixed minutes/Singapore days; add no extra charging policy or monetary accounting.
 - **File scope:** Proposed usage migrations and `src/server/llm/` admission/telemetry modules.
-- **Prerequisite:** T-11 evidence; serialize migrations.
+- **Prerequisite:** BLOCKED: T-11 evidence and T-02's consistent daily-cap specs on master; serialize migrations.
 - **Acceptance criteria:**
   - [ ] Atomicity/window/telemetry/fallback tests and catalogue checks pass.
   - [ ] `bun run verify` passes without live calls.
-- **Status:** todo
+- **Status:** blocked
 - **Issue:** unassigned
 
 ### T-13: Test validated LLM operations and fallbacks
 
 - **Depends on:** T-01, T-02, T-12
 - **Owner role:** testing
-- **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks).
+- **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3; SEC-02.1, SEC-03.1, SEC-03.2, SEC-04.1, SEC-05.1, SEC-08.1, SEC-08.2 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify shared [LLM/validation boundaries](specs/TECHNICAL-SPEC.md#llm-module) after contracts merge.
-- **Work:** Test contract-derived request/config/provider/cache validation and three deterministic feature operations, configurable model/reasoning, aggregate-only Prep input and no tools/writes. Test missing-key/disabled/denied/unavailable/fake-429 fallbacks and approved kill-switch/errors. Fallbacks are rating-sorted filtered catalogue, top-items table and manual queue; no screen implementation is tested here.
+- **Work:** Test the linked integration HTTP/provider/feature schemas and exact data-separated prompts using fake transport. Include direct/indirect/multilingual injection, feature input allowlists, aggregate-only Prep input, references/evidence, strict whole-result rejection, no tools/writes and no invalid success-cache write. Test configured model/reasoning, disable precedence before cache/dispatch/return, no retries, bounded timeout/overflow/cancellation, empty-source handling and safe typed fallbacks. Follow security evaluation cases for these owned criteria; no screen implementation is tested here.
 - **File scope:** Proposed `tests/foundations/llm/` and contract-derived fake/invalid fixtures.
-- **Prerequisite:** BLOCKED: INTEGRATION-SPEC.md schemas/prompts/errors and AI-SECURITY-SPEC.md kill-switch/failure policy must merge; story-specific fields remain linked external contracts.
+- **Prerequisite:** BLOCKED: T-01 resolves integration ASM-02/05/06 and required story fields before the integration spec merges; T-02 reconciles daily-cap specs; T-12 provides admission. No proposed schema is executable authority.
 - **Acceptance criteria:**
   - [ ] Each malformed boundary rejects before effects/results; all three operations/fallbacks have deterministic tests.
   - [ ] Evidence traces exact cases to approved contracts; no live SoCLaaS call.
@@ -261,9 +288,9 @@ no story specs exist. This draft awaits human review and merge.
 
 - **Depends on:** T-13, T-01, T-02, T-12
 - **Owner role:** implementation
-- **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks).
+- **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3; SEC-02.1, SEC-03.1, SEC-03.2, SEC-04.1, SEC-05.1, SEC-08.1, SEC-08.2 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Build shared [provider/validation adapters](specs/TECHNICAL-SPEC.md#llm-module), consuming story-owned data.
-- **Work:** Add server-only shared Zod gates and thin feature/provider operations, fake/disabled behavior and approved fallback envelopes. Route every dispatch through admission; accept authorized source snapshots/aggregates without implementing story queries, sales calculations, endpoints or UI. Keep provider/cache schemas authoritative and LLMs tool/write-free.
+- **Work:** Add server-only Zod feature/provider gates, exact fixed prompts with JSON data separation, authorized minimal context selection, validated references/evidence and typed fallback envelopes from the approved integration contract. Implement configurable single-call non-streaming transport, fake/disabled behavior, zero SDK retries, bounded transport/cancellation and disable rechecks. Route every dispatch through admission; invalid output cannot write a success cache or mutate domain records. Accept authorized snapshots/aggregates without implementing story queries, sales calculations, endpoints or UI. T-16 owns persistent cache/audit repositories.
 - **File scope:** Proposed `src/server/llm/` adapters and shared schemas under `src/server/`; existing manifest/lockfile for required packages.
 - **Prerequisite:** BLOCKED: merged INTEGRATION-SPEC.md and AI-SECURITY-SPEC.md contracts named in T-13; T-13 evidence.
 - **Acceptance criteria:**
@@ -276,11 +303,11 @@ no story specs exist. This draft awaits human review and merge.
 
 - **Depends on:** T-01, T-02, T-12
 - **Owner role:** testing
-- **Requirements:** SYS-05.3; SYS-09.4; SYS-10.1, SYS-10.2, SYS-10.3 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access), [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SYS-10](specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit).
+- **Requirements:** SYS-05.3; SYS-09.4; SYS-10.1, SYS-10.2, SYS-10.3; SEC-07.1, SEC-07.2, SEC-09.1, SEC-09.2 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access), [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SYS-10](specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify [cache eligibility/scopes](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope) and per-attempt/audit behavior.
-- **Work:** Test session-RLS streamed catalogue and no use cache directive; suspension/unapproval, actor/café isolation, TTL/midnight/version/source changes, refresh with admission and invalid payload rejection. Check cache hits reserve no call, each retry/failure attempt reserves separately, final action/refresh charges and actor/time/outcome audit without prompts/outputs. Check separate moderation action/reason and denied client infrastructure writes.
+- **Work:** Test session-RLS streamed catalogue and no use cache directive; suspension/unapproval, actor/café isolation, TTL/Singapore-midnight/version/source changes, exact canonical fingerprints, failed refresh preserving an eligible old entry, refresh admission and invalid payload rejection. Check cache hits reserve no call and every permitted dispatch/failure has one reservation, without retry or extra charging-policy tests. Test content-free actor/time/outcome audit, denial/failure events, unavailable-storage fail-closed behavior, denied client infrastructure writes and clock-controlled retention cleanup preserving active state. Keep separate moderation audit records outside AI cleanup; domain confirmation security belongs to T-21/T-22.
 - **File scope:** Proposed `tests/foundations/ai-state/`, local clock/cache/accounting/audit fixtures.
-- **Prerequisite:** BLOCKED: INTEGRATION-SPEC.md cache/fingerprint/outcome schemas and AI-SECURITY-SPEC.md final limits/charging/retention must merge. Use approved source/moderation contracts for final field cases.
+- **Prerequisite:** BLOCKED: T-01 resolves integration ASM-06 and required catalogue/sales source fields; integration contracts and T-02's consistent security/technical amendment must merge; T-12 admission is required. Existing security retention/refresh policies are written, not missing decisions.
 - **Acceptance criteria:**
   - [ ] Cache/eligibility/accounting/audit cases trace to contracts with controlled local evidence.
   - [ ] Reusable repository tests need no completed LLM feature implementation.
@@ -291,9 +318,9 @@ no story specs exist. This draft awaits human review and merge.
 
 - **Depends on:** T-15, T-01, T-02, T-12
 - **Owner role:** implementation
-- **Requirements:** SYS-05.3; SYS-09.4; SYS-10.1, SYS-10.2, SYS-10.3 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access), [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SYS-10](specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit).
+- **Requirements:** SYS-05.3; SYS-09.4; SYS-10.1, SYS-10.2, SYS-10.3; SEC-07.1, SEC-07.2, SEC-09.1, SEC-09.2 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access), [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SYS-10](specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Build shared [durable cache/accounting repositories](specs/TECHNICAL-SPEC.md#usage-control-and-cache-enforcement) independently of feature adapters.
-- **Work:** Add authorized Postgres cache/audit storage, validated repository operations, session-RLS current-catalogue eligibility and approved action/refresh charging around per-attempt reservations. Recheck current ownership/source eligibility on every hit; record AI outcomes and separate moderation action/reason. No Next catalogue cache, prompt/output audit data or story lifecycle/UI work.
+- **Work:** Add authorized Postgres cache/audit storage and validated repositories using approved fingerprint/source/model/contract identities. Recheck current ownership/source eligibility on every hit; enforce expiry, preserve eligible results on failed refresh and integrate admission without an extra charging policy. Record content-free AI outcomes, fail closed when required storage is unavailable, and add local cleanup honoring security retention without resetting active state or deleting moderation audit. Support separate moderation audit persistence; T-22 connects its human-confirmed domain action. No Next catalogue cache, prompt/output audit data or story lifecycle/UI work.
 - **File scope:** Proposed cache/audit migrations and `src/server/` eligibility plus `src/server/llm/` repositories; no feature-adapter ownership overlap.
 - **Prerequisite:** BLOCKED: merged integration/security contracts named in T-15; T-15 evidence. T-14 is not a prerequisite.
 - **Acceptance criteria:**
@@ -310,7 +337,7 @@ no story specs exist. This draft awaits human review and merge.
 - **Description:** Statically verify [environment/delivery mappings](specs/TECHNICAL-SPEC.md#environments-and-delivery).
 - **Work:** Check master/development → Preview/homebrew-dev, approved v*/production → Production/homebrew-prod, single Hobby project, sin1/Singapore declarations, separated environment credentials and teammate production approval. Deploy/migration paths must be Actions-only and exclude local seed passwords. Do not execute workflows or contact hosted services.
 - **File scope:** Proposed `tests/foundations/delivery/` and synthetic workflow fixtures.
-- **Prerequisite:** Global tooling; actual project settings/deploy evidence are human-only.
+- **Prerequisite:** Existing test tooling; actual project settings/deploy evidence are human-only.
 - **Acceptance criteria:**
   - [ ] Static mappings/approval/credential-boundary tests record results.
   - [ ] Hosted verification is explicitly recorded as unavailable to agents.
@@ -340,7 +367,7 @@ no story specs exist. This draft awaits human review and merge.
 - **Description:** Verify [defined core flows](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior) once screens exist.
 - **Work:** Cover sign-up/sign-in/navigation, browsing/pickup/reviews, café/menu/orders, application/moderation and three AI panels/fallbacks. Require no unresolved automated accessibility violations; complete flows at 360 px and representative wider viewports with readable labels/errors, reachable controls and no clipping/overlap/page-level horizontal scrolling. No full-conformance/manual-assessment or invented performance target.
 - **File scope:** Proposed `tests/foundations/core-ui/` browser checks and local/fake fixtures.
-- **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; global tooling.
+- **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task.
 - **Acceptance criteria:**
   - [ ] Every technical core flow has accessibility and viewport completion evidence.
   - [ ] Tests create no missing screens or new product requirements.
@@ -359,6 +386,36 @@ no story specs exist. This draft awaits human review and merge.
 - **Acceptance criteria:**
   - [ ] Core automated accessibility checks have no unresolved violations; viewport flow checks pass.
   - [ ] `bun run verify` passes with local data/fake AI.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-21: Test application AI authorization, rendering and human confirmation
+
+- **Depends on:** T-08, T-10, T-14, T-16
+- **Owner role:** testing
+- **Requirements:** SEC-01.1, SEC-01.2, SEC-02.2, SEC-04.2, SEC-05.2 — [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
+- **Description:** Verify application integration of [AI trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries) and [human confirmation](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) after the ordinary domain flows exist.
+- **Work:** Exercise every AI endpoint with anonymous/wrong-role/cross-owner/forged-reference/cross-origin requests; assert authorized RLS source selection and no unrelated Admin sales/order access. Scan provider requests, client artifacts, errors and telemetry with synthetic secret/session canaries. Verify whole-result rejection for forged IDs/labels/evidence and inert rendering/no fetching of HTML/script/URL payloads. Exercise explicit per-review Admin confirmation, reason/current-state checks, preserved review text and separate audit, including stale/forged advice. Use the linked security evaluation cases; ordinary story behavior is a prerequisite, not new scope.
+- **File scope:** Proposed `tests/foundations/ai-security/` route/database/browser integration cases and synthetic local/fake fixtures; extend existing shared test infrastructure without duplicating its owners.
+- **Prerequisite:** BLOCKED: T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred.
+- **Acceptance criteria:**
+  - [ ] Each owned SEC criterion has deterministic local/fake negative and positive evidence, including browser rendering and stale confirmation cases.
+  - [ ] Failing-first results and `bun run verify`/`bun run test:e2e` results are recorded without live provider or hosted access.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-22: Integrate application AI authorization, rendering and human confirmation
+
+- **Depends on:** T-21, T-08, T-10, T-14, T-16
+- **Owner role:** implementation
+- **Requirements:** SEC-01.1, SEC-01.2, SEC-02.2, SEC-04.2, SEC-05.2 — [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
+- **Description:** Connect the shared AI controls to existing authorized application flows under the approved [HTTP](specs/INTEGRATION-SPEC.md#shared-http-boundary) and [security](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) contracts.
+- **Work:** Connect approved endpoints to verified session/role/scope and same-origin gates, authorized RLS source reads, minimal validated feature operations and safe result/error rendering. Close canary leakage paths and reject whole invalid results without executable text or model-driven fetches. Integrate explicit per-review confirmation with existing domain validation and T-16's audit persistence, preserving text and requiring a reason. Reuse prior guards/adapters/repositories; do not recreate story queries, domain lifecycles, screens or infrastructure owned by earlier tasks.
+- **File scope:** Existing story route/UI/domain surfaces once merged; shared server-boundary fixes under `src/server/` as required. T-14 retains provider/schema ownership and T-16 persistent cache/audit ownership; serialize shared edits.
+- **Prerequisite:** BLOCKED: all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task.
+- **Acceptance criteria:**
+  - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
+  - [ ] `bun run verify` and `bun run test:e2e` pass with local Supabase/fake AI; no live verification or deployment.
 - **Status:** blocked
 - **Issue:** unassigned
 

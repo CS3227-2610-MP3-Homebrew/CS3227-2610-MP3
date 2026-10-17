@@ -1,6 +1,6 @@
 # Homebrew AI security specification
 
-**Last updated:** 2026-10-17
+**Last updated:** 2026-10-18
 
 **Related specs:** [Product](PRODUCT-SPEC.md), [Technical](TECHNICAL-SPEC.md),
 [specification conventions](README.md).
@@ -98,6 +98,7 @@ fake provider and local database; they do not consume a dev/prod namespace.
 | Configuration key | Scope/event | Prod | Dev |
 | --- | --- | --- | --- |
 | `AI_GLOBAL_CALLS_PER_MINUTE` | All provider attempts/environment/minute | 60 | 30 |
+| `AI_GLOBAL_CALLS_PER_DAY` | All provider attempts/environment/Singapore day | 100 | 40 |
 | `AI_USER_ACTIONS_PER_MINUTE` | All features/verified actor/minute | 5 | 5 |
 | `AI_USER_ACTIONS_PER_DAY` | All features/verified actor/Singapore day | 30 | 30 |
 | `AI_BREW_FINDER_CALLS_PER_MINUTE` | Brew Finder attempts/environment/minute | 40 | 20 |
@@ -117,8 +118,17 @@ not require a second call or permit a retry after failure. Moderation requests
 over the configured batch size are rejected before action admission, not split
 into unlimited calls.
 
-No global daily provider-call cap is introduced. The product's proposed $5/$2
-daily quota budgets are planning inputs, not measured or enforced spend limits.
+The global daily provider-call cap is 100 attempts in prod and 40 in dev,
+confirmed by the human on 2026-10-18. Every dispatched attempt counts, including
+timeouts, provider errors, 429s and invalid output; cache hits make no provider
+attempt. Admission atomically enforces this cap alongside the other applicable
+call limits, using Singapore calendar days and the database clock. Exhaustion
+uses the feature's non-AI fallback.
+
+The product's proposed $5/$2 daily quota budgets remain planning inputs, not
+measured or enforced spend limits. For 100/40 calls to fit those respective
+budgets, each call would need to consume at most $0.05 quota units; no evidence
+establishes that bound. The call cap therefore makes no monetary-quota guarantee.
 Actual per-key entitlements remain unknown under
 [TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
@@ -304,11 +314,12 @@ they do not assert that the starter application already satisfies them.
   instances obey the adopted user, feature, refresh and triage-run limits.
   Minute/day boundaries use the technical database-clock contract; restarting
   does not restore capacity.
-- **SEC-06.2:** Every provider attempt obeys the global-minute, feature-minute and
+- **SEC-06.2:** Every provider attempt obeys the global-minute, global-daily, feature-minute and
   operation caps with a single-use reservation. Cache hits make no attempt;
   dispatch accounting follows the technical per-attempt contract. No SDK retry
-  or second Brew Finder call bypasses admission. No global daily provider-call
-  cap or additional charging-policy test is required by this specification.
+  or second Brew Finder call bypasses admission. Concurrent attempts cannot
+  exceed the daily cap; Singapore-midnight rollover creates a new daily window.
+  No additional action/cache-hit/refresh charging-policy test is required.
 - **SEC-06.3:** Zero/missing/invalid limits and unavailable admission prevent
   dispatch and offer the authorized fallback. Observed counts are never
   represented as measured dollar consumption or confirmed key entitlement.
@@ -361,7 +372,7 @@ after these contracts and their dependencies are approved.
 | E-05 | Provider returns unknown IDs/labels, missing reviews, unsupported sales figures, extra keys or malformed JSON. | Entire AI result rejected; role fallback and sanitized outcome; no success cache. | Validation; SEC-04.1–SEC-04.2 |
 | E-06 | Output contains script tags, Markdown links or executable tool arguments. | Text is inert or result rejected; no script, link interpretation, fetch or write. | Rendering/no agency; SEC-04.2, SEC-05.1 |
 | E-07 | Customer A's cache requested by B; café suspended between generation and delivery. | No cross-actor reuse or ineligible café disclosure. | Cache scope/current authorization; SEC-07.1 |
-| E-08 | Parallel actions/refreshes/runs at the last unit of capacity, then restart. | Adopted caps hold with no reset on restart; provider reservations remain atomic. | Durable limits; SEC-06.1–SEC-06.2 |
+| E-08 | Parallel actions/refreshes/runs at the last unit of capacity, then restart; provider attempts at the daily cap and across Singapore midnight. | Adopted caps hold with no reset on restart; provider reservations remain atomic; exhausted daily capacity denies dispatch until the next daily window. | Durable limits; SEC-06.1–SEC-06.2 |
 | E-09 | Cached hit, failed refresh, second Brew call, timeout and 429. | Cache hit makes no provider call; second call requires admission; failed refresh preserves old eligible entry; no retry. | Quota/cache/failure; SEC-06.2–SEC-06.3, SEC-07.2, SEC-08.2 |
 | E-10 | Populated cache with disabled provider; disable observed between calls or before delivery. | No AI-cache return or later dispatch; authorized non-AI fallback. | Kill switch; SEC-08.1 |
 | E-11 | Missing/invalid/zero config, unavailable database, oversized input/output and request cancellation. | No unadmitted dispatch; bounded stop/fallback; no further subcall after disconnect. | Fail closed/resource bounds; SEC-06.3, SEC-08.2 |
@@ -391,7 +402,9 @@ retention, provider-side deletion, sales calculations or new Admin permissions.
 None introduced by this specification remain unconfirmed. On 2026-10-17 the
 human adopted former ASM-01, ASM-04 and ASM-05 as written, rejected the global
 daily call-cap addition (ASM-02), and removed the need for the additional
-charging policy (ASM-03). All five identifiers are retired and must not be reused.
+charging policy (ASM-03). On 2026-10-18 the human reversed the ASM-02 rejection
+and adopted the previously proposed daily cap of 100 prod / 40 dev attempts.
+All five identifiers are retired and must not be reused.
 The adopted policies appear in their relevant sections above. These decisions
 do not claim that a spec PR has merged. Existing per-key uncertainty remains
 TECHNICAL-SPEC ASM-01.
