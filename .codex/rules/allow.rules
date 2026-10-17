@@ -1,7 +1,7 @@
 prefix_rule(
     pattern = ["bun", "run", "verify"],
     decision = "allow",
-    justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks, and verify only runs lint, typecheck and build.",
+    justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks; verify runs lint, typecheck, unit/integration tests, the traceability check and build.",
     match = ["bun run verify"],
     not_match = [
         "bun run dev",
@@ -10,5 +10,20 @@ prefix_rule(
         "bun install",
         "bunx vercel deploy",
         "bun run verify-all",
+    ],
+)
+
+prefix_rule(
+    pattern = ["bun", "run", "test:e2e"],
+    decision = "allow",
+    justification = "Playwright needs a local server port and a browser, which the sandbox blocks.",
+    match = ["bun run test:e2e"],
+    not_match = [
+        "bun run test",
+        "bun run dev",
+        "bun run build",
+        "bun install",
+        "bunx playwright install",
+        "bun run test:e2e-all",
     ],
 )

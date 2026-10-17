@@ -86,13 +86,14 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Small spec files (cross-cutting specs plus one file per story), then a single PLAN.md whose tasks become issues, with a test task before each implementation task. | Lecture 7 advises against one large spec and describes Specify → Plan (one PLAN.md with tasks) → Implement → Validate; one plan keeps shared foundations consistent across the three roles. |
 | Story IDs come only from PRODUCT-SPEC.md, with one requirement per story file; system requirements start at SYS-04 in TECHNICAL-SPEC.md; SEC IDs only in AI-SECURITY-SPEC.md; ASM and UC IDs are scoped per file. Follow [the requirement ID rules](../workflow/specs/README.md#requirement-ids). | Role specs are written in parallel PRs, so any rule that lets two runs allocate a new ID would collide. |
 | Tests are written from the spec before implementation. | Tests check the spec's intent rather than what was built, and give implementation a clear target. |
+| `verify` includes unit/integration tests and traceability; e2e runs separately in CI. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Agents write their own reports to `workflow/handoffs/`; review rounds are appended by the review command. | Evidence of every step without manual copying; the same approach worked in MP2. |
 | The reviewer runs as a separate read-only process. | An agent's read and write limits are instructions, not enforced permissions, and Codex subagents inherit the parent session's sandbox; a separate read-only process actually cannot edit files. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
 | Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
-| Codex execution rules allow only `bun run verify` outside the sandbox and forbid the commands `AGENTS.md` prohibits. | Verification must run for every agent, and the forbidden rules turn `AGENTS.md` instructions into enforced blocks. |
+| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. | Verification must run for every agent, and the forbidden rules turn `AGENTS.md` instructions into enforced blocks. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop. |
 
 ### Workflow files
 
@@ -117,11 +118,15 @@ to its skill; that skill leaves coordination and handoff documents to the caller
 | `.agents/skills/plan-create/agents/openai.yaml` | UI metadata and default prompt for the product-plan skill. |
 | `workflow/agents/spec.md` | Full spec-agent instructions for cross-cutting specs, story specs, PLAN.md and its own handoff report. |
 | `.codex/agents/spec.toml` | Thin wrapper loading the spec-agent instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `workflow/agents/testing.md` | Tests exactly one PLAN.md testing task from approved criteria and contracts, limits reads to exclude implementation and review reports, and writes its own failing-first handoff. |
+| `.codex/agents/testing.toml` | Thin wrapper loading testing.md, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.agents/skills/sdd-test/SKILL.md` | Maps criteria to Given/When/Then cases, selects Vitest or Playwright using the installed Next.js guides, and uses minimal local/fake fixtures. |
+| `workflow/scripts/check-traceability.ts` | Checks that every criterion in each done task's Requirements field appears in a test title under tests/; exits 1 with uncovered IDs and owning tasks. |
 | `.agents/skills/sdd-implement/SKILL.md` | Implements one assigned implementation task from workflow/PLAN.md with the linked story spec and contracts, using the smallest coherent diff; loads relevant references, runs existing checks and returns evidence; forbids test/spec authoring and leaves coordination and handoff documents to the caller. |
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. |
 | `.agents/skills/sdd-implement/references/soc-llm.md` | Guidance for server-only SoC calls, provider capability checks, bounded failures, output validation, credential protection and mocked verification. |
 | `.agents/skills/session-log/SKILL.md` | Drafts one numbered session log, resolves author attribution, records key prompts and corrections, and limits scope, length and file changes. |
-| `.codex/rules/allow.rules` | Lets exactly `bun run verify` run outside the Codex sandbox, because the Turbopack build needs a local port. |
+| `.codex/rules/allow.rules` | Lets `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop, not exact enforcement. |
 | `.codex/rules/guardrails.rules` | Forbids agents from pushing, rewriting history, opening or merging PRs, deploying with Vercel and pushing to the hosted Supabase database. |
 
 <!-- Add every new workflow file to this table. -->
