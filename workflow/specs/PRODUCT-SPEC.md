@@ -73,7 +73,7 @@ below; this document does not supply missing behavioral decisions.
 - Preserve a non-AI fallback for every AI feature.
 
 Detailed safeguards, kill-switch behavior, usage limits and enforcement belong
-in the planned [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and
+in the planned [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and the written
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). Exact LLM prompts and input/output
 schemas belong in the planned [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md).
 
@@ -100,8 +100,8 @@ keys; see assumption ASM-02.
 | Daily quota cap measured in SoCLaaS dollar units | $5 in prod; $2 in dev. |
 
 These are proposed limits, not final enforcement contracts. Detailed limit
-definitions and enforcement belong in the planned AI security and technical
-specifications.
+definitions and enforcement belong in the planned AI security specification
+and the written TECHNICAL-SPEC.md.
 
 ### Environments, cost and UI
 
@@ -188,9 +188,10 @@ are confirmed stretch. There is no in-app payment system in either scope.
   Rationale: the team supplied documented quota defaults, but no confirmed limits
   for each project key. Effect if wrong: the proposed app usage limits and
   dependent technical/security contracts may need revision against the actual
-  key limits. Confirmation belongs in the planned TECHNICAL-SPEC.md; free access
-  for SoC students and the quota-only meaning of dollar units are confirmed
-  facts, not assumptions.
+  key limits. The assessment now belongs to
+  [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md#assumptions), TECHNICAL-SPEC ASM-01; free
+  access for SoC students and the quota-only meaning of dollar units are
+  confirmed facts, not assumptions.
 
 ## Planned supporting specifications
 
@@ -201,6 +202,7 @@ are confirmed stretch. There is no in-app payment system in either scope.
 | [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) | AI attack surfaces, mitigations, environment kill switch, usage-control limits and security test plan. |
 | `stories/<ID>-<slug>.md` | One story specification per source story, including testable acceptance criteria, relevant edge cases and failure paths, linked to shared contracts. |
 
-These documents are planned and have not been written as part of this product
-specification. Detailed data fields, API contracts, lifecycle rules and failure
-semantics remain outside this product-level document until specified.
+TECHNICAL-SPEC.md is written; the integration, AI security and story
+specifications remain planned. Detailed data fields, API contracts, lifecycle
+rules and failure semantics remain outside this product-level document until
+specified in their supporting specifications.

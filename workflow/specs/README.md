@@ -20,7 +20,7 @@ workflow/
 | File (relative to `workflow/specs/`) | Scope | Template | Status |
 | --- | --- | --- | --- |
 | `PRODUCT-SPEC.md` | Product overview; roles, including what each can and cannot access; navigation per role; and a "User stories" section grouped by role with each story's ID (for example `CUS-03`), story text and priority. This section is the source of story specs. | Coverage rules below; no separate template. | Written |
-| `TECHNICAL-SPEC.md` | Architecture, data model, row-level security, configuration and `SYS-nn` requirements from `SYS-04`. | Coverage rules below; no separate template. | Planned |
+| `TECHNICAL-SPEC.md` | Architecture, data model, row-level security, configuration and `SYS-nn` requirements from `SYS-04`. | Coverage rules below; no separate template. | Written |
 | `INTEGRATION-SPEC.md` | API contracts, exact LLM prompt text and LLM input/output schemas. | Coverage rules below; no separate template. | Planned |
 | `AI-SECURITY-SPEC.md` | Attack surfaces, mitigations, usage control, security test plan and `SEC-nn` requirements. | Coverage rules below; no separate template. | Planned |
 | `stories/<ID>-<slug>.md` | One user story per file, with its story ID as its only requirement ID (`CUS-nn`, `OWN-nn`, `ADM-nn`, or `SYS-01`–`SYS-03` for shared user-facing stories: sign up, sign in, and role-based navigation). | `workflow/templates/story-spec.md` for ordinary stories; `workflow/templates/ai-feature-spec.md` for AI stories. | Planned |
