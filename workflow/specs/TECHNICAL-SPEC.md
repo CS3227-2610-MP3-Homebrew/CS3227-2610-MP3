@@ -10,9 +10,9 @@ specification. It supplies foundation contracts, not implementation steps.
 
 Exact HTTP contracts, LLM prompts and LLM input/output schemas belong to the
 planned [INTEGRATION-SPEC.md](README.md#planned-specifications). Attack surfaces,
-mitigations, final limit values, AI-action charging rules, kill-switch semantics
-and the security test plan belong to the planned
-[AI-SECURITY-SPEC.md](README.md#planned-specifications). Detailed order, café,
+mitigations, usage-limit values, kill-switch semantics
+and the security test plan belong to
+[AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md). Detailed order, café,
 review, sales and account behavior belongs to the planned
 [story specifications](README.md#planned-specifications). Those documents must
 resolve their contracts before dependent implementation; this specification
@@ -135,7 +135,7 @@ dates and opening-hours calculations use `Asia/Singapore`.
 | Orders | Customer profile and café references, pickup timing and fulfilment state; payment occurs at pickup without a payment integration. | Customers access only their own orders; owners access orders only for their café. Authorized mutations must satisfy story transitions as well as RLS. No unrelated Admin order access is granted. | Exact states/transitions, cancellation races, rejection/no-show behavior, duplicate submission and later café/hour changes: CUS-03–CUS-04 and OWN-05. |
 | Order items | Parent order and menu-item identity, quantity and data required to represent the ordered purchase. | Access follows the parent order. A customer cannot attach items to another customer's order or mix an item from another café. Owner access follows ownership of the order's café. | Historical item/price snapshots and sales treatment when menus change: CUS-03 and OWN-06. |
 | Reviews | Customer and collected-order references, café relationship, review content and moderation state; unique order reference prevents a second review for the same order. | Review creation requires the caller's own collected order. Customers can read their own reviews and visible reviews of eligible cafés. Admins access the moderation queue and hide/restore with a reason, never edit review text. Any further write/read permission remains denied until specified. | Fields, rating scale/formula, initial state, editing/deletion, restore and label/action relationship: CUS-02, CUS-05 and ADM-03–ADM-04. |
-| AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Action charging and final values: AI-SECURITY-SPEC; mechanism below. |
+| AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Adopted usage-limit values: AI-SECURITY-SPEC; mechanism below. |
 | AI caches | Environment, feature, scope identity, input fingerprint, model/contract version, source revision, creation/expiry or Singapore business date, and validated result. | Server-only reads/writes. Every hit repeats caller authorization; Prep Advisor entries are café-scoped; Brew Finder entries cannot cross actor scopes under the [cache scope decision](#cache-eligibility-and-scope). No client Data API access. | Exact feature payloads: INTEGRATION-SPEC; source selection and sales windows: AI/story specifications. |
 | Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Review-moderation events: acting Admin, review reference, hide/restore action, reason and timestamp. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields and any retention/deletion policy: ADM-03/ADM-04 and AI-SECURITY-SPEC. Moderation reasons are separate from AI prompt/output payloads. |
 
@@ -260,11 +260,12 @@ Per-key quota uncertainty is recorded in TECHNICAL-SPEC ASM-01.
 The app enforces caps below documented defaults and handles provider throttling
 through fallbacks. It stores token counts from responses where present, without
 inventing tokens or cost when absent. Because provider cost is not reported,
-the enforceable global daily cap is a configurable provider-call count. The
-product's proposed $5/$2 daily quota budgets are planning inputs, not measurable
-spend counters or finalized call-count values. AI-SECURITY-SPEC must select the
-call-count values and explain how they relate conservatively to those budgets;
-actual per-key quota confirmation is still unavailable.
+the product's proposed $5/$2 daily quota budgets remain planning inputs, not
+measurable spend counters. The human decision on 2026-10-17 removes the proposed
+global daily provider-call cap; no replacement cap or monetary guarantee is
+introduced. Adopted per-user, per-feature and global-minute limits are defined
+in [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md#limits-and-configuration).
+Actual per-key quota confirmation is still unavailable.
 
 ### Admission and windows
 
@@ -304,11 +305,10 @@ a cache hit is distinguishable from a provider attempt. A manual refresh records
 a separate refresh event, and a cache miss/rebuild records any actual dispatched
 calls. The mechanism can independently enforce configured action, refresh and
 call counters. Missing or invalid required limit configuration cannot authorize
-a provider dispatch. AI-SECURITY-SPEC defines what constitutes one AI action, which
-operation events consume action limits, whether cache hits/denied or failed
-refreshes are charged, and how those charges interact with call admission.
-Those decisions are not inferred from a request count. No provider call bypasses
-the call reservation even if an action/cache policy is still to be specified.
+a provider dispatch. The human decision on 2026-10-17 removes the additional
+action/cache-hit/failure/refresh charging-policy requirement. It does not remove
+the adopted usage limits or the per-attempt provider reservation above. No
+provider call bypasses its reservation.
 
 If Postgres admission cannot be established, no provider call is dispatched and
 the feature uses its non-AI fallback. Concurrent serverless invocations share
@@ -460,10 +460,10 @@ availability target is introduced.
   attempted call, including a second call/retry and a failed/429 attempt, has
   its own reservation under the
   [provider-call accounting decision](#provider-call-accounting). Action/refresh
-  events remain distinguishable so AI-SECURITY-SPEC can bind their final charging
-  rules.
-- **SYS-09.5:** The daily admission check uses configured call counts, never
-  fabricated monetary cost. Returned token counts are preserved where present;
+  events remain distinguishable without an additional charging policy.
+- **SYS-09.5:** Usage admission uses the adopted configured limits, never
+  fabricated monetary cost or a global daily provider-call cap.
+  Returned token counts are preserved where present;
   missing cost/token information remains unknown. Provider 429 results use the
   non-AI fallback without requiring a real quota-exhaustion test.
 
