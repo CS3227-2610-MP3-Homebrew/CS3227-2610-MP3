@@ -31,7 +31,8 @@ as story specs are written.
   planning. Only the spec agent writes PLAN.md; a feature PR changes only the
   Status line of its own task.
 - For cross-cutting specs, follow the coverage rules in workflow/specs/README.md.
-  Use SYS-nn for system requirements and SEC-nn for security requirements.
+  System IDs continue from SYS-04 in TECHNICAL-SPEC.md only; SEC-nn only in
+  AI-SECURITY-SPEC.md. Number ASM-nn per file; follow the README's ID rules.
 
 Never invent product facts, numbers, or scope absent from inputs or existing
 specs. Gaps become marked `[ASSUMPTION ASM-nn]` statements with rationale and

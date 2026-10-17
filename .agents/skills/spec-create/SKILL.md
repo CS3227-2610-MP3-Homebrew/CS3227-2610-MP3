@@ -49,27 +49,27 @@ Reuse the existing story file when updating. For new stories, use:
 workflow/specs/stories/<ID>-<slug>.md
 ```
 
-Use the source story's ID as its primary requirement ID and filename identifier.
+Use the source story's ID as its only requirement ID and filename identifier.
 Create exactly one story deliverable per selected story. Keep different stories
 separate. Use relative links to related specs. Do not automatically create all
 planned specs, modify shared templates, or generate planning or summary files.
 
 ## Requirement identity and ownership
 
-- Use `CUS-nn` for customer, `OWN-nn` for owner, `ADM-nn` for admin, `SYS-nn`
-  for system, and `SEC-nn` for security requirements, beginning each prefix at
-  `01`. AI requirements use their actor's prefix; do not invent an AI prefix.
-- Scan existing specs, including removed requirements, before allocating the
-  next unused ID. The source story's ID is its primary requirement ID.
-- Use one requirement per user-visible capability. Acceptance criteria append
-  `.n`, for example `OWN-04.1`. Do not introduce REQ/AC numbering schemes.
+- Each story file defines exactly one requirement: its source story ID from
+  PRODUCT-SPEC.md's "User stories" section. This skill never allocates IDs.
+  AI requirements use their actor's prefix; do not invent an AI prefix.
+  Follow the [requirement ID rules](../../../workflow/specs/README.md#requirement-ids)
+  for SYS/SEC allocation.
+- Acceptance criteria append `.n`, for example `OWN-04.1`. Do not introduce
+  REQ/AC numbering schemes. Report an extra capability as a split or new-story
+  proposal, marked `awaiting-decision`, never as a new ID in the story file.
 - Never reuse or renumber an ID. Preserve removed requirements with their IDs
   marked removed.
-- Each requirement has one authoritative definition. Reuse and link an existing
-  requirement where it already covers the story. In the story file, identify the
-  owning spec for every requirement; label any reproduced context as a summary. New
-  requirements may be owned by the story file and linked to their related
-  product/system/security scope. Do not create competing definitions.
+- Each requirement has one authoritative definition. The story file owns only
+  its own requirement; any other behaviour links to its owning spec. Report a
+  missing requirement rather than creating it. Label any reproduced context as
+  a summary. Do not create competing definitions.
 - If the story changes an existing requirement, draft its amendment in the
   existing owning spec only when that edit is in the assigned scope. Otherwise
   record the required amendment as `awaiting-decision` and block dependent tasks.
@@ -83,8 +83,6 @@ assignment into a full role or product specification.
 
 Start with title and metadata: **Last updated** (`YYYY-MM-DD`), **Related specs**,
 and **Role**. Include source story/path/section and requirement ownership links.
-Do not invent an owner; record unknown owners in the spec agent's report under
-**Open issues for the next step**, marked `awaiting-decision`.
 
 For ordinary stories, include:
 
@@ -92,12 +90,13 @@ For ordinary stories, include:
   nonfunctional needs.
 - **Access:** how the role is obtained, allowed scope, and prohibited actions
   needed for this story.
-- **Requirements:** each ID and title, original user story, priority, and risk
-  with a reason. Nest testable Given/When/Then **Acceptance criteria**, **Edge
-  cases and failure paths**, and **Out of scope** under each requirement, as in
-  the template. Cross-reference requirements defined in other owning specs.
+- **Requirements:** the story's single requirement ID and title, original user
+  story, priority, and risk with a reason. Nest testable Given/When/Then
+  **Acceptance criteria**, **Edge cases and failure paths**, and **Out of scope**
+  under that requirement, as in the template. Cross-reference requirements
+  defined in other owning specs.
 - **Screens:** content/states, actions, and requirement IDs in the template table.
-- **Use cases:** `UC-<PREFIX>-nn`, actor, preconditions, numbered success scenario,
+- **Use cases:** `UC-<ID>-n`, actor, preconditions, numbered success scenario,
   and extensions linked to scenario steps.
 - **Permissions:** own-data and other-users'-data action scopes needed for this
   story in a table.
@@ -126,8 +125,11 @@ performance targets, access rules, or product scope.
 
 ### Assumptions, gaps, and approval
 
-Mark every inferred statement inline as `[ASSUMPTION ASM-nn]`. Add an
-**Assumptions** list with rationale and impact, or `None`. Assumptions are
+Mark every inferred statement inline as `[ASSUMPTION ASM-nn]`. Number assumptions
+per file from `ASM-01` and never renumber them. Cite other files' assumptions
+with the file name, following the
+[requirement ID rules](../../../workflow/specs/README.md#requirement-ids).
+Add an **Assumptions** list with rationale and impact, or `None`. Assumptions are
 proposals, not accepted requirements. Record gaps, conflicts, missing behavior,
 and unconfirmed priorities/risks with affected IDs in the spec agent's report
 under **Open issues for the next step**, never in the spec. Also report decisions

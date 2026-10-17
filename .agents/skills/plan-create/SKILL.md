@@ -33,7 +33,7 @@ Follow repository restrictions on secrets, local services, and LLM calls.
 
 Use this structure for the whole product:
 
-1. **Header:** title, status, last updated (`YYYY-MM-DD`), and links to the specs
+1. **Header:** title, last updated (`YYYY-MM-DD`), and links to the specs
    it was built from, identifying any dependency on an unmerged spec.
 2. **Conventions:** verified repository facts: paths, commands, stack, modules,
    routes, data structures, integrations, and tooling. Mark new paths and

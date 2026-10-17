@@ -5,9 +5,9 @@
 - **Role:** [role]
 
 <!-- How to use:
-Replace placeholders. Repeat the requirement block as needed.
-Use one requirement per user-visible capability. Criteria must be testable
-without asking the author. Describe behaviour, not implementation.
+Replace placeholders.
+This file defines exactly one requirement: the story's ID. Criteria must be
+testable without asking the author. Describe behaviour, not implementation.
 Exact prompt text and schemas belong in INTEGRATION-SPEC.md.
 -->
 
@@ -42,7 +42,7 @@ All user-written text, including café descriptions and reviews, is untrusted.
 
 ## Requirements
 
-### `<PREFIX>-01`: [Title]
+### `[Story ID]`: [Title]
 
 - **User story:** As a [role], I want [capability], so that [outcome].
 - **Priority:** [priority]
@@ -50,8 +50,8 @@ All user-written text, including café descriptions and reviews, is untrusted.
 
 #### Acceptance criteria
 
-- **`<PREFIX>-01.1`:** Given [context], when [action], then [observable result].
-- **`<PREFIX>-01.2`:** Given [context], when [action], then [observable result].
+- **`[Story ID].1`:** Given [context], when [action], then [observable result].
+- **`[Story ID].2`:** Given [context], when [action], then [observable result].
 
 #### Edge cases and failure paths
 
