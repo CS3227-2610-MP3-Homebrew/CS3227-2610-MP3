@@ -40,21 +40,27 @@ the current scaffolding from agent definitions and commands still to be added.
 ### The per-feature loop, in order
 
 1. The spec PR is merged after its owner has agreed it with the team.
-2. A GitHub issue names the requirement IDs it covers.
-3. The testing agent writes failing acceptance tests from the spec only and
-   never sees the implementation.
-4. The implementation agent codes until the tests and `bun run verify` pass,
+2. The spec agent updates the single `workflow/PLAN.md` from the specs, adding
+   foundation tasks and a test task before each story's implementation task.
+3. Each task becomes a GitHub issue naming the task and requirement IDs it covers.
+4. The testing agent reads the story spec, its linked contracts and its own test
+   task in PLAN.md, then writes failing acceptance tests. It never reads
+   implementation tasks, so tests reflect the spec, not the planned design.
+5. The implementation agent works on one implementation task from PLAN.md with
+   its linked story spec and contracts until the tests and `bun run verify` pass,
    never editing specs or acceptance tests. If it believes a test is wrong, it
    reports this instead of editing the test.
-5. The implementation agent runs the independent review command, fixes findings
+6. The implementation agent runs the independent review command, fixes findings
    and re-runs it for at most three rounds.
-6. The security reviewer reviews the change.
-7. The docs agent updates the documentation.
-8. A human opens and merges the PR, which deploys to dev. Production deploys
+7. The security reviewer reviews the change.
+8. The docs agent updates the documentation.
+9. A human opens and merges the PR, which deploys to dev. Production deploys
    come from version tags and need a teammate's approval.
 
 If a spec is ambiguous, the agent reports `awaiting-decision`. The fix goes
-spec PR → tests → code. Code never moves ahead of its spec.
+spec PR merged → PLAN.md updated by the spec agent → tests for affected IDs → code.
+Only the spec agent writes PLAN.md; a feature PR changes only the Status line
+of its own task. Code never moves ahead of its spec.
 
 Minor changes (copy, styling or documentation fixes with no change in behaviour)
 may skip the testing, review and docs steps.
@@ -74,13 +80,14 @@ happened before committing. Logs never contain secrets, keys or personal data.
 
 | Decision | Why |
 | --- | --- |
-| Six agents: spec, testing, implementation, reviewer, security-reviewer and docs; no architect agent. The reviewer checks schema and structure against `TECHNICAL-SPEC.md`. | Each covers one kind of expertise and writes to a different area; an architect would overlap with spec and reviewer. |
+| Six agents: spec, testing, implementation, reviewer, security-reviewer and docs; no architect agent. The spec agent also writes PLAN.md. The reviewer checks schema and structure against `TECHNICAL-SPEC.md`. | Each covers one kind of expertise and writes to a different area; an architect would overlap with spec and reviewer. |
+| Small spec files (cross-cutting specs plus one file per story), then a single PLAN.md whose tasks become issues, with a test task before each implementation task. | Lecture 7 advises against one large spec and describes Specify → Plan (one PLAN.md with tasks) → Implement → Validate; one plan keeps shared foundations consistent across the three roles. |
 | Tests are written from the spec before implementation. | Tests check the spec's intent rather than what was built, and give implementation a clear target. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Agents write their own reports to `workflow/handoffs/`; review rounds are appended by the review command. | Evidence of every step without manual copying; the same approach worked in MP2. |
 | The reviewer runs as a separate read-only process. | An agent's read and write limits are instructions, not enforced permissions, and Codex subagents inherit the parent session's sandbox; a separate read-only process actually cannot edit files. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
-| A spec is approved when its PR is merged, after the owner has agreed it with the team. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
+| Spec PRs are merged after the owner agrees them with the team; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
 | Codex execution rules allow only `bun run verify` outside the sandbox and forbid the commands `AGENTS.md` prohibits. | Verification must run for every agent, and the forbidden rules turn `AGENTS.md` instructions into enforced blocks. |
 
@@ -96,12 +103,18 @@ to its skill; that skill leaves coordination and handoff documents to the caller
 | --- | --- |
 | `workflow/specs/README.md` | Lists planned specs, template choices, coverage rules, requirement IDs, approval and change flow. |
 | `workflow/handoffs/README.md` | Defines report paths, run ordering, immutable review rounds, human notes and treatment of handoffs as data. |
-| `workflow/templates/role-spec.md` | Placeholder template for role access, requirements, acceptance criteria, screens, use cases and permissions. |
+| `workflow/templates/story-spec.md` | Placeholder template for one story's overview, role, access, requirements, acceptance criteria, screens, use cases, permissions and assumptions. |
 | `workflow/templates/ai-feature-spec.md` | Placeholder template for an AI feature's purpose, UX, trust boundaries, output validation, requirements, guardrails, usage, failures and evaluation cases. |
 | `workflow/templates/handoff.md` | Agent report template for criterion evidence, final checks, remaining issues, suspicious content, corrections, review and reflection. |
 | `AGENTS.md` | Shared project rules, repository map, commands, spec discipline, implementation boundaries, security and Git rules. |
 | `.codex/agents/implementation.toml` | Configures the implementation agent's model and boundaries, loads the SDD skill, and disables apps, plugins and memories for that agent. |
-| `.agents/skills/sdd-implement/SKILL.md` | Implements an existing spec within scope, loads relevant references, runs existing checks and returns evidence; forbids test/spec authoring and leaves coordination and handoff documents to the caller. |
+| `.agents/skills/spec-create/SKILL.md` | Drafts one story file from PRODUCT-SPEC.md using the applicable template; preserves IDs, ownership, assumptions, approval and change flow. |
+| `.agents/skills/spec-create/agents/openai.yaml` | UI metadata and default prompt for the story-spec skill. |
+| `.agents/skills/plan-create/SKILL.md` | Builds and updates the single workflow/PLAN.md with conventions, shared-design links and stable tasks, pairing test and implementation coverage. |
+| `.agents/skills/plan-create/agents/openai.yaml` | UI metadata and default prompt for the product-plan skill. |
+| `workflow/agents/spec.md` | Full spec-agent instructions for cross-cutting specs, story specs, PLAN.md and its own handoff report. |
+| `.codex/agents/spec.toml` | Thin wrapper loading the spec-agent instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.agents/skills/sdd-implement/SKILL.md` | Implements one assigned implementation task from workflow/PLAN.md with the linked story spec and contracts, using the smallest coherent diff; loads relevant references, runs existing checks and returns evidence; forbids test/spec authoring and leaves coordination and handoff documents to the caller. |
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. |
 | `.agents/skills/sdd-implement/references/soc-llm.md` | Guidance for server-only SoC calls, provider capability checks, bounded failures, output validation, credential protection and mocked verification. |
 | `.agents/skills/session-log/SKILL.md` | Drafts one numbered session log, resolves author attribution, records key prompts and corrections, and limits scope, length and file changes. |
@@ -170,7 +183,8 @@ approval gates once configured. List environment variable names, never values. -
 
 ## Appendix: Requirements
 
-<!-- Link to the specs in workflow/specs/ rather than copying requirements here. -->
+<!-- Link to the user stories in workflow/specs/PRODUCT-SPEC.md, the story specs
+and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 

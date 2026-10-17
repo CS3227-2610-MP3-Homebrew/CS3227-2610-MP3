@@ -14,6 +14,8 @@ number; `NN` is the order the agents ran in. For example:
 
 A later run of the same agent gets a new file. Never overwrite an earlier report.
 
+For spec work before an issue exists, use `workflow/handoffs/spec-<target-slug>/NN-spec.md`.
+
 ## Review and human comments
 
 The review command appends independent review rounds to the implementation
