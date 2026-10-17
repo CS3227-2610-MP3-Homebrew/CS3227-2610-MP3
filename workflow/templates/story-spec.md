@@ -1,7 +1,5 @@
 # [Story ID]: [Title]
 
-- **Status:** [draft | approved]
-- **Owner:** [owner]
 - **Last updated:** [YYYY-MM-DD]
 - **Related specs:** [links]
 - **Role:** [role]
@@ -11,7 +9,6 @@ Describe one user story. Replace placeholders. Repeat the requirement and
 use-case blocks as needed for this story.
 Use one requirement per user-visible capability. Criteria must be testable
 without asking the author. Describe behaviour, not implementation.
-Open questions must be empty before approval.
 -->
 
 ## Overview
@@ -76,8 +73,3 @@ Open questions must be empty before approval.
 
 - **ASM-nn:** [Assumption; why it is needed; effect if wrong.]
 <!-- Write "None" if there are no assumptions. -->
-
-## Open questions
-
-<!-- Resolve and remove all questions before approval. -->
-[Unresolved questions.]
