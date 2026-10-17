@@ -16,6 +16,10 @@ A later run of the same agent gets a new file. Never overwrite an earlier report
 
 For spec work before an issue exists, use `workflow/handoffs/spec-<target-slug>/NN-spec.md`.
 
+If implementation is blocked because its issue mapping is missing, write the
+blocked report to `workflow/handoffs/implementation-<task-or-target-slug>/NN-implementation.md`.
+This fallback does not authorize starting feature implementation without an issue.
+
 ## Review and human comments
 
 The review command appends independent review rounds to the implementation

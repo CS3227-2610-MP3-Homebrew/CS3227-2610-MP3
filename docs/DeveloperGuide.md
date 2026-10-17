@@ -52,8 +52,11 @@ the current scaffolding from agent definitions and commands still to be added.
    its linked story spec and contracts until the tests and `bun run verify` pass,
    never editing specs or acceptance tests. If it believes a test is wrong, it
    reports this instead of editing the test.
-6. The implementation agent runs the independent review command, fixes findings
-   and re-runs it for at most three rounds.
+6. A separate review agent (to be created) reviews the implementation handoff
+   and code. The implementation agent does not invoke or orchestrate review.
+   The caller may assign findings back for fixes and verification; implementation
+   completion does not imply review approval. Independent review is limited to
+   three rounds, coordinated outside the implementation agent.
 7. The security reviewer reviews the change.
 8. The docs agent updates the documentation.
 9. A human opens and merges the PR, which deploys to dev. Production deploys
@@ -99,9 +102,9 @@ happened before committing. Logs never contain secrets, keys or personal data.
 
 Paths are relative to the repository root. This table lists the workflow files 
 currently in the repository. Planned specs are catalogued in
-`workflow/specs/README.md`. The other agent definitions, wrappers and independent
-review command are still to be added. The existing implementation wrapper points
-to its skill; that skill leaves coordination and handoff documents to the caller.
+`workflow/specs/README.md`. The remaining agent definitions/wrappers and independent review command are
+still to be added. The implementation wrapper loads its workflow instructions,
+which require bounded verification and a numbered handoff report.
 
 | File | Purpose |
 | --- | --- |
@@ -111,13 +114,15 @@ to its skill; that skill leaves coordination and handoff documents to the caller
 | `workflow/templates/ai-feature-spec.md` | Placeholder template for an AI feature's purpose, UX, trust boundaries, output validation, requirements, guardrails, usage, failures and evaluation cases. |
 | `workflow/templates/handoff.md` | Agent report template for criterion evidence, final checks, remaining issues, suspicious content, corrections, review and reflection. |
 | `AGENTS.md` | Shared project rules, repository map, commands, spec discipline, implementation boundaries, security and Git rules. |
-| `.codex/agents/implementation.toml` | Configures the implementation agent's model and boundaries, loads the SDD skill, and disables apps, plugins and memories for that agent. |
+| `.codex/agents/implementation.toml` | Thin wrapper selecting gpt-6.1-sol with medium reasoning, loading workflow/agents/implementation.md, and disabling apps, plugins and memories. |
 | `.agents/skills/spec-create/SKILL.md` | Drafts one story file from PRODUCT-SPEC.md using the applicable template; preserves IDs, ownership, assumptions, approval and change flow. |
 | `.agents/skills/spec-create/agents/openai.yaml` | UI metadata and default prompt for the story-spec skill. |
 | `.agents/skills/plan-create/SKILL.md` | Builds and updates the single workflow/PLAN.md with conventions, shared-design links and stable tasks, pairing test and implementation coverage. |
 | `.agents/skills/plan-create/agents/openai.yaml` | UI metadata and default prompt for the product-plan skill. |
+| `workflow/agents/implementation.md` | Implementation scope, three repair cycles per run, final-code verification, numbered handoff reports, and a separate-review-agent boundary. |
 | `workflow/agents/spec.md` | Full spec-agent instructions for cross-cutting specs, story specs, PLAN.md and its own handoff report. |
 | `.codex/agents/spec.toml` | Thin wrapper loading the spec-agent instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.agents/skills/sdd-implement/SKILL.md` | Implements one assigned implementation task from workflow/PLAN.md with the linked story spec and contracts, using the smallest coherent diff; loads relevant references and follows the implementation instructions for verification and handoff reports; forbids test/spec authoring. |
 | `workflow/agents/testing.md` | Tests exactly one PLAN.md testing task from approved criteria and contracts, limits reads to exclude implementation and review reports, and writes its own failing-first handoff. |
 | `.codex/agents/testing.toml` | Thin wrapper loading testing.md, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
 | `.agents/skills/sdd-test/SKILL.md` | Maps criteria to Given/When/Then cases, selects Vitest or Playwright using the installed Next.js guides, and uses minimal local/fake fixtures. |

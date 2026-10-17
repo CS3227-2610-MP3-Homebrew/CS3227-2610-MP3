@@ -67,7 +67,9 @@ Report the overall status of your task with one of these words:
 
 ## Implementation agent
 
-The agent loads `.agents/skills/sdd-implement/SKILL.md` for its SDD workflow.
+The wrapper loads `workflow/agents/implementation.md`, which defines scope,
+verification/loop limits, and handoff reporting. The agent then loads
+`.agents/skills/sdd-implement/SKILL.md` for its SDD workflow.
 That skill routes to Supabase and SoC LLM references only for relevant features.
 
 The project-scoped Codex agent `implementation` is defined in
@@ -83,7 +85,8 @@ from the supplied specification. Leave test creation to the testing agent."
 The agent edits application code, styles, SQL migrations, and necessary
 build/runtime configuration. It may read and run existing tests, but must not
 create or modify tests, fixtures, mocks, snapshots, or test infrastructure; those
-belong to a separate testing agent. It does not edit prose documentation, commit,
+belong to a separate testing agent. Its own handoff report is the only prose
+document it writes. It does not edit other prose documentation, commit,
 push, deploy, or modify hosted services. These are behavioral instructions, not
 a separate filesystem security boundary; the agent inherits the parent session's
 permissions.
