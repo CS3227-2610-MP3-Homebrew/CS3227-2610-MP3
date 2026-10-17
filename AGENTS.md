@@ -39,7 +39,9 @@ Use Bun for everything. Never run npm, yarn or pnpm.
 | `bun install --frozen-lockfile` | Install exactly what `bun.lock` pins. |
 | `bun run dev` | Start the local dev server. |
 | `bun run lint` / `bun run typecheck` / `bun run build` | Individual checks. |
-| `bun run verify` | Lint, typecheck and build together. CI runs this on every PR. It must pass before you report work as done. |
+| `bun run test` | Run unit and integration tests once; passes when no tests exist. |
+| `bun run test:e2e` | Run Playwright end-to-end tests against a production build; passes when no tests exist. |
+| `bun run verify` | Run lint, typecheck, tests, the traceability check and build, in order. CI runs this on every PR. It must pass before you report work as `completed`. A testing agent's failing-first run is the exception: it records the expected failures instead. |
 
 ## How work flows
 
