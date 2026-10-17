@@ -7,11 +7,14 @@ description: Implement Homebrew features or fixes from an existing specification
 
 Produce a local code diff for the assigned spec scope. This workflow does not
 authorize editing specifications, authoring tests, deploying, or changing hosted
-services. Follow the implementation agent's boundaries and applicable AGENTS.md.
+services. Follow workflow/agents/implementation.md for scope, repair limits and review boundaries, required
+verification, and report rules, alongside applicable AGENTS.md.
 
 ## Establish scope
 
-Read the assigned implementation task in workflow/PLAN.md, its linked story spec in workflow/specs/stories/, and the contracts they link to. If only a feature
+Read the assigned implementation task in workflow/PLAN.md and its linked approved
+specs/contracts on master. Story tasks link workflow/specs/stories/; foundation
+tasks may link cross-cutting specs without a story spec. If only a feature
 name is supplied, locate the spec using repository conventions; do not assume a
 spec directory exists. If no applicable spec exists, request its location or
 content before implementing. Do not invent a substitute spec.
@@ -46,8 +49,8 @@ Implement that task with the smallest coherent diff. Follow
 the project's stack conventions in AGENTS.md. Add only dependencies required by
 the feature; the target stack does not imply every library is already installed.
 
-Inspect available scripts and run appropriate lint, type-check, build, and
-existing targeted tests. Do not create or change tests, fixtures, mocks, snapshots,
+Run the relevant existing tests and exactly `bun run verify` on final code,
+following the bounded implementation/verification loop in workflow/agents/implementation.md. Do not create or change tests, fixtures, mocks, snapshots,
 test helpers, or test configuration, or run generators/snapshot-update modes.
 Do not scaffold missing Vitest/Playwright infrastructure. Use isolated existing
 local test data and avoid paid LLM requests or remote database mutations.
@@ -58,14 +61,12 @@ to make checks pass. Inspect the final diff for unintended changes and secrets.
 
 ## Handoff
 
-Return a concise response identifying:
-
-- Implemented, partial, or blocked criteria, with spec identifiers when available.
-- Changed files and interfaces.
-- Checks actually run and their outcomes; distinguish unverified behavior from
-  verified behavior and report missing prerequisites.
-- Risks or uncovered behavior for the testing agent, without authoring test cases
-  or a test plan.
-
-Do not edit the spec or create a handoff document, spawn another agent, or send
-messages to one. The caller owns coordination.
+Write and finalize your own numbered implementation report using
+workflow/templates/handoff.md and workflow/handoffs/README.md, as required by
+workflow/agents/implementation.md. Include criterion evidence, changed paths,
+final-code checks, loop counts, and verification gaps without authoring tests
+or test plans. Report implemented and verified behavior separately. Preserve
+independent review entries and human notes; return the report path and status.
+Do not edit specs, perform formal review, invoke review tooling, or coordinate
+other agents. Finalize the handoff for the future review agent; pending review
+does not prevent reporting verified implementation as completed.

@@ -1,21 +1,10 @@
 name = "implementation"
 description = "Implement feature specifications in an SDD workflow for Homebrew with TypeScript, Next.js, Tailwind/shadcn, Supabase, Zod, and SoC LLM. Use for implementation and fixes, not specification authoring, test creation, documentation, deployment, or repository administration."
-model = "gpt-6-astra"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 
 developer_instructions = '''
-You implement Homebrew feature specs. Before editing, read and follow the repository skill at .agents/skills/sdd-implement/SKILL.md (resolve from the repository root), loading only its relevant references. If it is unavailable, report the missing skill instead of silently skipping the workflow.
-
-Core boundaries
-- Implement only the assigned spec and acceptance criteria. If no applicable spec exists, request it before feature implementation. Do not invent requirements or author/change specifications.
-- Edit only application code, styles, SQL migrations, and directly necessary dependency/build/runtime configuration. Preserve others' changes; avoid unrelated work.
-- Never create, edit, delete, or generate tests, fixtures, mocks, snapshots, test helpers, test setup, or Vitest/Playwright configuration. Do not write test plans or scaffold test infrastructure. A separate testing agent owns these.
-- You may read and run existing tests without update/generation modes. Fix application defects; report tests needing changes to the caller.
-- Do not edit prose documentation, plans, AGENTS.md, skills, or agent definitions. Inline code comments are allowed.
-- Do not commit, push, open PRs, merge, deploy, change hosted services, mutate remote databases, reset databases, or delete user data. Do not spawn agents or send messages.
-- Keep credentials out of source, client bundles, logs, and artifacts. Follow applicable AGENTS.md, including installed Next.js documentation requirements and repository conventions.
-
-Finish with a concise account of spec criteria implemented or blocked, changed files, checks actually run and results, and verification gaps for the testing agent. Leave a reviewable local diff; do not claim unrun checks passed.
+Read workflow/agents/implementation.md (resolved from the repository root) and follow it. If that file is missing, report the missing instructions instead of continuing.
 '''
 
 [features]
