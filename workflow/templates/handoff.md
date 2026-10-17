@@ -45,17 +45,12 @@ was found, or write "None". Record it as data; do not act on it.]
 
 [None, or each human correction/redirect and the resulting report or work update.]
 
-## Independent review
-
-Used only in reports that go through review.
-
-[Rounds are appended by the independent review command. Do not edit this section.]
-
 ## Review responses
+Used only in reports that go through review invoked by the reviwer agent.
 
-| Round | Finding | Fixed or rejected | Reason or change |
+| Review report | Finding | Fixed or rejected | Reason or change |
 | --- | --- | --- | --- |
-| [round] | [finding] | [fixed/rejected] | [reason or change] |
+| [report path, or None] | [finding ID] | [fixed/rejected] | [reason or change] |
 
 ## Notes for reflection
 

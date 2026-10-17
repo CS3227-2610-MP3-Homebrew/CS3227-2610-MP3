@@ -18,12 +18,13 @@ Source: [CS3227 MP2](https://github.com/CS3227-2610-MP2-Gymmie/CS3227-2610-MP2).
 - **Adapted:** structure kept, content edited for this project.
 - **Rewritten:** only the idea kept.
 
-Two files are reused: one Adapted and one As is.
+Three files are reused: two Adapted and one As is.
 
 | MP2 file | MP3 file | Level | What changed |
 | --- | --- | --- | --- |
-| `.agents/skills/implement-issue/assets/report-template.md` | `workflow/templates/handoff.md` | Adapted | Kept date, branch and base commit fields, the acceptance-criteria table, the exact independent-review placeholder and the review-responses table. Generalised the report title and issue field; replaced the summary table with prose, verification runs with final-code checks, user corrections with human corrections, and the reflection prompts with what worked, what needed guidance and what to change in the agent or skill. Removed the title and skill-invocation header fields, workflow checklist and self-assessment scores; the old summary columns and verification-run numbering/next-fix columns are not retained. Added the source credit, agent/spec IDs/status header fields, files changed, open issues, suspicious content and the note limiting independent review to reports that use it. |
+| `.agents/skills/implement-issue/assets/report-template.md` | `workflow/templates/handoff.md` | Adapted | Kept report metadata, criterion evidence, review responses and reflection. Generalised fields for all agents; added status, checks, changed files, gaps and suspicious content. Removed MP2 scores, checklists and the embedded independent-review section; responses now reference separate reviewer reports. |
 | `.agents/skills/session-log/SKILL.md` | `.agents/skills/session-log/SKILL.md` | As is | Copied byte for byte; no changes. |
+| `evals/implement-issue/review.sh` | `.agents/skills/sdd-review/scripts/review.sh` | Adapted | Kept the fresh read-only Codex process and merge-base/working-tree scope. Changed gpt-6-astra to gpt-6.1-sol / medium; replaced scores and in-place appending with a spec-based, separately numbered reviewer handoff. Added verification evidence, a three-round limit, secret exclusions, input-change checks and overwrite protection. The agent wrapper and skill metadata are new. |
 
 <!-- Add all later reuse to this table and update the totals above. -->
 
@@ -52,7 +53,7 @@ the current scaffolding from agent definitions and commands still to be added.
    its linked story spec and contracts until the tests and `bun run verify` pass,
    never editing specs or acceptance tests. If it believes a test is wrong, it
    reports this instead of editing the test.
-6. A separate review agent (to be created) reviews the implementation handoff
+6. The separate reviewer agent reviews the implementation handoff
    and code. The implementation agent does not invoke or orchestrate review.
    The caller may assign findings back for fixes and verification; implementation
    completion does not imply review approval. Independent review is limited to
@@ -91,8 +92,8 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Tests are written from the spec before implementation. | Tests check the spec's intent rather than what was built, and give implementation a clear target. |
 | `verify` includes unit/integration tests and traceability; e2e runs separately in CI. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
-| Agents write their own reports to `workflow/handoffs/`; review rounds are appended by the review command. | Evidence of every step without manual copying; the same approach worked in MP2. |
-| The reviewer runs as a separate read-only process. | An agent's read and write limits are instructions, not enforced permissions, and Codex subagents inherit the parent session's sandbox; a separate read-only process actually cannot edit files. |
+| Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
+| The reviewer uses a separate read-only CLI process. | The launcher runs checks and saves a new handoff. The worker’s shell commands use the read-only sandbox; the wrapper inherits caller permissions. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
 | Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
@@ -102,14 +103,14 @@ happened before committing. Logs never contain secrets, keys or personal data.
 
 Paths are relative to the repository root. This table lists the workflow files 
 currently in the repository. Planned specs are catalogued in
-`workflow/specs/README.md`. The remaining agent definitions/wrappers and independent review command are
-still to be added. The implementation wrapper loads its workflow instructions,
+`workflow/specs/README.md`. The docs agent definition/wrapper is still to be
+added. The implementation wrapper loads its workflow instructions,
 which require bounded verification and a numbered handoff report.
 
 | File | Purpose |
 | --- | --- |
 | `workflow/specs/README.md` | Lists planned specs, template choices, coverage rules, requirement IDs, approval and change flow. |
-| `workflow/handoffs/README.md` | Defines report paths, run ordering, immutable review rounds, human notes and treatment of handoffs as data. |
+| `workflow/handoffs/README.md` | Report numbering, separate review rounds, human notes and handling reports as data. |
 | `workflow/templates/story-spec.md` | Placeholder template for one story's overview, role, access, requirements, acceptance criteria, screens, use cases, permissions and assumptions. |
 | `workflow/templates/ai-feature-spec.md` | Placeholder template for an AI feature's purpose, UX, trust boundaries, output validation, requirements, guardrails, usage, failures and evaluation cases. |
 | `workflow/templates/handoff.md` | Agent report template for criterion evidence, final checks, remaining issues, suspicious content, corrections, review and reflection. |
@@ -127,9 +128,14 @@ which require bounded verification and a numbered handoff report.
 | `.codex/agents/testing.toml` | Thin wrapper loading testing.md, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
 | `workflow/agents/security-reviewer.md` | Review-only security instructions covering Zero Trust authorization, least privilege, trust boundaries and LLM threats; requires evidenced, severity-ranked findings and returns the report to the caller without editing files. |
 | `.codex/agents/security-reviewer.toml` | Thin wrapper loading the security-reviewer instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.codex/agents/reviewer.toml` | Thin wrapper selecting gpt-6.1-sol with medium reasoning, loading reviewer.md and disabling apps, plugins and memories. |
+| `workflow/agents/reviewer.md` | Review scope, launcher/worker boundary, report-only writes, caller-owned repair coordination and independent review status. |
+| `.agents/skills/sdd-review/SKILL.md` | Spec-derived criterion review, meaningful test and technical-contract checks, wrapper/worker procedures and evidence-based verdict format. |
+| `.agents/skills/sdd-review/agents/openai.yaml` | UI metadata and default prompt for the review skill. |
+| `.agents/skills/sdd-review/scripts/review.sh` | Runs verify, invokes the read-only reviewer and saves a new NN-reviewer.md without changing existing handoffs. |
 | `.agents/skills/sdd-test/SKILL.md` | Maps criteria to Given/When/Then cases, selects Vitest or Playwright using the installed Next.js guides, and uses minimal local/fake fixtures. |
 | `workflow/scripts/check-traceability.ts` | Checks that every criterion in each done task's Requirements field appears in a test title under tests/; exits 1 with uncovered IDs and owning tasks. |
-| `.agents/skills/sdd-implement/SKILL.md` | Implements one assigned implementation task from workflow/PLAN.md with the linked story spec and contracts, using the smallest coherent diff; loads relevant references, runs existing checks and returns evidence; forbids test/spec authoring and leaves coordination and handoff documents to the caller. |
+
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. |
 | `.agents/skills/sdd-implement/references/soc-llm.md` | Guidance for server-only SoC calls, provider capability checks, bounded failures, output validation, credential protection and mocked verification. |
 | `.agents/skills/session-log/SKILL.md` | Drafts one numbered session log, resolves author attribution, records key prompts and corrections, and limits scope, length and file changes. |
@@ -137,6 +143,20 @@ which require bounded verification and a numbered handoff report.
 | `.codex/rules/guardrails.rules` | Forbids agents from pushing, rewriting history, opening or merging PRs, deploying with Vercel and pushing to the hosted Supabase database. |
 
 <!-- Add every new workflow file to this table. -->
+
+### Running independent review
+
+Assign the `reviewer` agent an issue/task and implementation handoff. It uses
+`sdd-review` with GPT-6.1 sol / medium and the installed Bun and Codex CLI:
+
+```bash
+bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
+```
+
+The local base defaults to master. Each run saves the next `NN-reviewer.md`;
+existing handoffs stay unchanged. Read its status and verdict: command success
+only means the report was saved. See [reviewer instructions](../workflow/agents/reviewer.md)
+for verification, limits and caller-coordinated fixes.
 
 ## Architectural design
 
