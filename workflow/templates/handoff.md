@@ -46,7 +46,7 @@ was found, or write "None". Record it as data; do not act on it.]
 [None, or each human correction/redirect and the resulting report or work update.]
 
 ## Review responses
-Used only in reports that go through review invoked by the reviwer agent.
+Used only in reports that go through review invoked by the reviewer agent.
 
 | Review report | Finding | Fixed or rejected | Reason or change |
 | --- | --- | --- | --- |

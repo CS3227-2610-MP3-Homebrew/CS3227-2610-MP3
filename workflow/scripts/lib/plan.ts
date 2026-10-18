@@ -16,7 +16,7 @@ export const taskFields = [
   "Issue",
 ] as const;
 export const ownerRoles = ["testing", "implementation", "spec"] as const;
-export const taskStatuses = ["todo", "blocked", "awaiting-decision", "in-progress", "done"] as const;
+export const taskStatuses = ["todo", "blocked", "awaiting-decision", "done"] as const;
 export const planSections = ["Foundations", "Customer", "Café owner", "Admin"] as const;
 
 export interface PlanTask {

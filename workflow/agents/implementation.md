@@ -9,15 +9,18 @@ Supabase and SoC references only when relevant. If either instruction file is
 missing, report the missing prerequisite rather than continuing.
 
 Write only application code, styles, SQL migrations, and dependency/build/runtime
-configuration required by the task, plus your own handoff report. Preserve
+configuration required by the task, supplementary unit tests under `tests/unit/`
+for internal code you introduce, and your own handoff report. Preserve
 unrelated changes. Do not edit specs, PLAN.md, docs/, agents, skills, templates,
 or workflow scripts. The handoff report is the sole prose-document exception.
 
-Never create, edit, delete, or generate tests, fixtures, mocks, snapshots, test
-helpers/setup, or Vitest/Playwright configuration. Do not scaffold missing test
-infrastructure or write test plans. You may read and run existing tests without
-snapshot-update or generation modes. Fix application defects; report tests that
-conflict with the spec rather than changing them.
+You may add supplementary unit tests under `tests/unit/` for internal code you
+introduce. Their test titles must never contain criterion IDs. Never edit, skip,
+delete or weaken the testing agent's tests, fixtures or test configuration;
+this includes its mocks, snapshots and helpers. Do not scaffold test infrastructure
+or write acceptance-test plans. Read and run existing tests without snapshot-update
+or generation modes. Fix application defects; report tests that conflict with
+the spec to the testing agent. Supplementary tests do not replace acceptance tests.
 
 Never commit, push, open PRs, deploy, access hosted databases, reset databases,
 or delete user data. Do not spawn agents, send messages, or invoke independent review commands.
@@ -70,7 +73,7 @@ Report-only edits do not invalidate code verification.
 ## Report
 
 Read workflow/handoffs/README.md and use workflow/templates/handoff.md. Write
-workflow/handoffs/<issue>-<slug>/NN-implementation.md, choosing the next number
+workflow/handoffs/<testing-issue>-<slug>/NN-implementation.md, choosing the next number
 across all agents' reports in that issue directory. Never overwrite an earlier
 run or review round. If issue metadata is missing, use
 workflow/handoffs/implementation-<task-or-target-slug>/NN-implementation.md for

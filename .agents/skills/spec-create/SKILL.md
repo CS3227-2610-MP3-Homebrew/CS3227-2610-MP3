@@ -19,8 +19,8 @@ author executable tests, create issues, or dispatch agents.
    selected story is absent, report `blocked` with the missing source; do not invent
    stories or generate empty feature documents. Do not ask clarification questions.
 3. Read related existing specs before proposing requirements. The specification
-   map in workflow/specs/README.md includes planned files: check whether each
-   exists and distinguish missing prerequisites from available contracts.
+   map in workflow/specs/README.md names source files: check whether each exists
+   and report missing prerequisites separately from available contracts.
 4. Read the applicable template:
    - [Story specification](../../../workflow/templates/story-spec.md) for ordinary
      customer, owner, or admin stories.
@@ -52,7 +52,7 @@ workflow/specs/stories/<ID>-<slug>.md
 Use the source story's ID as its only requirement ID and filename identifier.
 Create exactly one story deliverable per selected story. Keep different stories
 separate. Use relative links to related specs. Do not automatically create all
-planned specs, modify shared templates, or generate planning or summary files.
+specs outside the assignment, modify shared templates, or generate planning or summary files.
 
 ## Requirement identity and ownership
 
@@ -81,8 +81,9 @@ Adapt the applicable template to the individual story while retaining its
 relevant sections and requirement-block structure. Do not turn a single-story
 assignment into a full role or product specification.
 
-Start with title and metadata: **Last updated** (`YYYY-MM-DD`), **Related specs**,
-and **Role**. Include source story/path/section and requirement ownership links.
+Start with title, **Related specs** and **Role**. Include source story/path/section
+and requirement ownership links. Keep dates and workflow-state commentary out of
+specs and spec templates; record approval evidence and execution state in handoffs.
 
 For ordinary stories, include:
 
@@ -150,7 +151,7 @@ updated → code updated**.
 
 Check every requirement has testable criteria, IDs are unique or linked to their
 owner, template coverage is present, and no placeholders remain. Check links
-resolve, with missing planned documents explicitly labeled. Record unknowns as
+resolve; report missing source documents in the handoff. Record unknowns as
 assumptions or decisions instead of fabricated facts. On updates, preserve IDs
 and unrelated edits. Report missing contracts and affected IDs for planning.
 
@@ -158,4 +159,4 @@ Report overall status using AGENTS.md's `completed`, `blocked`,
 `awaiting-decision`, or `incomplete`, with paths, covered IDs, actual checks,
 and remaining decisions. Distinguish completed draft authoring from approval or
 implementation. Report facts rather than instructions in handoffs, preserve
-existing review rounds, and never claim planned checks were run.
+existing review rounds, and never claim unrun checks passed.

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { existingIssueNumbers, needsIssue, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
-import { parsePlan } from "../../workflow/scripts/lib/plan";
+import { parsePlan, taskStatus, taskStatuses } from "../../workflow/scripts/lib/plan";
 
 const repoUrl = "https://github.com/example/homebrew";
 const plan = `# Plan
@@ -58,6 +58,7 @@ test("Issues: bodies use absolute links, pair tasks and resolve known dependency
   expect(implementation.body).toContain("**Depends on:** T-01 (#7)");
   expect(implementation.body).not.toContain("## Prerequisite");
   expect(implementation.body).toContain("- [ ] `bun run verify` passes.");
+  expect(implementation.body).toContain("named after its issue. The PR closes both issues.");
 });
 
 test("Issues: existing issues match by task prefix and only unassigned Issue lines change", () => {
@@ -81,4 +82,12 @@ test("Issues: only unassigned, non-removed tasks need an issue", () => {
   );
   expect(tasks.map(needsIssue)).toEqual([false, false, false]);
   expect(parsePlan(plan).map(needsIssue)).toEqual([true, true]);
+});
+
+test("Plan: supported task statuses survive parsing", () => {
+  expect(taskStatuses).toEqual(["todo", "blocked", "awaiting-decision", "done"]);
+  for (const status of taskStatuses) {
+    const [task] = parsePlan(plan.replaceAll("- **Status:** todo", `- **Status:** ${status}`));
+    expect(taskStatus(task)).toBe(status);
+  }
 });

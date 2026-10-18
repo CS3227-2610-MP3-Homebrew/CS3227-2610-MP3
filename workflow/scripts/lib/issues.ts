@@ -95,7 +95,7 @@ export function planIssue(
     "",
     "- Branch `<type>/<issue>-<slug>`; agent reports go in `workflow/handoffs/<issue>-<slug>/`.",
     pairs.length
-      ? `- Shares one branch and one PR with ${pairs.map(reference).join(", ")}; the testing task runs first.`
+      ? `- Shares one branch and one PR with ${pairs.map(reference).join(", ")}; the testing task runs first, and the branch, handoff folder and PR are named after its issue. The PR closes both issues.`
       : "- No paired testing/implementation task.",
     "- Follow `.agents/skills/sdd-orchestrate/SKILL.md` for the gates between agents.",
   );

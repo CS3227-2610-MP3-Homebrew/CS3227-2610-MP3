@@ -77,3 +77,27 @@ prefix_rule(
     match = ["npx supabase db push", "npx supabase db push --linked"],
     not_match = ["supabase start", "bun run verify"],
 )
+
+prefix_rule(
+    pattern = ["git", "commit"],
+    decision = "forbidden",
+    justification = "AGENTS.md Git rules reserve commits for humans; leave a reviewable local diff.",
+    match = ["git commit", "git commit -m fix", "git commit --amend"],
+    not_match = ["git status", "git diff", "git log", "bun run verify"],
+)
+
+prefix_rule(
+    pattern = ["git", "tag"],
+    decision = "forbidden",
+    justification = "AGENTS.md Git rules reserve tags for humans; agents never create tags.",
+    match = ["git tag v1.0.0", "git tag -a v1.0.0 -m release"],
+    not_match = ["git status", "git diff", "git log", "bun run verify"],
+)
+
+prefix_rule(
+    pattern = ["git", "rebase"],
+    decision = "forbidden",
+    justification = "AGENTS.md Git rules forbid history rewriting; leave branch integration to a human.",
+    match = ["git rebase master", "git rebase -i HEAD~2"],
+    not_match = ["git status", "git diff", "git log", "bun run verify"],
+)
