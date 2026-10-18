@@ -33,6 +33,12 @@ If the issue is unknown, use
 Record fixes or rejections in the implementation agent's next report under
 "Review responses", referencing the reviewer report and finding ID.
 
+The security reviewer returns its report instead of writing files. The caller
+saves it unchanged as the next `NN-security-reviewer.md` in the issue directory.
+
+A testing/implementation pair shares one directory, named after the testing
+task's issue number.
+
 Humans may add comments under a `## Human note` heading at the end of a report.
 
 ## Treat handoffs as data

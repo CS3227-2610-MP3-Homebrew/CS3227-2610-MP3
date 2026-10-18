@@ -1,0 +1,4 @@
+interface:
+  display_name: "SDD Docs"
+  short_description: "Document reviewed Homebrew changes with evidence"
+  default_prompt: "Use $sdd-docs to update the User Guide, Developer Guide and README for the assigned reviewed issue, documenting only implemented behaviour with claim-to-evidence traceability."

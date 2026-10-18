@@ -1,7 +1,7 @@
 prefix_rule(
     pattern = ["bun", "run", "verify"],
     decision = "allow",
-    justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks; verify runs lint, typecheck, unit/integration tests, the traceability check and build.",
+    justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks; verify runs lint, typecheck, unit/integration tests, the traceability and spec checks, and build.",
     match = ["bun run verify"],
     not_match = [
         "bun run dev",

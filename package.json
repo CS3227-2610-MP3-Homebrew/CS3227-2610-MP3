@@ -12,7 +12,8 @@
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test --pass-with-no-tests",
     "check:traceability": "bun workflow/scripts/check-traceability.ts",
-    "verify": "bun run lint && bun run typecheck && bun run test && bun run check:traceability && bun run build"
+    "check:specs": "bun workflow/scripts/check-specs.ts",
+    "verify": "bun run lint && bun run typecheck && bun run test && bun run check:traceability && bun run check:specs && bun run build"
   },
   "dependencies": {
     "next": "16.4.2",
