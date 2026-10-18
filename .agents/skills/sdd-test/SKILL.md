@@ -25,12 +25,17 @@ Read the installed Next.js guides before writing tests:
 - `node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md`
 - `node_modules/next/dist/docs/01-app/02-guides/testing/playwright.md`
 
-Use Vitest under tests/unit/ for isolated rules and synchronous components;
-use tests/integration/ for contract interactions, route boundaries and local
+Use the layout `tests/{unit,integration,e2e}/<area>/`.
+Use Vitest under `tests/unit/<area>/` for isolated rules and synchronous components;
+use `tests/integration/<area>/` for contract interactions, route boundaries and local
 database behaviour. The guide supports synchronous Server and Client Components
 with React Testing Library; async Server Components must be tested end-to-end.
-Use Playwright under tests/e2e/ for those and browser-visible flows against the
-configured production build. Prefer user-observable assertions and accessible
+Use Playwright only under `tests/e2e/<area>/` for those and browser-visible flows
+against the configured production build. Browser specs must never go outside
+`tests/e2e/`: Playwright reads only that tree, and Vitest collects the other
+test/spec files. Database and route tests must set
+`// @vitest-environment node` at the top of each file because Vitest defaults to
+jsdom. Prefer user-observable assertions and accessible
 roles/labels over private implementation details.
 
 ## Fixtures and execution

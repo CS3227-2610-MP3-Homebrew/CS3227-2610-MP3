@@ -69,7 +69,11 @@ Each task uses `### T-nn: <title>` and these fields:
   previous agent's conversation. Test tasks describe the behavior to test from
   the spec, not the implementation design.
 - **File scope:** existing or proposed paths and shared-file sequencing. Do not
-  imply unavailable tooling is installed.
+  imply unavailable tooling is installed. Test paths use
+  `tests/{unit,integration,e2e}/<area>/`; browser specs go only under `tests/e2e/`.
+  Database and route tests set `// @vitest-environment node` at the top of each
+  file because Vitest defaults to jsdom. Playwright reads only `tests/e2e/`,
+  while Vitest collects the other test/spec files.
 - **Acceptance criteria:** a Markdown checklist of observable results, checks,
   and required evidence. An unchecked criterion is not completed.
 - **Status:** `todo`, `blocked`, `awaiting-decision`, or `done`.

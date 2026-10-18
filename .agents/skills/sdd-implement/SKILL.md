@@ -48,6 +48,9 @@ from the repository and spec rather than assuming them.
 Implement that task with the smallest coherent diff. Follow
 the project's stack conventions in AGENTS.md. Add only dependencies required by
 the feature; the target stack does not imply every library is already installed.
+Files under `.github/workflows/` and other configuration are in scope when the
+task's File scope names them. You may add one row per workflow file you create
+to docs/DeveloperGuide.md's Workflow files table, with no other docs/ edits.
 
 Run the relevant existing tests and exactly `bun run verify` on final code,
 following the bounded implementation/verification loop in workflow/agents/implementation.md.
