@@ -1,5 +1,5 @@
 // Pure GitHub-issue rendering for PLAN.md tasks; the CLI performs all gh calls.
-import { taskAnchor, taskDependencies, taskOwner, taskStatus, type PlanTask } from "./plan";
+import { taskAnchor, taskCriteria, taskDependencies, taskOwner, taskStatus, type PlanTask } from "./plan";
 
 export const roleLabels: Record<string, { color: string; description: string }> = {
   testing: { color: "1d76db", description: "Testing-agent task from workflow/PLAN.md" },
@@ -36,12 +36,18 @@ export function existingIssueNumbers(tasks: PlanTask[], issues: { number: number
 
 /** Testing and implementation tasks for the same criteria share one branch and PR. */
 export function pairedTasks(task: PlanTask, tasks: PlanTask[]): string[] {
+  if (task.removed) return [];
   const owner = taskOwner(task);
+  const criteria = new Set(taskCriteria(task));
+  const matching = tasks.filter((other) => {
+    const otherCriteria = taskCriteria(other);
+    return !other.removed && otherCriteria.length === criteria.size && otherCriteria.every((id) => criteria.has(id));
+  });
   if (owner === "implementation") {
-    return taskDependencies(task).filter((id) => taskOwner(tasks.find((other) => other.id === id) ?? task) === "testing");
+    return taskDependencies(task).filter((id) => matching.some((other) => other.id === id && taskOwner(other) === "testing"));
   }
   if (owner === "testing") {
-    return tasks
+    return matching
       .filter((other) => taskOwner(other) === "implementation" && taskDependencies(other).includes(task.id))
       .map((other) => other.id);
   }

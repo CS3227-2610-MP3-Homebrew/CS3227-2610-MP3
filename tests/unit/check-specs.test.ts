@@ -139,6 +139,60 @@ test("check-specs: reports broken links and missing anchors outside handoffs", (
   ]);
 });
 
+test("check-specs: accepts a T-33-shaped pair with extra testing prerequisites", () => {
+  expect(check({
+    "workflow/PLAN.md": `# Plan
+## Foundations
+${task("T-30", "Test manual flow", "testing", "SYS-04.1")}
+${task("T-31", "Implement manual flow", "implementation", "SYS-04.1", "T-30")}
+${task("T-32", "Test assistant", "testing", "SEC-01.1, CUS-01.1", "T-30, T-31")}
+${task("T-33", "Implement assistant", "implementation", "CUS-01.1, SEC-01.1, SEC-01.1", "T-32, T-30, T-31")}
+`,
+  })).toEqual({ errors: [], warnings: [] });
+});
+
+test("check-specs: rejects implementation split across unequal testing Requirements", () => {
+  const { errors } = check({
+    "workflow/PLAN.md": `# Plan
+## Foundations
+${task("T-30", "Test runtime", "testing", "SYS-04.1")}
+${task("T-32", "Test security", "testing", "SEC-01.1")}
+${task("T-33", "Implement both", "implementation", "SYS-04.1, SEC-01.1", "T-32, T-30")}
+`,
+  });
+  expect(errors).toContain("T-33 must depend on exactly one testing task with the same Requirements criterion set; found 0.");
+});
+
+test("check-specs: matching Requirements without a dependency cannot pair", () => {
+  expect(check({
+    "workflow/PLAN.md": baseline["workflow/PLAN.md"].replace("- **Depends on:** T-01", "- **Depends on:** None"),
+  }).errors).toContain("T-02 must depend on exactly one testing task with the same Requirements criterion set; found 0.");
+});
+
+test("check-specs: rejects multiple matching testing dependencies", () => {
+  const { errors } = check({
+    "workflow/PLAN.md": `# Plan
+## Foundations
+${task("T-30", "Test runtime", "testing", "SYS-04.1")}
+${task("T-32", "Test runtime again", "testing", "SYS-04.1")}
+${task("T-33", "Implement runtime", "implementation", "SYS-04.1", "T-32, T-30")}
+`,
+  });
+  expect(errors).toContain("T-33 must depend on exactly one testing task with the same Requirements criterion set; found 2.");
+});
+
+test("check-specs: rejects a testing task paired with multiple implementations", () => {
+  const { errors } = check({
+    "workflow/PLAN.md": `# Plan
+## Foundations
+${task("T-30", "Test runtime", "testing", "SYS-04.1")}
+${task("T-31", "Implement runtime", "implementation", "SYS-04.1", "T-30")}
+${task("T-33", "Implement runtime again", "implementation", "SYS-04.1", "T-30")}
+`,
+  });
+  expect(errors).toContain("T-30 pairs with more than one implementation task: T-31, T-33.");
+});
+
 test("check-specs: reports story-file, placeholder and test-title drift", () => {
   const { errors } = check({
     "workflow/templates/story-spec.md": "# [Story ID]: [Title]\n",

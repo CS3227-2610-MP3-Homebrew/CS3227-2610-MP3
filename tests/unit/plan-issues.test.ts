@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { existingIssueNumbers, needsIssue, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
+import { existingIssueNumbers, needsIssue, pairedTasks, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
 import { parsePlan, taskStatus, taskStatuses } from "../../workflow/scripts/lib/plan";
 
 const repoUrl = "https://github.com/example/homebrew";
@@ -72,6 +72,47 @@ test("Issues: existing issues match by task prefix and only unassigned Issue lin
   expect(updated).toContain(`- **Issue:** [#3](${repoUrl}/issues/3)`);
   expect(updated.match(/- \*\*Issue:\*\* unassigned/g)).toHaveLength(1);
   expect(setPlanIssue(updated, "T-02", 9, repoUrl)).toBe(updated);
+});
+
+test("Issues: extra testing prerequisites do not pair with a T-33-shaped task", () => {
+  const tasks = parsePlan(`# Plan
+## Admin
+### T-30: Test manual moderation
+- **Owner role:** testing
+- **Requirements:** ADM-03.1
+### T-31: Implement manual moderation
+- **Owner role:** implementation
+- **Requirements:** ADM-03.1
+- **Depends on:** T-30
+### T-32: Test assistant
+- **Owner role:** testing
+- **Requirements:** ADM-04.1, ADM-04.2 — assistant criteria
+- **Depends on:** T-30, T-31
+### T-33: Implement assistant
+- **Owner role:** implementation
+- **Requirements:** ADM-04.2, ADM-04.1, ADM-04.1
+- **Depends on:** T-32, T-30, T-31
+`);
+  expect(tasks.map((task) => pairedTasks(task, tasks))).toEqual([["T-31"], ["T-30"], ["T-33"], ["T-32"]]);
+  for (const [index, pair] of [[0, "T-31"], [3, "T-32"]] as const) {
+    const issue = planIssue(tasks[index], tasks, { repoUrl, branch: "master", issueNumbers: new Map() });
+    expect(issue.body.split("\n").find((line) => line.startsWith("- Shares"))).toBe(
+      `- Shares one branch and one PR with ${pair} (issue not created yet); the testing task runs first, and the branch, handoff folder and PR are named after its issue. The PR closes both issues.`,
+    );
+  }
+});
+
+test.each(["SYS-04.1, SEC-01.1", "SEC-01.1", "None"])(
+  "Issues: unequal Requirements sets do not pair (%s)",
+  (requirements) => {
+    const tasks = parsePlan(plan.replace("- **Requirements:** SYS-04.1\n", `- **Requirements:** ${requirements}\n`));
+    expect(tasks.map((task) => pairedTasks(task, tasks))).toEqual([[], []]);
+  },
+);
+
+test("Issues: matching Requirements still need a dependency", () => {
+  const tasks = parsePlan(plan.replace("- **Depends on:** T-01", "- **Depends on:** None"));
+  expect(tasks.map((task) => pairedTasks(task, tasks))).toEqual([[], []]);
 });
 
 test("Issues: only unassigned, non-removed tasks need an issue", () => {

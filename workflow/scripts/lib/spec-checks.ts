@@ -3,6 +3,7 @@
 // .agents/skills/plan-create/SKILL.md and docs/DeveloperGuide.md.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { pairedTasks } from "./issues";
 import { headingSlugs, markdownLinks, proseLines } from "./markdown";
 import {
   criterionPattern,
@@ -205,6 +206,13 @@ function checkPlan(tasks: PlanTask[], criteria: Map<string, string>, error: Repo
       error(planPath, `${task.id} is ${status} without an issue.`, line("Issue"));
     }
     if (task.removed) continue;
+    const pairs = pairedTasks(task, tasks);
+    if (owner === "implementation" && pairs.length !== 1) {
+      error(planPath, `${task.id} must depend on exactly one testing task with the same Requirements criterion set; found ${pairs.length}.`, line("Depends on"));
+    }
+    if (owner === "testing" && pairs.length > 1) {
+      error(planPath, `${task.id} pairs with more than one implementation task: ${pairs.join(", ")}.`, line("Requirements"));
+    }
     for (const criterion of taskCriteria(task)) {
       if (!criteria.has(criterion)) error(planPath, `${task.id} lists undefined criterion ${criterion}.`, line("Requirements"));
       if (owner === "spec") {
