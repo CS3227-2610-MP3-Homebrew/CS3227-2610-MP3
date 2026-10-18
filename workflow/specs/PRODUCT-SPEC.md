@@ -174,7 +174,7 @@ in-app payment system in either scope.
 | --- | --- | --- | --- |
 | ADM-01 | As an admin, I want to approve or reject café applications with a reason, so that I can manage which cafés are admitted. | High | MVP |
 | ADM-02 | As an admin, I want to suspend and un-suspend cafés, so that I can control which cafés are visible to customers. | High | MVP |
-| ADM-03 | As an admin, I want a moderation queue where I can hide or restore reviews with a reason without editing them and have every action recorded in an audit log, so that I can moderate reviews accountably. | High | MVP |
+| ADM-03 | As an admin, I want a moderation queue where I can keep, hide or restore reviews with a reason without editing them and have every action recorded in an audit log, so that I can moderate reviews accountably. | High | MVP |
 | ADM-04 | As an admin, I want a Moderation Assistant "Triage pending reviews" button that classifies pending reviews in batches as ok, spam, abusive, off-topic or injection attempt with a reason for each, requires my confirmation for every action and falls back to the manual queue, so that I can assess reviews with assistance. | High | MVP |
 | ADM-05 | As an admin, I want to turn AI features on or off at runtime from the Admin page, so that I can control their availability. | Low | Stretch |
 | ADM-06 | As an admin, I want to approve or reject boost requests, so that I can manage which requested boosts proceed. | Low | Stretch |

@@ -15,7 +15,7 @@ It describes required behavior, not evidence of an implemented security system.
 Architecture, RLS, environment separation, fixed rate windows, atomic provider
 admission and cache scope remain authoritative in
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). This file adds security policy to those
-mechanisms without redefining SYS-04–SYS-11. Product stories own feature behavior
+mechanisms without redefining SYS-04–SYS-13. Product stories own feature behavior
 and domain permissions. Exact HTTP/error contracts, prompt text, schemas,
 fingerprints and source revisions belong to
 [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md). Story-owned contracts are identified
@@ -244,7 +244,9 @@ active windows and single-use admission state cannot be reset by cleanup or a
 deploy. Cache expiry is enforced at read time even if cleanup is delayed. These
 are storage-deletion targets, not claims that provider copies or backups are
 erased. Moderation audit and domain-data retention are outside this AI retention
-policy and require their owning product/story contracts.
+policy. Moderation audit retention is defined by
+[ADM-03.15](stories/ADM-03-review-moderation.md#acceptance-criteria); domain-data
+retention requires its owning product/story contracts.
 
 An operational spike, repeated 429s or suspicious behavior can be contained by
 disabling AI through configuration while ordinary feature fallbacks remain
@@ -257,8 +259,7 @@ of provider zero retention and sends only the permitted minimum data.
 ## Security requirements and acceptance criteria
 
 All SEC requirements are High priority because they protect authorization,
-private data, quota or human control. Criteria describe future required evidence;
-they do not assert that the starter application already satisfies them.
+private data, quota or human control.
 
 ### SEC-01 — Authorized and scoped AI operations
 
@@ -409,7 +410,6 @@ after these contracts and their dependencies are approved.
 | E-11 | Missing/invalid/zero config, unavailable database, oversized input/output and request cancellation. | No unadmitted dispatch; bounded stop/fallback; no further subcall after disconnect. | Fail closed/resource bounds; SEC-06.3, SEC-08.2 |
 | E-12 | Synthetic secret/content canaries in errors and source payloads; controlled clock crosses retention deadlines. | No forbidden telemetry/client leakage; due records deleted without active quota reset. | Secret isolation/retention; SEC-02.2, SEC-09.1–SEC-09.2 |
 | E-13 | Cross-site cookie request and stale/forged Admin confirmation. | Request denied or domain action rejected; no unaudited/unauthorized visibility change. | Request integrity/human control; SEC-01.1, SEC-05.2 |
-
 | E-14 | Parallel anonymous kit requests at both caps, fixed-window/day rollover, restart and unavailable counters. | Both shared global caps hold; 429 has a safe retry message and `Retry-After`; unavailable counters create no kit. | Durable kit admission; SEC-10.1 |
 | E-15 | Capture one successful creation, later responses, errors, audit/log output and unpublished-owner paths with synthetic password canaries. | Three distinct secure random passwords of at least 16 characters occur only in the once-shown private no-store creation response; Auth is their only persistent storage. | Credential isolation; SEC-10.2 |
 | E-16 | Kit Admin targets main/other-kit domain records, AI sources/caches, role changes and Admin creation; seeded injection review claims authority. | Server and RLS deny cross-workspace access/escalation; ordinary moderation controls hold and review text grants no authority. | Kit authority; SEC-10.3 |

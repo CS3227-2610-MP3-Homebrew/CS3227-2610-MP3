@@ -12,8 +12,8 @@ receive review classifications. Payment remains at pickup. AI has no tools,
 write access or authority to approve a domain action.
 
 This file allocates no requirement IDs. Product stories own role behavior;
-TECHNICAL-SPEC owns SYS-04–SYS-11, architecture, RLS, environment configuration,
-admission and cache scope. AI-SECURITY-SPEC owns SEC-01–SEC-09, security ceilings,
+TECHNICAL-SPEC owns SYS-04–SYS-13, architecture, RLS, environment configuration,
+admission and cache scope. AI-SECURITY-SPEC owns SEC-01–SEC-10, security ceilings,
 limits, disable precedence, retention and failure policy. References below are
 traceability links, not competing requirement definitions.
 
@@ -31,7 +31,7 @@ endpoints can be finalized.
 | Accounts and role navigation | SYS-01–SYS-03 | Account fields, validation, redirect paths, session errors and account lifecycle. Admin creation remains seed-only. |
 | Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Filter fields and time semantics, rating calculation/ties, candidate selection/size, suggested-item availability, result count and empty-result behavior. Reconcile Brew Finder's empty model result with CUS-06's result-count contract. |
 | Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Pickup representation, quantities, price snapshots, lifecycle transitions, cancellation races, duplicate submission and conflict responses. |
-| Reviews and moderation | CUS-05, ADM-03–ADM-04 | Rating/text constraints, pending membership/order, concurrent review changes and hide/restore audit transaction. |
+| Reviews and moderation | CUS-05, ADM-03–ADM-04 | Rating/text constraints, pending membership/order, concurrent review changes and keep/hide/restore audit transaction. |
 | Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Profile/menu fields, money representation, hours, application transitions and suspension effects on existing activity. |
 | Sales and preparation advice | OWN-06–OWN-07 | Included order states, aggregation window, business-day boundaries, minimum data, top-item sorting and meaning of more/less advice. |
 | Stretch features | CUS-07, OWN-08, ADM-05–ADM-06 | Favourite, boost and runtime AI-control contracts. No MVP endpoints are implied. |
@@ -358,7 +358,7 @@ ModerationResult = {
 }
 ```
 
-Review text is the unchanged submitted domain text, subject to CUS-05's future
+Review text is the unchanged submitted domain text, subject to CUS-05's
 field limit and the shared context-byte ceiling. Source reviews are distinct,
 nonempty, currently pending and within the configured batch limit. Exactly one
 classification must exist for every submitted review, with no foreign IDs,
@@ -448,8 +448,7 @@ it is not a client-readable debugging interface.
 
 ## Observable contract checks
 
-These are required future contract/evaluation cases, not authored tests or
-claims that starter verification covers unimplemented integration behavior.
+These are required contract/evaluation cases.
 
 | Existing owner | Observable case |
 | --- | --- |
@@ -459,7 +458,7 @@ claims that starter verification covers unimplemented integration behavior.
 | SYS-09; SEC-06; SEC-08 | Bounded fake timeout/429/failure and denied/unavailable admission produce the proper fallback with no retry or second dispatch; limit events remain distinct from provider calls. |
 | SYS-10; SEC-07 | Exact-query/canonical-key stability, actor/café isolation, source/model/contract invalidation, expiry boundaries, refresh behavior and eligibility changed mid-request/cache read. |
 | SEC-08–SEC-09 | Disable precedes cache/dispatch/return; safe fallback/error messages and metadata contain no source content, credentials or provider bodies. |
-| CUS-06, OWN-07, ADM-04 | Human-reviewed examples assess ranking/reason relevance, supported preparation advice and five-label moderation accuracy once story criteria exist. Prompt injection does not expand data or authority even when classification misses it. |
+| CUS-06, OWN-07, ADM-04 | Human-reviewed examples assess ranking/reason relevance, supported preparation advice and five-label moderation accuracy. Prompt injection does not expand data or authority even when classification misses it. |
 
 ## Out of scope
 

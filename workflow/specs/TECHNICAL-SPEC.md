@@ -9,7 +9,7 @@ SYS-04; the shared sign-up, session and navigation stories remain in the product
 specification. It supplies foundation contracts, not implementation steps.
 
 Exact HTTP contracts, LLM prompts and LLM input/output schemas belong to the
-[INTEGRATION-SPEC.md](README.md#specifications). Attack surfaces,
+[INTEGRATION-SPEC.md](INTEGRATION-SPEC.md). Attack surfaces,
 mitigations, usage-limit values, kill-switch semantics
 and the security test plan belong to
 [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md). Detailed order, café,
@@ -611,7 +611,3 @@ availability target is introduced.
 - **SYS-13.8:** Maintenance never touches demo kits, deletes user or domain
   data, resets passwords or calls the LLM. AI retention cleanup follows
   AI-SECURITY-SPEC and preserves active enforcement state.
-
-The requirements describe future acceptance evidence. Existing starter
-verification does not establish that unimplemented architecture, integrations,
-RLS policies or accessibility flows already satisfy these criteria.
