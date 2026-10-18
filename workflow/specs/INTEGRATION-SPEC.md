@@ -81,6 +81,7 @@ Provider HTTP errors are translated; their bodies and headers are not forwarded.
 | 403 | `FORBIDDEN` | Wrong role or failed same-origin protection. |
 | 404 | `NOT_FOUND` | Requested record absent or outside the caller's authorized record scope. |
 | 405 | `METHOD_NOT_ALLOWED` | Unsupported HTTP method; `Allow` advertises the supported method. |
+| 409 | `STATE_CONFLICT` | The target record is in scope but not in the state the operation requires; nothing changes. |
 | 413 | `PAYLOAD_TOO_LARGE` | Application request body exceeds the limit below. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | A JSON endpoint receives another content type. |
 | 429 | `RATE_LIMITED` | Demo-kit creation limit reached; `Retry-After` and a clear safe message say when to try again. |
@@ -92,8 +93,8 @@ authorized role's fallback (SEC-08). Its HTTP status is 200 with
 the fallback result below, including on app limits or provider 429. Therefore
 an HTTP client cannot mistake provider throttling for an authentication error.
 A source failure does not produce a fabricated successful empty fallback.
-Domain mutation conflict and duplicate-submission semantics are excluded until
-the owning story defines them.
+Domain operations use `409 STATE_CONFLICT` for state conflicts;
+duplicate-submission semantics remain with their owning stories.
 
 ### Demo access and maintenance routes
 

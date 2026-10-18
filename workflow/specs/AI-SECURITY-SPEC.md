@@ -214,7 +214,7 @@ missing classifications invalidate the complete AI result. Brew Finder results
 cannot disclose an ineligible café even if its eligibility changed mid-request.
 
 Prep advice cannot change menu, inventory or orders. Moderation labels are
-suggestions; an Admin explicitly confirms each hide/restore with a reason.
+suggestions; an Admin explicitly confirms each keep, hide or restore with a reason.
 That request repeats Admin authorization, current review-state checks and the
 ordinary mutation contract and creates the separate moderation audit entry.
 No label, including `ok` or `injection attempt`, automatically changes visibility
@@ -304,7 +304,7 @@ they do not assert that the starter application already satisfies them.
   interface; injected tool calls and claims of approval cannot mutate domain
   data. Generating any of the three AI results changes no order, menu, café or
   review visibility.
-- **SEC-05.2:** Review hide/restore requires explicit per-review Admin
+- **SEC-05.2:** Review keep, hide or restore requires explicit per-review Admin
   confirmation, current domain validation and a reason; it preserves original
   text and records the separate moderation audit entry. Stale/forged AI advice
   cannot bypass authorization or review-state rules.
