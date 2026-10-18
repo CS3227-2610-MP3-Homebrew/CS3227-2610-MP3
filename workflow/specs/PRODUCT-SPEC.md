@@ -20,7 +20,7 @@ Moderation Assistant for admins.
 | --- | --- |
 | Customer | Chooses Customer at sign-up. Sees only approved, non-suspended cafés and manages only their own orders and reviews. |
 | Café owner | Chooses Café owner at sign-up. Manages only their own café, menu and orders. Their café is visible to customers only after admin approval and while not suspended. |
-| Admin | The main Admin is seeded by the maintenance job; each demo kit has its own kit-scoped Admin. Sign-up never creates an Admin. Approves or rejects café applications, suspends and un-suspends cafés, and hides or restores reviews with a reason. |
+| Admin | The main Admin is seeded by the maintenance job; each demo kit has its own kit-scoped Admin. Sign-up never creates an Admin. Approves or rejects café applications, suspends and un-suspends cafés, and keeps, hides or restores reviews with a reason. |
 
 There is one main workspace and one isolated workspace per demo kit. Normal
 sign-ups join the main workspace. Every role, including Admin, reads and writes
@@ -69,7 +69,7 @@ below; this document does not supply missing behavioral decisions.
 | OWN-06 | Provide a sales dashboard with daily totals, top items and sales by day of week. |
 | OWN-07 | Show Prep Advisor as a dashboard panel. It suggests which items to prepare more or less of by day of week, using aggregated sales only. Every suggestion quotes its supporting numbers. Nothing is applied automatically. Its non-AI fallback is the top-items table. |
 | ADM-01–ADM-02 | Let admins approve or reject café applications with a reason and suspend and un-suspend cafés. An un-suspended approved café becomes visible to customers again; unapproved cafés remain hidden. |
-| ADM-03 | Provide a moderation queue to hide or restore reviews with a reason, never to edit review text. Record every hide or restore action in an audit log. |
+| ADM-03 | Provide a moderation queue to keep, hide or restore reviews with a reason, never to edit review text. Record every keep, hide or restore action in an audit log. |
 | ADM-04 | A "Triage pending reviews" button runs Moderation Assistant on pending reviews in batches. It classifies each review as ok, spam, abusive, off-topic or injection attempt, with a reason. The admin confirms every action. Its non-AI fallback is the manual queue. |
 | CUS-07, OWN-08, ADM-05–ADM-06 | Stretch only: save favourite cafés; request a boost with a time-limited Featured badge and a fee that is only recorded; switch AI features on or off at runtime from the Admin page; approve or reject boost requests. |
 
@@ -119,7 +119,7 @@ unverifiable per-key limits are recorded in
 | Fulfil pre-orders | A café owner uses the order queue. | Support accept, reject, mark ready and mark collected for their own café's orders. | OWN-05 |
 | Understand sales and preparation | A café owner opens the dashboard. | Show daily totals, top items and sales by day of week. Prep Advisor uses only aggregated sales and quotes numbers; no suggestion is applied automatically. The fallback is the top-items table. | OWN-06–OWN-07 |
 | Manage café eligibility | An admin reviews applications, suspends a café or un-suspends a café. | Approve or reject applications with a reason; suspended cafés are not visible to customers. An un-suspended approved café becomes visible to customers again; an unapproved café remains hidden. | ADM-01–ADM-02 |
-| Moderate reviews | An admin reviews the queue or requests AI triage. | Classify pending reviews with reasons or use the manual queue; the admin confirms each action. Hide or restore with a reason, retain review text, and record moderation actions in the audit log. | ADM-03–ADM-04 |
+| Moderate reviews | An admin reviews the queue or requests AI triage. | Classify pending reviews with reasons or use the manual queue; the admin confirms each action. Keep, hide or restore with a reason, retain review text, and record moderation actions in the audit log. | ADM-03–ADM-04 |
 | Use optional features | A customer saves a favourite, a café owner requests a boost, or an admin manages boosts or runtime AI settings. | Provide only the stretch capabilities listed in the User stories section; a boost fee is recorded without adding a payment system. | CUS-07, OWN-08, ADM-05–ADM-06 |
 
 ## MVP and stretch scope
