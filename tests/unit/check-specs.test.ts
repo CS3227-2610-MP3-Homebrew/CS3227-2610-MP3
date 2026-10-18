@@ -181,3 +181,30 @@ test("check-specs: reports registry status and Developer Guide inventory drift",
   expect(errors).toContain("Workflow file workflow/agents/docs.md is missing from the workflow files table.");
   expect(errors).not.toContain("Workflow file workflow/agents/spec.md is missing from the workflow files table.");
 });
+
+test.each(["todo", "blocked", "awaiting-decision"])("check-specs: accepts %s before issue assignment", (status) => {
+  expect(check({
+    "workflow/PLAN.md": baseline["workflow/PLAN.md"].replaceAll("- **Status:** todo", `- **Status:** ${status}`),
+  }).errors).toEqual([]);
+});
+
+test("check-specs: rejects the retired active status", () => {
+  expect(check({
+    "workflow/PLAN.md": baseline["workflow/PLAN.md"].replace("- **Status:** todo", "- **Status:** in-progress"),
+  }).errors).toContain('T-01 has unknown status "in-progress".');
+});
+
+test("check-specs: done requires issue mapping and completed dependencies", () => {
+  const completedPlan = baseline["workflow/PLAN.md"]
+    .replaceAll("- **Status:** todo", "- **Status:** done")
+    .replaceAll("- **Issue:** unassigned", "- **Issue:** #7");
+  expect(check({ "workflow/PLAN.md": completedPlan }).errors).toEqual([]);
+  const errors = check({
+    "workflow/PLAN.md": completedPlan
+      .replace("- **Status:** done", "- **Status:** todo")
+      .replaceAll("- **Issue:** #7", "- **Issue:** unassigned"),
+  }).errors;
+  expect(errors).toContain("T-02 is done but its dependency T-01 is not.");
+  expect(errors).toContain("T-02 is done without an issue.");
+  expect(errors).not.toContain("T-01 is todo without an issue.");
+});

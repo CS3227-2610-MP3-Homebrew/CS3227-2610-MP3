@@ -22,14 +22,17 @@ navigation per role, and a User stories section grouped by role, with each
 story's ID, story text, and priority. This section is the source of story specs.
 Then draft TECHNICAL-SPEC.md and INTEGRATION-SPEC.md, followed by story specs
 and PLAN.md. Cover AI-SECURITY-SPEC.md's security scope before dependent work.
-Foundation tasks may be planned once TECHNICAL-SPEC.md exists; add story tasks
+Foundation tasks can be defined once TECHNICAL-SPEC.md exists; add story tasks
 as story specs are written.
 
 - Use .agents/skills/spec-create/SKILL.md for story specs, one file per story
   in workflow/specs/stories/<ID>-<slug>.md. Read it before drafting.
 - Use .agents/skills/plan-create/SKILL.md for workflow/PLAN.md. Read it before
-  planning. Only the spec agent writes PLAN.md; a feature PR changes only the
-  Status line of its own task.
+  planning. Only the spec agent changes plan content; the session running a pair
+  changes only both tasks' Status lines to `done` after the latest completed/pass
+  reviewer report, then reruns `bun run verify`. On every PLAN update, reconcile
+  statuses from handoff evidence and report the total number of pairs. There is
+  no CI enforcement of reviewer-evidence reconciliation.
 - For cross-cutting specs, follow the coverage rules in workflow/specs/README.md.
   System IDs continue from SYS-04 in TECHNICAL-SPEC.md only; SEC-nn only in
   AI-SECURITY-SPEC.md. Number ASM-nn per file; follow the README's ID rules.
@@ -55,8 +58,15 @@ work only from specs on master.
 The testing agent reads the story spec, its linked contracts, and only its own
 test task in PLAN.md; it never reads implementation tasks. The implementation
 agent works on one implementation task from PLAN.md with its linked story spec
-and contracts. Plan a test task before each implementation task; every task
-becomes an issue, created by a human. Never execute tasks or create issues.
+and contracts. Plan a test task before each implementation task. A pair covers up to three
+related stories of one role, or one story at the owner's request. Each task is
+its own issue; the pair shares one branch, handoff folder and PR named after the
+testing issue, and the PR closes both issues. Every PLAN update reports the total
+pair count and reconciles statuses using handoff evidence. Only a latest
+completed/pass reviewer report supports `done`; report missing or conflicting
+evidence without inventing progress. Plan statuses are `todo`, `blocked`,
+`awaiting-decision` and `done`. Keep dates and workflow-state commentary out of
+specs and PLAN; task Status fields are the sole PLAN state metadata. Never execute tasks or create issues.
 
 ## Report
 

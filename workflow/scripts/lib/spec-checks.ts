@@ -201,7 +201,7 @@ function checkPlan(tasks: PlanTask[], criteria: Map<string, string>, error: Repo
         error(planPath, `${task.id} is done but its dependency ${dependency} is not.`, line("Status"));
       }
     }
-    if (["in-progress", "done"].includes(status) && /^\s*unassigned\s*$/.test(task.fields.get("Issue") ?? "")) {
+    if (status === "done" && /^\s*unassigned\s*$/.test(task.fields.get("Issue") ?? "")) {
       error(planPath, `${task.id} is ${status} without an issue.`, line("Issue"));
     }
     if (task.removed) continue;

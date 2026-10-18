@@ -1,6 +1,5 @@
 # [Story ID]: [Feature name]
 
-- **Last updated:** [YYYY-MM-DD]
 - **Related specs:** [links]
 - **Role:** [role]
 

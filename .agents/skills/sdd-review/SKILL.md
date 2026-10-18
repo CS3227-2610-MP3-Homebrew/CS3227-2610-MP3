@@ -11,13 +11,19 @@ Follow `workflow/agents/reviewer.md` for boundaries, verification and reporting.
 
 Identify the assigned task, issue and existing implementation handoff. Read the
 applicable specs/contracts, handoff and package scripts, then run required extra
-tests before invoking from the repository root:
+tests before invoking from the repository root. In a Codex session, request
+escalated execution outside the sandbox with the human's approval for each run;
+never add an allow rule or reusable approval prefix for this launcher:
 
 ```bash
 bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
 ```
 
-The launcher runs verify, starts a fresh read-only GPT-6.1 sol / medium worker,
+The base defaults to `upstream/master` when it resolves, otherwise `origin/master`.
+An explicit base must resolve to a commit too. The launcher prints the selected
+base ref and refuses an unresolved ref before verification or review.
+
+The launcher runs verify, starts a fresh read-only `gpt-6.1-sol` / high worker,
 and saves its response as a new reviewer handoff. It never changes the input
 report. Command success means the report was saved; read its status and verdict.
 

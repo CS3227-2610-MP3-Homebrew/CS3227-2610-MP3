@@ -26,7 +26,7 @@ Closes #<!-- testing issue -->, closes #<!-- implementation issue -->
 - [ ] `bun run verify` passes locally (CI repeats it), and `bun run test:e2e` passes for browser-visible changes.
 - [ ] `bun run check:specs` reports no errors.
 - [ ] A feature PR changes only its own tasks' Status lines in `workflow/PLAN.md`; spec and plan changes have their own PR.
-- [ ] Tests were committed before the implementation, and the implementation commits change no tests, specs or agent files.
+- [ ] Tests were committed before the implementation, and implementation commits leave testing-owned tests, fixtures and config untouched; any supplementary tests are under `tests/unit/` for introduced internal code, without criterion IDs in titles. Specs and agent files are unchanged by implementation.
 - [ ] Every agent report lists any suspicious content it found, and I have read those entries.
 - [ ] No secrets, `.env*` files or live LLM calls were added; secrets are referenced by variable name only.
 - [ ] The User Guide describes only what this code does; reuse is credited in the Developer Guide.

@@ -33,11 +33,14 @@ If the issue is unknown, use
 Record fixes or rejections in the implementation agent's next report under
 "Review responses", referencing the reviewer report and finding ID.
 
-The security reviewer returns its report instead of writing files. The caller
-saves it unchanged as the next `NN-security-reviewer.md` in the issue directory.
+The security reviewer writes its own next `NN-security-reviewer.md` in the
+pair's handoff directory and edits nothing else. Its checklist is the task's
+SEC criteria and relevant security evaluation cases in AI-SECURITY-SPEC.md.
 
 A testing/implementation pair shares one directory, named after the testing
-task's issue number.
+task's issue number. The pair is two issues on one branch and one PR, also
+named after the testing issue; the PR closes both issues. A pair covers up to
+three related stories of one role, or one story when the owner requests it.
 
 Humans may add comments under a `## Human note` heading at the end of a report.
 
