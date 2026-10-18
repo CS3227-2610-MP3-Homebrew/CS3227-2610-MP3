@@ -4,6 +4,10 @@ Sources: [PRODUCT-SPEC.md](specs/PRODUCT-SPEC.md),
 [TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md),
 [INTEGRATION-SPEC.md](specs/INTEGRATION-SPEC.md) and
 [AI-SECURITY-SPEC.md](specs/AI-SECURITY-SPEC.md).
+Admin story sources: [ADM-01](specs/stories/ADM-01-cafe-applications.md),
+[ADM-02](specs/stories/ADM-02-cafe-suspension.md),
+[ADM-03](specs/stories/ADM-03-review-moderation.md) and
+[ADM-04](specs/stories/ADM-04-moderation-assistant.md).
 Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs, plus three spec tasks.
 Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
@@ -15,7 +19,7 @@ Changed criteria and new tasks require their governing specs on master before ex
   Supabase SSR, Zod and `openai` are not installed; the tasks that need them
   add them.
 - Vitest, Playwright and Testing Library are installed; `bun run test`,
-  `bun run test:e2e` and `bun run check:traceability` exist. CI runs
+  `bun run test:e2e`, `bun run check:traceability` and `bun run check:specs` exist. CI runs
   `bun run verify` and `bun run test:e2e`. Every implementation requires its own
   tests and `bun run verify`;
   testing records expected failing-first evidence. Database/accessibility tooling
@@ -24,11 +28,11 @@ Changed criteria and new tasks require their governing specs on master before ex
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- No story specs exist. New file scopes below identify their owning tasks. Core
+- ADM-01–ADM-04 story specs exist; other role/account story contracts remain
+  prerequisites where named. New file scopes below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
-  not block core schema, local seeds or the fixed role matrix. No screens or
-  story behavior are added here.
+  not block core schema, local seeds or the fixed role matrix.
 - Serialize edits to migrations, `package.json`/`bun.lock` and
   `.github/workflows/ci.yml` with the current editor; this creates no functional
   dependency. Each pair owns its listed surface; later work extends it rather
@@ -509,4 +513,110 @@ Story tasks are added as story specs merge.
 
 ## Admin
 
-Story tasks are added as story specs merge.
+The café eligibility pair shares café state and Admin-action audit data across
+ADM-01/ADM-02. The manual moderation pair owns the audit screen for every Admin
+action; the café pair owns creation of its decision/suspension entries and the
+assertions for those stories, including their later display through that screen.
+These two pairs can prepare independent local fixtures against their contracts;
+café tests can be authored failing-first before the audit screen exists, while
+T-29 completion explicitly depends on T-31 for café audit-display acceptance.
+ADM-04 follows the
+ADM-03 pair and reuses its confirmation route. Shared SYS/SEC criteria retain
+their foundation owners; the Admin tasks own only the listed ADM criteria.
+Missing story contracts below block execution, not criterion allocation.
+
+### T-28: Test café applications and suspension
+
+- **Depends on:** T-08, T-10, T-16
+- **Owner role:** testing
+- **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [applications](specs/stories/ADM-01-cafe-applications.md#screens) and [approved-cafés](specs/stories/ADM-02-cafe-suspension.md#screens) screens, domain transitions and accountable workspace-scoped mutations.
+- **Work:** Test both queues' ordering, ties, 20-row URL pagination, empty/conflict states, reason controls and private-data-free role gates. Cover approve/reject and suspend/un-suspend exact HTTP success bodies, strict shared HTTP/Ref validation, exact reason preservation/escaped display, session/role/workspace denials and indistinguishable missing/foreign targets. Exercise one-way decisions, owner resubmission, invalid/current-state and concurrent decisions/transitions, exactly-one atomic audit and rollback on audit failure, append-only retention and owner/Admin-only latest reasons. Assert customer RLS eligibility changes, unchanged application state on suspension, preserved menus/hours/orders/reviews and owner/existing-order access using the owning contracts. Keep café audit-entry assertions here; T-30/T-31 own the common audit screen, not these criterion IDs. Use local main/kit fixtures and shared foundation session/RLS/audit harnesses.
+- **File scope:** Proposed `tests/admin/cafe-eligibility/` unit, local database/route and browser cases with synthetic café/application/order/audit fixtures; extend existing testing infrastructure without duplicating its owners. Tests may exercise `/admin/audit` after T-31 supplies it; testing owns all fixtures/mocks.
+- **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; CUS-03/CUS-04/OWN-05 must define new-order refusal and preserved existing-order lifecycles. Their approved contracts and relevant surfaces are required before the affected integration evidence can run. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility/audit repositories. Café audit-display cases additionally await T-31; no missing owner/customer behavior is inferred.
+- **Acceptance criteria:**
+  - [ ] Every listed ADM criterion has named deterministic tests and recorded failing-first evidence, including races, rollback, main/kit isolation and customer eligibility.
+  - [ ] Café audit persistence and later T-31 display assertions preserve the criterion ownership above; unresolved contract/surface prerequisites are recorded.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded with local Supabase only; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-29: Implement café applications and suspension
+
+- **Depends on:** T-28, T-08, T-10, T-16, T-31
+- **Owner role:** implementation
+- **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
+- **Description:** Implement workspace-scoped [application decisions](specs/stories/ADM-01-cafe-applications.md#requirements) and [reversible suspension](specs/stories/ADM-02-cafe-suspension.md#requirements), reusing the [shared HTTP boundary](specs/INTEGRATION-SPEC.md#authorization-and-transport) and [RLS contracts](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
+- **Work:** Add `/admin/applications` and `/admin/cafes` with specified ordering, pagination, reason/confirmation, empty/conflict feedback and Suspense-wrapped role gates. Add `POST /api/admin/cafes/{cafeId}/decision` and `/suspension` with server-side Zod, session/role/workspace/current-state and exact-origin checks, strict bodies and exact responses. Apply one-way approval/rejection and independent approved-café suspension atomically with one T-16 Admin-action entry, rolling back both on failure. Preserve submitted reasons, restrict latest-reason reads, update customer RLS eligibility and retain all unrelated records and owner/existing-order access. Consume owner submission/resubmission and management contracts; do not author their screens or customer order lifecycles. T-31 owns audit display; this pair supplies its café entries and integration evidence without duplicating the screen.
+- **File scope:** Proposed `src/app/admin/applications/`, `src/app/admin/cafes/`, `src/app/api/admin/cafes/[cafeId]/decision/route.ts`, `src/app/api/admin/cafes/[cafeId]/suspension/route.ts`, server-only café operations under `src/server/` and additive migrations/policies. Reuse foundation gates/repositories; serialize shared Admin layout and migration edits with T-31. No tests/fixtures/mocks or owner/customer screen authoring.
+- **Prerequisite:** BLOCKED on the OWN-01/OWN-02/CUS-03/CUS-04/OWN-05 contracts and relevant surfaces named in T-28, plus T-28 failing-first evidence. T-16 supplies audit/eligibility storage; T-31 supplies the audit screen needed for café audit-display acceptance. Missing contracts are not implementation choices.
+- **Acceptance criteria:**
+  - [ ] T-28's owned state, HTTP, reason, access, concurrency, rollback and preservation cases pass; audit-display acceptance is evidenced when T-31 is available.
+  - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or unrelated order/menu permission is added.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual evidence and remaining external surfaces.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-30: Test moderation queue and Admin audit log
+
+- **Depends on:** T-08, T-10, T-16
+- **Owner role:** testing
+- **Requirements:** ADM-03.1, ADM-03.2, ADM-03.3, ADM-03.4, ADM-03.5, ADM-03.6, ADM-03.7, ADM-03.8, ADM-03.9, ADM-03.10, ADM-03.11, ADM-03.12, ADM-03.13, ADM-03.14, ADM-03.15, ADM-03.16, ADM-03.17, ADM-03.18 — [ADM-03 criteria](specs/stories/ADM-03-review-moderation.md#acceptance-criteria).
+- **Description:** Derive failing-first tests for [manual moderation and audit screens](specs/stories/ADM-03-review-moderation.md#screens), [permissions](specs/stories/ADM-03-review-moderation.md#permissions) and the ordinary moderation route, independently of AI triage.
+- **Work:** Test initial pending/kept customer RLS visibility and hidden exclusion without inventing rating formulas. Cover Pending/Kept/Hidden tabs, security-configured page size, URL state, ordering/ties, suspended-café reviews, Singapore timestamps, row fields, escaped content and the fixed quick-pick reasons linked from [ADM-04](specs/stories/ADM-04-moderation-assistant.md#user-experience). Test the full Keep/Hide/Restore transition matrix and exact responses, reason bounds/preservation, strict HTTP/origin/Ref/action-only bodies, session/role/workspace denials, stale/concurrent actions and audit rollback. Assert immutable text/rating, denied customer edit/delete and unchanged reviews on failures. Test workspace audit order, 50-row URL pagination/action filters, seven action types, exact columns/target labels, scoped Admin-email access, excluded review text/AI events, append-only history and retention. Use contract-derived local café-action audit fixtures without requiring café mutations to be implemented or claiming their ADM criteria.
+- **File scope:** Proposed `tests/admin/moderation/` and `tests/admin/audit/` unit, local database/route and browser cases; testing-owned synthetic review/café/Admin audit and retention fixtures. Extend shared foundation harnesses.
+- **Prerequisite:** BLOCKED: CUS-05 must define review creation/field constraints while preserving ADM-03's initial pending state and immutability; actual review integration requires its surface. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
+- **Acceptance criteria:**
+  - [ ] All 18 ADM-03 criteria have deterministic named failing-first cases, including transition races, atomic audit, workspace isolation, customer immutability and retention.
+  - [ ] Common audit-screen tests cover every action without taking café criterion ownership; no tests infer review field limits or rating formulas.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results and the issue-scoped [handoff](templates/handoff.md) are recorded with local data only.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-31: Implement moderation queue and Admin audit log
+
+- **Depends on:** T-30, T-08, T-10, T-16
+- **Owner role:** implementation
+- **Requirements:** ADM-03.1, ADM-03.2, ADM-03.3, ADM-03.4, ADM-03.5, ADM-03.6, ADM-03.7, ADM-03.8, ADM-03.9, ADM-03.10, ADM-03.11, ADM-03.12, ADM-03.13, ADM-03.14, ADM-03.15, ADM-03.16, ADM-03.17, ADM-03.18 — [ADM-03 criteria](specs/stories/ADM-03-review-moderation.md#acceptance-criteria).
+- **Description:** Implement [manual moderation](specs/stories/ADM-03-review-moderation.md#requirements) and the shared read-only [Admin audit screen](specs/stories/ADM-03-review-moderation.md#screens) using foundation guards and audit persistence.
+- **Work:** Add `/admin/moderation` and `/admin/audit` with the specified tabs/filters, ordering/ties, URL pagination, Singapore display, escaped row fields, empty/conflict states and streaming role gates. Implement `POST /api/admin/reviews/{reviewId}/moderation` with strict action/reason-only validation, same-origin/session/workspace/current-state checks and exact shared errors/success bodies. Apply only pending→kept, pending/kept→hidden and hidden→kept, atomically with one append-only T-16 Admin-action entry; failure changes neither. Provide per-review reason controls with the fixed ADM-04 app-text quick picks, not model-authored reasons. Enforce immutable review text/rating, denied customer edit/delete and customer RLS visibility. Render all seven Admin action types, including T-29's café entries when available, with scoped acting-Admin email and no review text or AI-use events. Keep audit history outside AI cleanup; author no review creation, rating formulas or AI triage.
+- **File scope:** Proposed `src/app/admin/moderation/`, `src/app/admin/audit/`, `src/app/api/admin/reviews/[reviewId]/moderation/route.ts`, server-only review/audit queries and transactional operations under `src/server/`, additive review/policy migrations. Extend T-16's audit repository rather than recreate it; serialize shared layout/migrations with T-29. No tests/fixtures/mocks.
+- **Prerequisite:** BLOCKED on T-30's CUS-05 review contract/surface prerequisite and T-30 failing-first evidence. T-08/T-10/T-16 provide shared access, streaming and audit infrastructure. T-29 café operations may be integrated later; the common audit display is independently implementable from the ADM-01/ADM-02 audit contracts and local fixtures.
+- **Acceptance criteria:**
+  - [ ] T-30's 18-criterion suite passes, including immutable reviews, exact transitions/errors, one atomic audit, role/workspace denial and all audit display/retention cases.
+  - [ ] T-28's café audit-display cases can consume this screen without duplicated screen or criterion ownership; T-32/T-33 can reuse ordinary per-review confirmation.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual checks without hosted execution.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-32: Test Moderation Assistant
+
+- **Depends on:** T-30, T-31, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** testing
+- **Requirements:** ADM-04.1, ADM-04.2, ADM-04.3, ADM-04.4, ADM-04.5, ADM-04.6, ADM-04.7, ADM-04.8, ADM-04.9, ADM-04.10, ADM-04.11, ADM-04.12, ADM-04.13, ADM-04.14, ADM-04.15, ADM-04.16, ADM-04.17, ADM-04.18 — [ADM-04 criteria](specs/stories/ADM-04-moderation-assistant.md#acceptance-criteria).
+- **Description:** Derive failing-first route/browser tests and evaluation evidence for the advisory [Moderation Assistant experience](specs/stories/ADM-04-moderation-assistant.md#user-experience), consuming the [fixed prompt/schema](specs/INTEGRATION-SPEC.md#moderation-assistant--adm-04) and [security evaluations](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
+- **Work:** Cover the Pending-only button, empty disablement/loading, exactly one current-page request, configured batch/action/run/call bounds and no automatic pagination/splitting/retry. Test complete five-label results, inert AI-suggestion rendering/highlights without selection/mutation, fixed editable app-text reasons and no copying of model reasons. Exercise ordinary per-review confirmation, invalid reasons, forged-label fields, stale-state conflict/removal and remaining-suggestion lifetime through one action/reload/page change. Cover main/kit session/role/workspace/origin/strict-body/source denials before admission; empty/duplicate/oversized/no-longer-pending selection is invalid, never no_source_data. Use fake captures/results for minimal encoded review-only context, injection containment, whole-result rejection, no cache/persistence, disabled/usage_limited/unavailable fallbacks, source-unavailable 503, bounded failures and content-free internal AI audit distinct from Admin audit. Reuse shared limit/provider/audit tests without claiming their SYS/SEC criteria. Record ADM-04's human-labelled evaluation cases and quality assessment without a live call or invented accuracy target.
+- **File scope:** Proposed `tests/admin/moderation-assistant/` route/browser cases, synthetic adversarial review/provider responses, controlled limit/clock/storage-fault fixtures and human-labelled evaluation records owned by testing. Extend T-30's manual-flow fixtures; do not read implementation tasks as a test-design source.
+- **Prerequisite:** BLOCKED on CUS-05's review field/source contract and review surface, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite.
+- **Acceptance criteria:**
+  - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
+  - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded using local Supabase/fake AI in the issue-scoped [handoff](templates/handoff.md).
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-33: Implement Moderation Assistant
+
+- **Depends on:** T-32, T-30, T-31, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** implementation
+- **Requirements:** ADM-04.1, ADM-04.2, ADM-04.3, ADM-04.4, ADM-04.5, ADM-04.6, ADM-04.7, ADM-04.8, ADM-04.9, ADM-04.10, ADM-04.11, ADM-04.12, ADM-04.13, ADM-04.14, ADM-04.15, ADM-04.16, ADM-04.17, ADM-04.18 — [ADM-04 criteria](specs/stories/ADM-04-moderation-assistant.md#acceptance-criteria).
+- **Description:** Integrate advisory [review triage](specs/stories/ADM-04-moderation-assistant.md#requirements) into T-31's manual queue through the existing [AI HTTP envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope), shared LLM operation and [guardrails](specs/stories/ADM-04-moderation-assistant.md#guardrails).
+- **Work:** Add `POST /api/ai/moderation` with strict JSON/Ref/session/role/origin/workspace and currently pending selection checks before admission. Read authoritative review references/text under RLS and call only T-14's server-only moderation operation with T-12 admission and T-16 content-free accounting. Reuse the exact prompt/schema and unchanged envelopes; reject the whole invalid result, honor disable/limit/failure precedence and never cache suggestions. Add the Pending-only current-page button/loading, escaped AI labels/reasons and advisory highlights, typed safe fallback explanations and queue-changed/reload handling. Keep suggestions transient with specified action/page lifetime. Reuse T-31's fixed editable quick picks and ordinary action/reason-only confirmation; never copy model reasons, preselect/submit actions or provide apply-all. Preserve immutable text/rating and independent stale/forged confirmation checks and separate Admin audit. No new provider transport, prompts, quotas, runtime AI settings or automatic moderation.
+- **File scope:** Proposed `src/app/api/ai/moderation/route.ts` and server-only authorized moderation-source adapter under `src/server/`; extend existing T-31 `src/app/admin/moderation/` with a browser interaction boundary. Reuse T-14 `src/server/llm/` operation and T-12/T-16 repositories; serialize shared queue/repository edits. No tests/fixtures/mocks or audit-screen reimplementation.
+- **Prerequisite:** BLOCKED on the same CUS-05 source contract/surface and T-30/T-31 queue/confirmation prerequisites as T-32, plus T-32 failing-first evidence and the shared T-08/T-10/T-12/T-14/T-16 controls. No dependence on T-21/T-22's later cross-feature security integration; those tasks retain their separate SEC ownership.
+- **Acceptance criteria:**
+  - [ ] T-32's full ADM-04 suite passes, including main/kit boundaries, transient complete results, injection/forged/stale advice, exact fallback/error behavior and explicit per-review control.
+  - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI; the issue-scoped [handoff](templates/handoff.md) reports checks and evaluation limits without live calls or deployment.
+- **Status:** blocked
+- **Issue:** unassigned
