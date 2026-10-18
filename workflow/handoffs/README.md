@@ -34,8 +34,9 @@ Record fixes or rejections in the implementation agent's next report under
 "Review responses", referencing the reviewer report and finding ID.
 
 The security reviewer writes its own next `NN-security-reviewer.md` in the
-pair's handoff directory and edits nothing else. Its checklist is the task's
-SEC criteria and relevant security evaluation cases in AI-SECURITY-SPEC.md.
+pair's handoff directory and edits nothing else. It applies baseline security
+checks to every pair, plus task SEC criteria and relevant AI-SECURITY-SPEC
+evaluation cases when present.
 
 A testing/implementation pair shares one directory, named after the testing
 task's issue number. The pair is two issues on one branch and one PR, also

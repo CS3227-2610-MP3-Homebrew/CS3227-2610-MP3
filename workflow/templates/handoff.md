@@ -5,6 +5,7 @@ See docs/DeveloperGuide.md, Acknowledgements, for reuse details. -->
 - **Agent:** [spec | testing | implementation | reviewer | security-reviewer | docs]
 - **Issue:** [issue reference]
 - **Spec IDs:** [requirement and acceptance-criterion IDs]
+- **Date:** [YYYY-MM-DD]
 - **Branch:** [branch]
 - **Base commit:** [commit]
 - **Status:** [completed | blocked | awaiting-decision | incomplete]

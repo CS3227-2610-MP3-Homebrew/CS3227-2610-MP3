@@ -23,8 +23,9 @@ The base defaults to `upstream/master` when it resolves, otherwise `origin/maste
 An explicit base must resolve to a commit too. The launcher prints the selected
 base ref and refuses an unresolved ref before verification or review.
 
-The launcher runs verify, starts a fresh read-only `gpt-6.1-sol` / high worker,
-and saves its response as a new reviewer handoff. It never changes the input
+The launcher runs verify, starts a fresh read-only worker with the configured
+model and effort, and saves its response as a new reviewer handoff. Set
+`REVIEW_MODEL` and `REVIEW_EFFORT` to override the launcher defaults. It never changes the input
 report. Command success means the report was saved; read its status and verdict.
 
 ## Independent assessment

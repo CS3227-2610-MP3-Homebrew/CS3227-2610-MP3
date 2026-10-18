@@ -83,7 +83,7 @@ assignment into a full role or product specification.
 
 Start with title, **Related specs** and **Role**. Include source story/path/section
 and requirement ownership links. Keep dates and workflow-state commentary out of
-specs and templates; record approval evidence and execution state in handoffs.
+specs and spec templates; record approval evidence and execution state in handoffs.
 
 For ordinary stories, include:
 

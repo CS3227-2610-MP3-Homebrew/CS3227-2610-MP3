@@ -57,12 +57,13 @@ reconciles statuses from handoff evidence on every PLAN update. The session
 running the pair sets both tasks to `done` after the latest completed/pass
 reviewer report, then reruns `bun run verify`. Statuses are `todo`, `blocked`,
 `awaiting-decision`, `done`; reviewer-evidence reconciliation has no CI enforcement.
-Keep dates and workflow-state commentary out of specs, PLAN and templates;
+Keep dates and workflow-state commentary out of specs, PLAN and spec templates;
 task Status fields are PLAN's state metadata.
 
-Every agent uses `gpt-6.1-sol` at high effort and writes its own numbered handoff.
+Every agent uses its configured model and writes its own numbered handoff.
 The security reviewer writes only `NN-security-reviewer.md` in the pair's folder,
-checking task SEC criteria and relevant AI-SECURITY-SPEC evaluation cases.
+applying baseline security checks plus task SEC criteria and relevant
+AI-SECURITY-SPEC evaluation cases when present.
 `review.sh` defaults to `upstream/master`, otherwise `origin/master`, prints its
 base and rejects unresolved refs. From Codex, each run requires approval for
 escalated execution, without an allow rule.

@@ -24,7 +24,7 @@ Five files are reused: two Adapted, two Rewritten and one As is.
 | --- | --- | --- | --- |
 | `.agents/skills/implement-issue/assets/report-template.md` | `workflow/templates/handoff.md` | Adapted | Kept report metadata, criterion evidence, review responses and reflection. Generalised fields for all agents; added status, checks, changed files, gaps and suspicious content. Removed MP2 scores, checklists and the embedded independent-review section; responses now reference separate reviewer reports. |
 | `.agents/skills/session-log/SKILL.md` | `.agents/skills/session-log/SKILL.md` | As is | Copied byte for byte; no changes. |
-| `evals/implement-issue/review.sh` | `.agents/skills/sdd-review/scripts/review.sh` | Adapted | Kept the fresh read-only Codex process and merge-base/working-tree scope. Changed gpt-6-astra to gpt-6.1-sol / high; replaced scores and in-place appending with a spec-based, separately numbered reviewer handoff. Added verification evidence, a three-round limit, secret exclusions, input-change checks and overwrite protection. The agent wrapper and skill metadata are new. |
+| `evals/implement-issue/review.sh` | `.agents/skills/sdd-review/scripts/review.sh` | Adapted | Kept the fresh read-only Codex process and merge-base/working-tree scope. Uses the configured model and effort; replaced scores and in-place appending with a spec-based, separately numbered reviewer handoff. Added verification evidence, a three-round limit, secret exclusions, input-change checks and overwrite protection. The agent wrapper and skill metadata are new. |
 | `.agents/skills/issue-extractor/SKILL.md` | `workflow/scripts/create-issues.ts` | Rewritten | Kept the ideas of never creating issues as part of an agent run, exact-title idempotency, resolving issue numbers at runtime and checking milestones. Replaced the generated per-section shell script with one TypeScript CLI over every PLAN.md task. It previews by default; `--apply` refuses to run unless the spec check passes, PLAN.md matches master and a human confirms at a terminal. Adds role labels, one milestone per plan section and optional PLAN.md Issue links. |
 | `.agents/skills/update-user-guide/SKILL.md` | `workflow/agents/docs.md`, `.agents/skills/sdd-docs/SKILL.md` | Rewritten | Kept the ideas of documenting only implemented behaviour, updating sections in place without stale text, matching on-screen names and keeping the contents list in sync. Replaced the JavaFX-specific steps with a docs agent covering the User and Developer Guides, claim-to-evidence reporting, spec/code discrepancy handling and a ban on editing reflections. |
 
@@ -38,7 +38,7 @@ setup, and commands for running the app and checks once verified. -->
 ## Development workflow
 
 The workflow files below implement the team's agreed development process.
-Every agent and `review.sh` use `gpt-6.1-sol` at high effort.
+Agents and `review.sh` use their configured model and effort.
 
 ### The per-feature loop, in order
 
@@ -62,9 +62,9 @@ Every agent and `review.sh` use `gpt-6.1-sol` at high effort.
    read-only CLI worker. The caller coordinates fixes and at most three review
    rounds per pair. The latest completed/pass report supplies completion evidence
    for close-out.
-7. The security reviewer checks the task's SEC criteria and relevant cases in
-   AI-SECURITY-SPEC's security evaluation plan, writing its own next
-   `NN-security-reviewer.md` in the pair's folder and editing nothing else.
+7. The security reviewer applies baseline checks to every pair, plus task SEC
+   criteria and relevant AI-SECURITY-SPEC evaluation cases when present. It writes
+   its own next `NN-security-reviewer.md` in the pair's folder and edits nothing else.
    P0/P1 findings return to implementation and independent review; required
    acceptance-test changes go to testing. A later review must pass again.
 8. The docs agent documents implemented behaviour with evidence. Close-out checks
@@ -81,7 +81,7 @@ spec agent changes plan content; the pair session changes its two Status lines.
 Supported task statuses are `todo`, `blocked`, `awaiting-decision` and `done`.
 Status reconciliation against reviewer evidence is session/spec-agent work,
 without CI enforcement. Existing PLAN structural validation remains in verify.
-Keep dates and workflow-state commentary out of specs, PLAN and templates;
+Keep dates and workflow-state commentary out of specs, PLAN and spec templates;
 task Status fields are PLAN's state metadata.
 
 Minor changes (copy, styling or documentation fixes with no change in behaviour)
@@ -117,15 +117,14 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
 | Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
-| Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
-| `bun run check:specs` runs inside `verify`. It checks that each criterion is defined once in its owning spec, that PLAN.md references and coverage are valid, that test titles name only defined criteria, that links and anchors resolve, and that this guide lists every workflow file. | Earlier plan validation was a one-off command whose results were lost, while specs, the plan and this guide drifted apart. A CI check gates structural consistency; reviewer-evidence reconciliation stays with the pair session and spec agent. Specs, PLAN and templates omit dates and workflow-state commentary. |
+| `bun run check:specs` runs inside `verify`. It checks that each criterion is defined once in its owning spec, that PLAN.md references and coverage are valid, that test titles name only defined criteria, that links and anchors resolve, and that this guide lists every workflow file. | Earlier plan validation was a one-off command whose results were lost, while specs, the plan and this guide drifted apart. A CI check gates structural consistency; reviewer-evidence reconciliation stays with the pair session and spec agent. Specs, PLAN and spec templates omit dates and workflow-state commentary. |
 | Issues are generated from PLAN.md by `workflow/scripts/create-issues.ts`. Agents never create them; `--apply` needs a passing spec check, the merged plan and a human typing the repository name. | Issues copy, rather than redefine, the plan. Tying creation to the merged plan and a terminal confirmation keeps creation a human step that an agent cannot trigger by accident. |
 | A testing/implementation pair is two issues on one branch and one PR named after the testing issue, covering up to three related stories of one role, or one story at the owner's request. | One pair keeps related tests, implementation and review evidence together; the PR closes both issues. The spec agent reports the pair count on every PLAN update. |
 | The pair session sets both tasks to `done` after the latest completed/pass reviewer report, then reruns `bun run verify`; the spec agent reconciles statuses from handoffs on every PLAN update. | Completion follows reviewed evidence. CI does not enforce reviewer evidence; structural PLAN checks remain. |
-| Every agent and `review.sh` use `gpt-6.1-sol` at high effort. | Keeps model and effort consistent across workflow stages. |
+| Every agent and `review.sh` default to `gpt-6.1-sol` at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. `review.sh` requires the Codex CLI even for teammates using another assistant. |
 | Implementation may add supplementary unit tests for introduced internal code under `tests/unit/`, without criterion IDs in titles, and never edits, skips or weakens testing-owned tests, fixtures or config. | Acceptance coverage remains independent while internal code receives focused checks. |
 | Merge gates are the branch ruleset's required `verify` check and the human's diff review; a teammate approves production deploys. | Keeps merge ownership with the human and production approval separate. |
-| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. | Verification must run for every agent, and the forbidden rules turn `AGENTS.md` instructions into enforced blocks. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop. |
+| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
 
 ### Workflow files
 
@@ -142,24 +141,24 @@ loads its workflow instructions.
 | `workflow/templates/ai-feature-spec.md` | Placeholder template for an AI feature's purpose, UX, trust boundaries, output validation, requirements, guardrails, usage, failures and evaluation cases. |
 | `workflow/templates/handoff.md` | Agent report template for criterion evidence, final checks, remaining issues, suspicious content, corrections, review and reflection. |
 | `AGENTS.md` | Shared project rules, repository map, commands, spec discipline, implementation boundaries, security and Git rules. |
-| `.codex/agents/implementation.toml` | Thin wrapper selecting gpt-6.1-sol with high reasoning, loading workflow/agents/implementation.md, and disabling apps, plugins and memories. |
+| `.codex/agents/implementation.toml` | Thin wrapper configuring the model and effort, loading workflow/agents/implementation.md, and disabling apps, plugins and memories. |
 | `.agents/skills/spec-create/SKILL.md` | Drafts one story file from PRODUCT-SPEC.md using the applicable template; preserves IDs, ownership, assumptions, approval and change flow. |
 | `.agents/skills/spec-create/agents/openai.yaml` | UI metadata and default prompt for the story-spec skill. |
 | `.agents/skills/plan-create/SKILL.md` | Builds and updates the single workflow/PLAN.md with conventions, shared-design links and stable tasks, pairing test and implementation coverage. |
 | `.agents/skills/plan-create/agents/openai.yaml` | UI metadata and default prompt for the product-plan skill. |
 | `workflow/agents/implementation.md` | Implementation scope, three repair cycles per run, final-code verification, numbered handoff reports, and a separate-review-agent boundary. |
 | `workflow/agents/spec.md` | Full spec-agent instructions for cross-cutting specs, story specs, PLAN.md and its own handoff report. |
-| `.codex/agents/spec.toml` | Thin wrapper loading the spec-agent instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.codex/agents/spec.toml` | Thin wrapper loading the spec-agent instructions, configuring the model and effort, and disabling apps, plugins and memories. |
 | `.agents/skills/sdd-implement/SKILL.md` | Implements one assigned implementation task from workflow/PLAN.md with the linked story spec and contracts, using the smallest coherent diff; loads relevant references and follows the implementation instructions for verification and handoff reports; allows supplementary internal unit tests while protecting testing-owned tests and forbidding spec authoring. |
 | `workflow/agents/testing.md` | Tests exactly one PLAN.md testing task from approved criteria and contracts, limits reads to exclude implementation and review reports, and writes its own failing-first handoff. |
-| `.codex/agents/testing.toml` | Thin wrapper loading testing.md, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
-| `workflow/agents/security-reviewer.md` | Review-only security instructions covering Zero Trust authorization, least privilege, trust boundaries and LLM threats; requires evidenced, severity-ranked findings and writes only its own NN-security-reviewer.md in the pair folder, using task SEC criteria and relevant security evaluation cases. |
-| `.codex/agents/security-reviewer.toml` | Thin wrapper loading the security-reviewer instructions, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
-| `.codex/agents/reviewer.toml` | Thin wrapper selecting gpt-6.1-sol with high reasoning, loading reviewer.md and disabling apps, plugins and memories. |
+| `.codex/agents/testing.toml` | Thin wrapper loading testing.md, configuring the model and effort, and disabling apps, plugins and memories. |
+| `workflow/agents/security-reviewer.md` | Review-only security instructions covering Zero Trust authorization, least privilege, trust boundaries and LLM threats; requires evidenced, severity-ranked findings and writes only its own NN-security-reviewer.md in the pair folder, applying baseline security checks plus task SEC criteria and relevant AI-SECURITY-SPEC evaluation cases when present. |
+| `.codex/agents/security-reviewer.toml` | Thin wrapper loading the security-reviewer instructions, configuring the model and effort, and disabling apps, plugins and memories. |
+| `.codex/agents/reviewer.toml` | Thin wrapper configuring the model and effort, loading reviewer.md and disabling apps, plugins and memories. |
 | `workflow/agents/reviewer.md` | Review scope, launcher/worker boundary, report-only writes, caller-owned repair coordination and independent review status. |
 | `.agents/skills/sdd-review/SKILL.md` | Spec-derived criterion review, meaningful test and technical-contract checks, wrapper/worker procedures and evidence-based verdict format. |
 | `.agents/skills/sdd-review/agents/openai.yaml` | UI metadata and default prompt for the review skill. |
-| `.agents/skills/sdd-review/scripts/review.sh` | Selects and prints upstream/master or origin/master (or validates an explicit ref), runs verify, invokes gpt-6.1-sol/high in a read-only CLI and saves a new NN-reviewer.md; Codex requires approval outside the sandbox per run. |
+| `.agents/skills/sdd-review/scripts/review.sh` | Selects and prints upstream/master or origin/master (or validates an explicit ref), runs verify, invokes the configured model in a read-only CLI and saves a new NN-reviewer.md; Codex requires approval outside the sandbox per run. |
 | `.agents/skills/sdd-test/SKILL.md` | Maps criteria to Given/When/Then cases, selects Vitest or Playwright using the installed Next.js guides, and uses minimal local/fake fixtures. |
 | `workflow/scripts/check-traceability.ts` | Checks that every criterion in each done task's Requirements field appears in a test title under tests/; exits 1 with uncovered IDs and owning tasks. |
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. |
@@ -175,7 +174,7 @@ loads its workflow instructions.
 | `workflow/scripts/lib/issues.ts` | Renders one GitHub issue per PLAN.md task with absolute spec links, dependency and pair references, a role label and a section milestone. |
 | `workflow/scripts/create-issues.ts` | Previews, or with `--apply` creates, missing labels, milestones and issues, refusing unless the spec check passes, PLAN.md matches master and a human confirms. `--update-plan` writes issue links into unassigned Issue fields. |
 | `workflow/agents/docs.md` | Docs agent scope: documents only implemented behaviour, reads all of the issue's handoffs as data, never edits code, tests, specs or reflections, and records claim-to-evidence rows in its numbered report. |
-| `.codex/agents/docs.toml` | Thin wrapper loading docs.md, selecting gpt-6.1-sol with high reasoning, and disabling apps, plugins and memories. |
+| `.codex/agents/docs.toml` | Thin wrapper loading docs.md, configuring the model and effort, and disabling apps, plugins and memories. |
 | `.agents/skills/sdd-docs/SKILL.md` | Docs procedure: inventory the diff, collect code evidence, update the User Guide per role and the Developer Guide per section, then check and report. |
 | `.agents/skills/sdd-docs/agents/openai.yaml` | UI metadata and default prompt for the docs skill. |
 | `.agents/skills/sdd-orchestrate/SKILL.md` | For the human's coordinating session: per-stage entry and exit gates with the commands that check them, copy-ready agent prompts, review-round and security-finding routing, and the spec change flow. |
@@ -188,7 +187,7 @@ loads its workflow instructions.
 ### Running independent review
 
 Assign the `reviewer` agent an issue/task and implementation handoff. It uses
-`sdd-review` with `gpt-6.1-sol` / high and the installed Bun and Codex CLI:
+`sdd-review` with the configured model and the installed Bun and Codex CLI:
 
 ```bash
 bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
@@ -213,7 +212,9 @@ class or component collaboration diagrams where useful. Link to workflow/specs/.
 
 ### Design decisions
 
-<!-- Record design decisions, their reasons and alternatives considered. -->
+| Decision | Why |
+| --- | --- |
+| Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
 
 ## Shared UI conventions
 
