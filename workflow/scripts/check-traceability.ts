@@ -31,12 +31,16 @@ function testTitles(source: string): string[] {
     if (!["test", "it"].includes(tokens[index]) || tokens[index - 1] === ".") continue;
     let cursor = index + 1;
     let isTest = true;
+    let excludedFromCoverage = false;
     while (tokens[cursor] === ".") {
       const modifier = tokens[cursor + 1];
+      // Parse every supported modifier, but tests that do not run or are
+      // expected to fail cannot provide coverage.
       if (!["only", "skip", "todo", "concurrent", "sequential", "fails", "fail", "fixme", "each", "for"].includes(modifier)) {
         isTest = false;
         break;
       }
+      if (["skip", "todo", "fixme", "fails", "fail"].includes(modifier)) excludedFromCoverage = true;
       cursor += 2;
       // Parameterized Vitest titles follow the data call: test.each([...])("...").
       if (["each", "for"].includes(modifier) && tokens[cursor] === "(") {
@@ -50,7 +54,7 @@ function testTitles(source: string): string[] {
     }
     const title = tokens[cursor + 1];
     // Require a literal title; dynamic/interpolated names need explicit IDs.
-    if (isTest && tokens[cursor] === "(" && title && /^["'`]/.test(title) && !title.includes("${")) {
+    if (isTest && !excludedFromCoverage && tokens[cursor] === "(" && title && /^["'`]/.test(title) && !title.includes("${")) {
       titles.push(title.slice(1, -1));
     }
   }
@@ -84,6 +88,7 @@ function main(): number {
   if (uncovered.size) {
     console.error("Uncovered criteria in done tasks:");
     for (const [criterion, tasks] of uncovered) console.error(`- ${criterion}: ${tasks.join("; ")}`);
+    console.error("Tests marked skip, todo, fixme or fail(s) do not count as coverage.");
     return 1;
   }
   console.log(`Traceability passed (${doneTasks} done tasks; all listed criteria have test titles).`);
