@@ -28,7 +28,7 @@ decisions and suspension actions from [ADM-01](ADM-01-cafe-applications.md) and
 
 ### `ADM-03`: Moderate reviews and inspect Admin audit history
 
-- **User story:** As an admin, I want a moderation queue where I can hide or restore reviews with a reason without editing them and have every action recorded in an audit log, so that I can moderate reviews accountably.
+- **User story:** As an admin, I want a moderation queue where I can keep, hide or restore reviews with a reason without editing them and have every action recorded in an audit log, so that I can moderate reviews accountably.
 - **Priority:** High
 - **Risk:** High — review visibility and accountability require exact transitions, scope checks and atomic audit writes.
 

@@ -24,6 +24,8 @@ Changed criteria and new tasks require their governing specs on master before ex
   tests and `bun run verify`;
   testing records expected failing-first evidence. Database/accessibility tooling
   needed by a task remains part of that task's separate testing file scope.
+- Test paths use `tests/{unit,integration,e2e}/<area>/`; browser cases go under
+  `tests/e2e/<area>/`.
 - Follow [AGENTS.md](../AGENTS.md), [spec rules](specs/README.md),
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
@@ -137,7 +139,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-04.1, SYS-04.3; SYS-07.2, SYS-07.3 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Verify [configuration](specs/TECHNICAL-SPEC.md#configuration) and server/client boundaries.
 - **Work:** Test stack/runtime declarations, invalid environment/provider combinations, prod fake refusal, missing-key disablement/fallback availability, key-free local fake mode, local-only Supabase, distinct dev/prod bindings and secret redaction. Negative fixtures reject openai outside server-only `src/server/llm/` and privileged client imports/artifacts.
-- **File scope:** Proposed `tests/foundations/config/` and synthetic configuration/import fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/config/` and synthetic configuration/import fixtures.
 - **Prerequisite:** Existing test tooling; no live keys or hosted checks.
 - **Acceptance criteria:**
   - [ ] Contract-derived positive/negative tests and synthetic artifact scans record expected failures.
@@ -166,9 +168,9 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Owner role:** testing
 - **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify the fixed [core entities/relationships](specs/TECHNICAL-SPEC.md#data-model-and-ownership) independently of later story fields.
-- **Work:** Test local replay and core workspaces/profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Verify workspace references only on profiles/cafés and inherited workspace consistency for café children. Counter/admission and cache/audit tables belong to their later pairs.
-- **File scope:** Proposed `tests/foundations/schema/` and local migration/catalogue fixtures.
-- **Prerequisite:** SYS-12 schema contract on master; existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
+- **Work:** Target the local Supabase stack provided by T-06; connection failures before T-06 exists are expected failing-first results. Test local replay and core workspaces/profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Verify workspace references only on profiles/cafés and inherited workspace consistency for café children. Counter/admission and cache/audit tables belong to their later pairs.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/schema/` and local migration/catalogue fixtures.
+- **Prerequisite:** SYS-12 schema contract on master; existing test tooling; T-06 provides the local Supabase stack, so connection failures before it exists are expected failing-first results; story-specific fields, states and transitions are later additive work, not blockers.
 - **Acceptance criteria:**
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
@@ -181,8 +183,8 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Owner role:** implementation
 - **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Build fixed [data/RLS foundations](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
-- **Work:** Add local Supabase lifecycle/migration tooling and core workspaces/profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Add the Workspaces entity, workspace references only on profiles/cafés and inherited-workspace consistency constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
-- **File scope:** Proposed `supabase/config.toml`, `supabase/migrations/`, `scripts/` database checks; existing manifest/lockfile and CI.
+- **Work:** Add local-only `db:start` and `db:reset` package scripts and a CI step that starts local Supabase before database tests. Add local Supabase lifecycle/migration tooling and core workspaces/profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Add the Workspaces entity, workspace references only on profiles/cafés and inherited-workspace consistency constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
+- **File scope:** Proposed `supabase/config.toml`, `supabase/migrations/`, `scripts/` database checks; existing `package.json`/`bun.lock` for local-only `db:start` and `db:reset` scripts, and `.github/workflows/ci.yml` for the local Supabase startup step and catalogue check.
 - **Prerequisite:** SYS-12 schema contract on master; T-05 evidence; serialize shared files.
 - **Acceptance criteria:**
   - [ ] Local replay, integrity tests and catalogue CI checks pass.
@@ -197,7 +199,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-06.3, SYS-06.4; SYS-12.2, SYS-12.3 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify defined [role/record boundaries](specs/TECHNICAL-SPEC.md#rls-and-database-exposure) and local seeds.
 - **Work:** Test two customers/two owners/main Admin/kit Admin/unauthenticated callers, parent-child access, cross-owner records, self-approval, role escalation and ownership reassignment. Test Customer/owner-only account role acceptance, metadata refusing Admin, the maintenance-created main Admin/kit-scoped Admin distinction and refusal of Admin sign-up and confirmation-off declarations. Test main-to-kit, kit-to-main and kit-to-kit denial server-side and under RLS, including AI sources/caches; normal sign-up always selects the main workspace and untrusted metadata cannot change it. Local seed replay includes all roles, approved cafés, menus/hours and past orders; hosted seed targets/password artifacts are rejected.
-- **File scope:** Proposed `tests/foundations/roles-seeds/` and local multi-actor/demo fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/roles-seeds/` and local multi-actor/demo fixtures.
 - **Prerequisite:** Amended SYS-06.3/06.4 and SYS-12 isolation contracts on master; global tooling; T-25 owns kit creation and T-27 owns production maintenance provisioning; local matrix fixtures exercise authority without duplicating those owners.
 - **Acceptance criteria:**
   - [ ] Every fixed allow/deny boundary and local seed requirement has recorded tests.
@@ -227,7 +229,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-05.1, SYS-05.2, SYS-05.4 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access).
 - **Description:** Verify [request-time authentication](specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches) without account screens.
 - **Work:** Use local sessions and component/route harnesses for cookie refresh propagation, unauthenticated redirect, wrong-role denial, expired/invalid prefetched sessions and independent guarded data/mutation access. Assert private data is absent from shells, both rendering flags remain true and instant=false exceptions are per-route with PR reasons. Do not invent a public redirect destination.
-- **File scope:** Proposed `tests/foundations/auth/` and local session/harness fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/auth/` and local session/harness fixtures.
 - **Prerequisite:** Existing test tooling; no sign-up/sign-in/navigation screen prerequisite.
 - **Acceptance criteria:**
   - [ ] Session, gate, shell and exception cases have recorded tests/evidence.
@@ -257,7 +259,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5; SEC-06.1, SEC-06.2, SEC-06.3 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SEC-06](specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 - **Description:** Verify fixed [atomic admission/window mechanics](specs/TECHNICAL-SPEC.md#admission-and-windows).
 - **Work:** With synthetic configured caps, test independent instances/restarts, concurrent all-or-none reservations, user/action/refresh/run and provider-attempt limits, duplicate identities and minute/Singapore-midnight boundaries. Derive configuration validity and zero/missing/invalid-limit cases from the security limits contract. Test daily provider-cap exhaustion/concurrency/rollover, failed-attempt accounting, preserved returned tokens, unknown absent cost/tokens and fake-429/denied/unavailable-admission fallback. No real quota exhaustion or monetary guarantee.
-- **File scope:** Proposed `tests/foundations/usage/` and local concurrency/clock/provider fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/usage/` and local concurrency/clock/provider fixtures.
 - **Prerequisite:** T-06 provides local schema; tests follow the consistent technical/security daily-cap contracts linked above.
 - **Acceptance criteria:**
   - [ ] Concurrency, persistence, boundary, telemetry and fake-429 cases record deterministic results.
@@ -287,7 +289,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3; SEC-02.1, SEC-03.1, SEC-03.2, SEC-04.1, SEC-05.1, SEC-08.1, SEC-08.2 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify shared [LLM/validation boundaries](specs/TECHNICAL-SPEC.md#llm-module) under the linked contracts.
 - **Work:** Test the linked integration HTTP/provider/feature schemas and exact data-separated prompts using fake transport. Include direct/indirect/multilingual injection, feature input allowlists, aggregate-only Prep input, references/evidence, strict whole-result rejection, no tools/writes and no invalid success-cache write. Test configured model/reasoning, disable precedence before cache/dispatch/return, no retries, bounded timeout/overflow/cancellation, empty-source handling and safe typed fallbacks. Follow security evaluation cases for these owned criteria; no screen implementation is tested here.
-- **File scope:** Proposed `tests/foundations/llm/` and contract-derived fake/invalid fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/llm/` and contract-derived fake/invalid fixtures.
 - **Prerequisite:** T-12 provides admission. Story-owned fields remain dependencies of affected endpoints; shared operation tests use contract-derived authorized input snapshots.
 - **Acceptance criteria:**
   - [ ] Each malformed boundary rejects before effects/results; all three operations/fallbacks have deterministic tests.
@@ -317,7 +319,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-05.3; SYS-09.4; SYS-10.1, SYS-10.2, SYS-10.3; SEC-07.1, SEC-07.2, SEC-09.1, SEC-09.2 — [SYS-05](specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access), [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SYS-10](specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify [cache eligibility/scopes](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope) and per-attempt/audit behavior.
 - **Work:** Test session-RLS streamed catalogue and no use cache directive; suspension/unapproval, actor/café isolation, TTL/Singapore-midnight/version/source changes, exact canonical fingerprints, failed refresh preserving an eligible old entry, refresh admission and invalid payload rejection. Check cache hits reserve no call and every permitted dispatch/failure has one reservation, without retry or extra charging-policy tests. Test content-free actor/time/outcome audit, denial/failure events, unavailable-storage fail-closed behavior, denied client infrastructure writes and clock-controlled retention cleanup preserving active state. Keep separate moderation audit records outside AI cleanup; domain confirmation security belongs to T-21/T-22.
-- **File scope:** Proposed `tests/foundations/ai-state/`, local clock/cache/accounting/audit fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/ai-state/`, local clock/cache/accounting/audit fixtures.
 - **Prerequisite:** T-12 admission is required. Catalogue/sales source fields remain story-owned; shared repository tests use contract-derived source snapshots and the linked retention/refresh policy.
 - **Acceptance criteria:**
   - [ ] Cache/eligibility/accounting/audit cases trace to contracts with controlled local evidence.
@@ -342,13 +344,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-17: Test delivery workflow configuration
 
-- **Depends on:** T-04, T-06
+- **Depends on:** None
 - **Owner role:** testing
 - **Requirements:** SYS-07.1 — [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Statically verify [environment/delivery mappings](specs/TECHNICAL-SPEC.md#environments-and-delivery).
 - **Work:** Check master/development → Preview/homebrew-dev, approved v*/production → Production/homebrew-prod, single Hobby project, sin1/Singapore declarations, separated environment credentials and teammate production approval. Deploy/migration paths must be Actions-only and exclude local seed passwords. Do not execute workflows or contact hosted services.
-- **File scope:** Proposed `tests/foundations/delivery/` and synthetic workflow fixtures.
-- **Prerequisite:** Existing test tooling; actual project settings/deploy evidence are human-only.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/delivery/` and synthetic workflow fixtures.
+- **Prerequisite:** Existing test tooling; static workflow fixtures need no runtime or database foundation; actual project settings/deploy evidence are human-only.
 - **Acceptance criteria:**
   - [ ] Static mappings/approval/credential-boundary tests record results.
   - [ ] Hosted verification is explicitly recorded as unavailable to agents.
@@ -357,13 +359,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-18: Implement delivery workflow configuration
 
-- **Depends on:** T-17, T-04, T-06
+- **Depends on:** T-17
 - **Owner role:** implementation
 - **Requirements:** SYS-07.1 — [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Author [Actions deploy/migration workflows](specs/TECHNICAL-SPEC.md#environments-and-delivery); humans execute them.
 - **Work:** Write environment-bound application/hosted migration workflows and runtime/region mappings with production approval protection. Exclude local demos/credentials; T-25 owns demo-kit creation and T-27 extends this production workflow with its post-deploy maintenance call and adds Vercel Cron, without duplicating workflow ownership. Record the human step to configure protections/regions, approve/execute workflows and verify hosted targets/migrations. Agents never run deploy, vercel or supabase db push.
 - **File scope:** Proposed delivery files under `.github/workflows/` and non-secret Vercel configuration; serialize shared CI edits.
-- **Prerequisite:** T-17 evidence; human environment protection/setup before deployment.
+- **Prerequisite:** T-17 evidence only; runtime/database foundation tasks are not prerequisites for authoring static delivery configuration; human environment protection/setup before deployment.
 - **Acceptance criteria:**
   - [ ] Static workflow tests and `bun run verify` pass.
   - [ ] Human execution/hosted verification remains required before claiming deployed acceptance.
@@ -377,7 +379,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-11.1, SYS-11.2 — [SYS-11](specs/TECHNICAL-SPEC.md#sys-11--accessible-responsive-core-flows).
 - **Description:** Verify [defined core flows](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior) once screens exist.
 - **Work:** Cover sign-up/sign-in/navigation, browsing/pickup/reviews, café/menu/orders, application/moderation and three AI panels/fallbacks. Require no unresolved automated accessibility violations; complete flows at 360 px and representative wider viewports with readable labels/errors, reachable controls and no clipping/overlap/page-level horizontal scrolling. No full-conformance/manual-assessment or invented performance target.
-- **File scope:** Proposed `tests/foundations/core-ui/` browser checks and local/fake fixtures.
+- **File scope:** Proposed `tests/e2e/core-ui/` browser checks and local/fake fixtures.
 - **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task.
 - **Acceptance criteria:**
   - [ ] Every technical core flow has accessibility and viewport completion evidence.
@@ -392,7 +394,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SYS-11.1, SYS-11.2 — [SYS-11](specs/TECHNICAL-SPEC.md#sys-11--accessible-responsive-core-flows).
 - **Description:** Correct existing screens against [core-flow UI criteria](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior).
 - **Work:** Resolve the automated accessibility and 360 px/wider layout/control findings using existing Tailwind tokens/components. Preserve labels, errors and reachable controls; no new screen, full-conformance claim or performance threshold.
-- **File scope:** Existing `src/app/` screens/styles once merged; proposed shared presentation fixes only.
+- **File scope:** Existing `src/app/` screens/styles; proposed shared presentation fixes only.
 - **Prerequisite:** BLOCKED: core specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; T-19 evidence.
 - **Acceptance criteria:**
   - [ ] Core automated accessibility checks have no unresolved violations; viewport flow checks pass.
@@ -407,7 +409,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SEC-01.1, SEC-01.2, SEC-02.2, SEC-04.2, SEC-05.2 — [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify application integration of [AI trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries) and [human confirmation](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) after the ordinary domain flows exist.
 - **Work:** Exercise every AI endpoint with anonymous/wrong-role/cross-owner/forged-reference/cross-origin requests; assert authorized RLS source selection and no unrelated Admin sales/order access. Scan provider requests, client artifacts, errors and telemetry with synthetic secret/session canaries. Verify whole-result rejection for forged IDs/labels/evidence and inert rendering/no fetching of HTML/script/URL payloads. Exercise explicit per-review Admin confirmation, reason/current-state checks, preserved review text and separate audit, including stale/forged advice. Use the linked security evaluation cases; ordinary story behavior is a prerequisite, not new scope.
-- **File scope:** Proposed `tests/foundations/ai-security/` route/database/browser integration cases and synthetic local/fake fixtures; extend existing shared test infrastructure without duplicating its owners.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/ai-security/` route/database cases and browser cases under `tests/e2e/ai-security/`, with synthetic local/fake fixtures; extend existing shared test infrastructure without duplicating its owners.
 - **Prerequisite:** BLOCKED: T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred.
 - **Acceptance criteria:**
   - [ ] Each owned SEC criterion has deterministic local/fake negative and positive evidence, including browser rendering and stale confirmation cases.
@@ -422,7 +424,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Requirements:** SEC-01.1, SEC-01.2, SEC-02.2, SEC-04.2, SEC-05.2 — [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Connect the shared AI controls to existing authorized application flows under the approved [HTTP](specs/INTEGRATION-SPEC.md#shared-http-boundary) and [security](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) contracts.
 - **Work:** Connect approved endpoints to verified session/role/scope and same-origin gates, authorized RLS source reads, minimal validated feature operations and safe result/error rendering. Close canary leakage paths and reject whole invalid results without executable text or model-driven fetches. Integrate explicit per-review confirmation with existing domain validation and T-16's audit persistence, preserving text and requiring a reason. Reuse prior guards/adapters/repositories; do not recreate story queries, domain lifecycles, screens or infrastructure owned by earlier tasks.
-- **File scope:** Existing story route/UI/domain surfaces once merged; shared server-boundary fixes under `src/server/` as required. T-14 retains provider/schema ownership and T-16 persistent cache/audit ownership; serialize shared edits.
+- **File scope:** Existing story route/UI/domain surfaces; shared server-boundary fixes under `src/server/` as required. T-14 retains provider/schema ownership and T-16 persistent cache/audit ownership; serialize shared edits.
 - **Prerequisite:** BLOCKED: all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task.
 - **Acceptance criteria:**
   - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
@@ -439,19 +441,19 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Work:** Specified SYS-12 workspace/demo-kit and SYS-13 daily-maintenance contracts, SEC-10 safeguards, POST /api/demo-kits and GET /api/internal/maintenance, with unique criterion ownership and story prerequisites in this plan.
 - **File scope:** `workflow/specs/PRODUCT-SPEC.md`, `workflow/specs/TECHNICAL-SPEC.md`, `workflow/specs/AI-SECURITY-SPEC.md`, `workflow/specs/INTEGRATION-SPEC.md`, `workflow/PLAN.md` and `workflow/handoffs/spec-demo-access/01-spec.md`.
 - **Acceptance criteria:**
-  - [x] Cross-cutting draft contracts, ownership mapping and dependent task prerequisites are recorded; human review and merge remain prerequisites for execution.
+  - [x] Cross-cutting contracts, ownership mapping and dependent task prerequisites are recorded.
 - **Status:** done
 - **Issue:** none (spec task)
 
 ### T-24: Test demo kits
 
-- **Depends on:** T-08, T-10, T-12
+- **Depends on:** T-08, T-10, T-12, T-29, T-31
 - **Owner role:** testing
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Test anonymous production demo access under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes), using local Supabase and fake AI.
 - **Work:** Derive failing-first cases for the sign-in creation control, three once-shown normal-sign-in accounts, email/code pattern, secure distinct passwords, Auth-only persistence, no credential logging/later responses and all-or-nothing rollback. Test concurrent global 10-minute/day caps, rollover, restart, unavailable counters, 429/Retry-After, no LLM call, no expiry/deletion, kit-scoped Admin operations and per-account/shared-global AI limits. Verify all seeded content and relative sales history against the owning stories, including unpublished-owner and untrusted synthetic review cases. Reuse T-08 isolation guards and T-12 counters rather than assigning their criteria again.
-- **File scope:** Proposed `tests/foundations/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases; testing owns all fixtures/mocks.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases under `tests/e2e/demo-kits/`; testing owns all fixtures/mocks.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks.
 - **Acceptance criteria:**
   - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
@@ -460,13 +462,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-25: Implement demo kits
 
-- **Depends on:** T-24, T-08, T-10, T-12
+- **Depends on:** T-24, T-08, T-10, T-12, T-29, T-31
 - **Owner role:** implementation
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Implement self-service demo kits under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
 - **Work:** Add the sign-in Create demo kit control and POST /api/demo-kits with one-time credential display, secure account/code generation, Supabase Auth-only password storage and atomic complete-kit creation/rollback. Extend T-12's durable counter/window mechanism for both global kit caps, fail closed and return the specified 429/Retry-After response. Seed the kit's Customer, approved owner/café/menu/hours/pickup rules/relative sales history, separate unpublished owner/pending application and untrusted pending reviews using owning-story states. Apply existing kit Admin controls, account/global AI limits, no LLM call and no automatic expiry/deletion. Reuse T-08 isolation and T-10 session gates; author no tests or ordinary sign-in lifecycle.
 - **File scope:** Proposed `src/app/api/demo-kits/route.ts`, server-only kit provisioning and additive migrations; existing sign-in screen after its owning story exists. Serialize migrations/shared configuration; no hosted execution.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks.
 - **Acceptance criteria:**
   - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
@@ -475,13 +477,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-26: Test daily maintenance
 
-- **Depends on:** T-16, T-18, T-25
+- **Depends on:** T-16, T-18
 - **Owner role:** testing
 - **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Test the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and production trigger configuration locally.
-- **Work:** Derive cases for constant-time bearer comparison, missing/wrong secret 401/no work, ordered independent steps, consecutive-run idempotence, at-most-one maintenance-created main Admin, no-op when one exists even after a configured-email change, creation only when no Admin or matching account exists, cross-role/workspace email-conflict outcomes with no changes, preserved changed passwords, missing main-Admin settings, showcase café/hidden owner credentials, count-only sanitized responses and no kit/user/domain deletion, password reset or LLM call. Exercise T-16 cleanup through the endpoint without taking SEC-09.2 ownership. Statically verify daily UTC cron and exactly one post-successful-production-deploy call extending T-18's workflow, with environment-specific server-only secrets. Use synthetic secrets and local seeded data; do not execute hosted triggers.
-- **File scope:** Proposed `tests/foundations/maintenance/` local endpoint/clock/fault fixtures and static Vercel/workflow checks; testing owns fixtures/mocks.
-- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and T-25 kit fixtures/surfaces. BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01).
+- **Work:** Derive cases for constant-time bearer comparison, missing/wrong secret 401/no work, ordered independent steps, consecutive-run idempotence, at-most-one maintenance-created main Admin, no-op when one exists even after a configured-email change, creation only when no Admin or matching account exists, cross-role/workspace email-conflict outcomes with no changes, preserved changed passwords, missing main-Admin settings, showcase café/hidden owner credentials, count-only sanitized responses and no kit/user/domain deletion, password reset or LLM call. Exercise T-16 cleanup through the endpoint without taking SEC-09.2 ownership. Statically verify daily UTC cron and exactly one post-successful-production-deploy call extending T-18's workflow, with environment-specific server-only secrets. Test kit no-touch under SYS-13.8 using a T-06 workspace fixture, independently of demo-kit provisioning. Use synthetic secrets and local seeded data; do not execute hosted triggers.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/maintenance/` local endpoint/clock/fault fixtures including a T-06 workspace fixture for SYS-13.8 kit no-touch, and static Vercel/workflow checks; testing owns fixtures/mocks.
+- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and a T-06 workspace fixture for SYS-13.8 kit no-touch; T-25 provisioning is not a prerequisite. BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01).
 - **Acceptance criteria:**
   - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
   - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
@@ -490,13 +492,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-27: Implement daily maintenance
 
-- **Depends on:** T-26, T-16, T-18, T-25
+- **Depends on:** T-26, T-16, T-18
 - **Owner role:** implementation
 - **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Add the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and extend delivery triggers.
 - **Work:** Add GET /api/internal/maintenance with server-only environment-specific bearer authentication, constant-time comparison and count-only sanitized outcomes. Invoke T-16's retention cleanup, ensure at most one main Admin under SYS-13.1, retaining an existing main Admin regardless of configured-email changes and reporting conflict without changes when the email is already used but no main Admin exists, then ensure the main showcase café/hidden owner. Preserve step order and independence, idempotence, changed passwords and every no-touch/no-delete/no-LLM restriction. Missing main-Admin variables report that step's failure while other steps run. Add the Vercel production cron entry and extend T-18's production deploy workflow with one maintenance call after each successful deploy; reuse its workflow/configuration ownership rather than recreating it. No tests or hosted execution.
 - **File scope:** Proposed `src/app/api/internal/maintenance/route.ts` and server-only maintenance modules; Vercel cron configuration; extend existing `.github/workflows/` production deployment from T-18. Serialize shared workflow/configuration edits.
-- **Prerequisite:** BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18. Human approval/execution remains required for production delivery.
+- **Prerequisite:** BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18; SYS-13.8 kit no-touch uses T-26's T-06 workspace fixture, without a T-25 prerequisite. Human approval/execution remains required for production delivery.
 - **Acceptance criteria:**
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
@@ -532,7 +534,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
 - **Description:** Derive failing-first coverage for the [applications](specs/stories/ADM-01-cafe-applications.md#screens) and [approved-cafés](specs/stories/ADM-02-cafe-suspension.md#screens) screens, domain transitions and accountable workspace-scoped mutations.
 - **Work:** Test both queues' ordering, ties, 20-row URL pagination, empty/conflict states, reason controls and private-data-free role gates. Cover approve/reject and suspend/un-suspend exact HTTP success bodies, strict shared HTTP/Ref validation, exact reason preservation/escaped display, session/role/workspace denials and indistinguishable missing/foreign targets. Exercise one-way decisions, owner resubmission, invalid/current-state and concurrent decisions/transitions, exactly-one atomic audit and rollback on audit failure, append-only retention and owner/Admin-only latest reasons. Assert customer RLS eligibility changes, unchanged application state on suspension, preserved menus/hours/orders/reviews and owner/existing-order access using the owning contracts. Keep café audit-entry assertions here; T-30/T-31 own the common audit screen, not these criterion IDs. Use local main/kit fixtures and shared foundation session/RLS/audit harnesses.
-- **File scope:** Proposed `tests/admin/cafe-eligibility/` unit, local database/route and browser cases with synthetic café/application/order/audit fixtures; extend existing testing infrastructure without duplicating its owners. Tests may exercise `/admin/audit` after T-31 supplies it; testing owns all fixtures/mocks.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/cafe-eligibility/` unit and local database/route cases, browser cases under `tests/e2e/cafe-eligibility/`, and synthetic café/application/order/audit fixtures; extend existing testing infrastructure without duplicating its owners. Tests may exercise `/admin/audit` after T-31 supplies it; testing owns all fixtures/mocks.
 - **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; CUS-03/CUS-04/OWN-05 must define new-order refusal and preserved existing-order lifecycles. Their approved contracts and relevant surfaces are required before the affected integration evidence can run. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility/audit repositories. Café audit-display cases additionally await T-31; no missing owner/customer behavior is inferred.
 - **Acceptance criteria:**
   - [ ] Every listed ADM criterion has named deterministic tests and recorded failing-first evidence, including races, rollback, main/kit isolation and customer eligibility.
@@ -564,7 +566,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Requirements:** ADM-03.1, ADM-03.2, ADM-03.3, ADM-03.4, ADM-03.5, ADM-03.6, ADM-03.7, ADM-03.8, ADM-03.9, ADM-03.10, ADM-03.11, ADM-03.12, ADM-03.13, ADM-03.14, ADM-03.15, ADM-03.16, ADM-03.17, ADM-03.18 — [ADM-03 criteria](specs/stories/ADM-03-review-moderation.md#acceptance-criteria).
 - **Description:** Derive failing-first tests for [manual moderation and audit screens](specs/stories/ADM-03-review-moderation.md#screens), [permissions](specs/stories/ADM-03-review-moderation.md#permissions) and the ordinary moderation route, independently of AI triage.
 - **Work:** Test initial pending/kept customer RLS visibility and hidden exclusion without inventing rating formulas. Cover Pending/Kept/Hidden tabs, security-configured page size, URL state, ordering/ties, suspended-café reviews, Singapore timestamps, row fields, escaped content and the fixed quick-pick reasons linked from [ADM-04](specs/stories/ADM-04-moderation-assistant.md#user-experience). Test the full Keep/Hide/Restore transition matrix and exact responses, reason bounds/preservation, strict HTTP/origin/Ref/action-only bodies, session/role/workspace denials, stale/concurrent actions and audit rollback. Assert immutable text/rating, denied customer edit/delete and unchanged reviews on failures. Test workspace audit order, 50-row URL pagination/action filters, seven action types, exact columns/target labels, scoped Admin-email access, excluded review text/AI events, append-only history and retention. Use contract-derived local café-action audit fixtures without requiring café mutations to be implemented or claiming their ADM criteria.
-- **File scope:** Proposed `tests/admin/moderation/` and `tests/admin/audit/` unit, local database/route and browser cases; testing-owned synthetic review/café/Admin audit and retention fixtures. Extend shared foundation harnesses.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/moderation/` and `tests/{unit,integration,e2e}/audit/` unit and local database/route cases, with browser cases under `tests/e2e/moderation/` and `tests/e2e/audit/`; testing-owned synthetic review/café/Admin audit and retention fixtures. Extend shared foundation harnesses.
 - **Prerequisite:** BLOCKED: CUS-05 must define review creation/field constraints while preserving ADM-03's initial pending state and immutability; actual review integration requires its surface. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
 - **Acceptance criteria:**
   - [ ] All 18 ADM-03 criteria have deterministic named failing-first cases, including transition races, atomic audit, workspace isolation, customer immutability and retention.
@@ -596,7 +598,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Requirements:** ADM-04.1, ADM-04.2, ADM-04.3, ADM-04.4, ADM-04.5, ADM-04.6, ADM-04.7, ADM-04.8, ADM-04.9, ADM-04.10, ADM-04.11, ADM-04.12, ADM-04.13, ADM-04.14, ADM-04.15, ADM-04.16, ADM-04.17, ADM-04.18 — [ADM-04 criteria](specs/stories/ADM-04-moderation-assistant.md#acceptance-criteria).
 - **Description:** Derive failing-first route/browser tests and evaluation evidence for the advisory [Moderation Assistant experience](specs/stories/ADM-04-moderation-assistant.md#user-experience), consuming the [fixed prompt/schema](specs/INTEGRATION-SPEC.md#moderation-assistant--adm-04) and [security evaluations](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
 - **Work:** Cover the Pending-only button, empty disablement/loading, exactly one current-page request, configured batch/action/run/call bounds and no automatic pagination/splitting/retry. Test complete five-label results, inert AI-suggestion rendering/highlights without selection/mutation, fixed editable app-text reasons and no copying of model reasons. Exercise ordinary per-review confirmation, invalid reasons, forged-label fields, stale-state conflict/removal and remaining-suggestion lifetime through one action/reload/page change. Cover main/kit session/role/workspace/origin/strict-body/source denials before admission; empty/duplicate/oversized/no-longer-pending selection is invalid, never no_source_data. Use fake captures/results for minimal encoded review-only context, injection containment, whole-result rejection, no cache/persistence, disabled/usage_limited/unavailable fallbacks, source-unavailable 503, bounded failures and content-free internal AI audit distinct from Admin audit. Reuse shared limit/provider/audit tests without claiming their SYS/SEC criteria. Record ADM-04's human-labelled evaluation cases and quality assessment without a live call or invented accuracy target.
-- **File scope:** Proposed `tests/admin/moderation-assistant/` route/browser cases, synthetic adversarial review/provider responses, controlled limit/clock/storage-fault fixtures and human-labelled evaluation records owned by testing. Extend T-30's manual-flow fixtures; do not read implementation tasks as a test-design source.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/moderation-assistant/` route cases and browser cases under `tests/e2e/moderation-assistant/`, synthetic adversarial review/provider responses, controlled limit/clock/storage-fault fixtures and human-labelled evaluation records owned by testing. Extend T-30's manual-flow fixtures; do not read implementation tasks as a test-design source.
 - **Prerequisite:** BLOCKED on CUS-05's review field/source contract and review surface, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite.
 - **Acceptance criteria:**
   - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
