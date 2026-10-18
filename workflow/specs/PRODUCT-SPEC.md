@@ -20,7 +20,19 @@ Moderation Assistant for admins.
 | --- | --- |
 | Customer | Chooses Customer at sign-up. Sees only approved, non-suspended cafés and manages only their own orders and reviews. |
 | Café owner | Chooses Café owner at sign-up. Manages only their own café, menu and orders. Their café is visible to customers only after admin approval and while not suspended. |
-| Admin | Accounts come only from seed data, never from sign-up. Approves or rejects café applications, suspends and un-suspends cafés, and hides or restores reviews with a reason. |
+| Admin | The main Admin is seeded by the maintenance job; each demo kit has its own kit-scoped Admin. Sign-up never creates an Admin. Approves or rejects café applications, suspends and un-suspends cafés, and hides or restores reviews with a reason. |
+
+There is one main workspace and one isolated workspace per demo kit. Normal
+sign-ups join the main workspace. Every role, including Admin, reads and writes
+only inside its own workspace, including through AI features and caches. Anyone
+can choose **Create demo kit** on the sign-in page without signing in; creation
+shows Customer, Café owner and Admin credentials once, for normal sign-in. Kit
+Admins have the product's Admin operations only within their kit; they cannot
+create Admins or change roles. Existing Admin reasons, audit, reversible actions
+and the prohibition on editing review text apply. Kits never expire or undergo
+automatic deletion. The main workspace has a showcase café for new sign-ups;
+applications there may stay pending indefinitely. Demo kits are the end-to-end
+testing path.
 
 An un-suspended approved café becomes visible to customers again. Un-suspending
 does not make an unapproved café visible to customers.
@@ -34,6 +46,7 @@ single responsibility principle (SRP) and don't repeat yourself (DRY).
 
 | Role | MVP screens | Stretch screens |
 | --- | --- | --- |
+| Shared | Sign-in, including **Create demo kit**. | None. |
 | Customer | Browse cafés, including the Brew Finder search box; Café page; Pre-order; My orders; Review form. | No separate screen specified for favourite cafés. |
 | Café owner | Café application; Dashboard, including sales and the Prep Advisor panel; Order queue; Menu; Café profile, including opening hours and pickup rules. | No separate screen specified for requesting a boost. |
 | Admin | Café applications; Cafés (suspend and un-suspend); Moderation queue, including the "Triage pending reviews" button; Audit log. | AI settings for on/off controls; Boost requests. |
@@ -46,7 +59,7 @@ below; this document does not supply missing behavioral decisions.
 
 | IDs | Required product behavior |
 | --- | --- |
-| SYS-01–SYS-03 | Support sign-up with Customer or Café owner selection, sign-in, sign-out, and navigation restricted to the signed-in user's role. Admin creation is limited to seed data. |
+| SYS-01–SYS-03 | Support sign-up with Customer or Café owner selection, sign-in, sign-out, and navigation restricted to the signed-in user's role. The maintenance job seeds the main Admin; each demo kit has a kit-scoped Admin; sign-up never creates an Admin. |
 | CUS-01–CUS-02 | Browse approved, non-suspended cafés. Filter by open now or open at a chosen time, drink type and area. A café page shows its menu, including sold-out items, opening hours and visible reviews. |
 | CUS-03–CUS-04 | Pre-order for a pickup slot within opening hours and the café's pickup rules, with payment at pickup. Customers view their own orders and may cancel before the café accepts the order. |
 | CUS-05 | Permit a customer to review a collected order once per order. |
@@ -88,6 +101,7 @@ unverifiable per-key limits are recorded in
 
 ### Environments, cost and UI
 
+- Peer testers reach every role on production through isolated demo kits without team action after submission.
 - Keep dev and prod deployments, databases and LLM keys separate.
 - Operate at $0 cost, using free tiers only.
 - Provide a simple, responsive and accessible UI with separate screens and
@@ -97,7 +111,7 @@ unverifiable per-key limits are recorded in
 
 | Use case | Actor and trigger | Required result and constraints | Story IDs |
 | --- | --- | --- | --- |
-| Access a role's UI | A user signs up or signs in. | Sign-up offers Customer and Café owner only; sign-in leads to the user's own role screens. Users can sign out. Admin accounts originate from seed data. | SYS-01–SYS-03 |
+| Access a role's UI | A user signs up or signs in. | Sign-up offers Customer and Café owner only; sign-in leads to the user's own role screens. Users can sign out. The maintenance job seeds the main Admin; demo kits provide kit-scoped Admins; sign-up never creates an Admin. | SYS-01–SYS-03 |
 | Find a café and drink | A customer browses, filters or enters a natural-language request. | Show eligible cafés; café pages include menus, sold-out items, hours and visible reviews. Brew Finder gives ranked suggestions with reasons and suggested items, or the filtered list sorted by rating. | CUS-01–CUS-02, CUS-06 |
 | Arrange a pickup | A customer chooses drinks and a pickup slot. | Create a pre-order within the café's hours and pickup rules, with payment at pickup. The customer can view their orders and cancel before acceptance. | CUS-03–CUS-04 |
 | Review a pickup | A customer reviews a collected order. | Allow one review per collected order, limited to the customer's own order. | CUS-05 |
