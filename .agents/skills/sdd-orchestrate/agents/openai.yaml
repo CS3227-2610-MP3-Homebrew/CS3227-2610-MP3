@@ -1,0 +1,4 @@
+interface:
+  display_name: "SDD Orchestrate"
+  short_description: "Gate a Homebrew story through the agent loop"
+  default_prompt: "Use $sdd-orchestrate to check which stage the assigned PLAN.md task pair is at, verify that stage's gate evidence and give the next agent prompt."

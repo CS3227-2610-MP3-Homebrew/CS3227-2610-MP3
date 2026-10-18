@@ -41,7 +41,8 @@ Use Bun for everything. Never run npm, yarn or pnpm.
 | `bun run lint` / `bun run typecheck` / `bun run build` | Individual checks. |
 | `bun run test` | Run unit and integration tests once; passes when no tests exist. |
 | `bun run test:e2e` | Run Playwright end-to-end tests against a production build; passes when no tests exist. |
-| `bun run verify` | Run lint, typecheck, tests, the traceability check and build, in order. CI runs this on every PR. It must pass before you report work as `completed`. A testing agent's failing-first run is the exception: it records the expected failures instead. |
+| `bun run check:specs` | Check specs, PLAN.md, test titles and workflow docs for drift: requirement and criterion ownership, task fields and coverage, links and the Developer Guide inventory. |
+| `bun run verify` | Run lint, typecheck, tests, the traceability check, the spec check and build, in order. CI runs this on every PR. It must pass before you report work as `completed`. A testing agent's failing-first run is the exception: it records the expected failures instead. |
 
 ## How work flows
 
