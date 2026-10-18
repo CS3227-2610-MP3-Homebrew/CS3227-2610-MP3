@@ -85,10 +85,14 @@ delegate with the spec, criteria and file ownership. Do not delegate automatical
 or author a substitute specification.
 
 Implementation owns application code, styles, migrations, required runtime/build
-configuration and its handoff. It may add supplementary unit tests under
+configuration and its handoff. Files under `.github/workflows/` and other
+configuration are in scope when named in the task's File scope. Implementation
+may add one row per workflow file it creates to `docs/DeveloperGuide.md`'s Workflow
+files table, with no other `docs/` edits. It may add supplementary unit tests under
 `tests/unit/` for internal code it introduces, with no criterion IDs in titles.
 Never edit, skip, delete or weaken the testing agent's tests, fixtures or test
-configuration. Acceptance-test authoring belongs to testing. Other prose and workflow files are outside implementation scope. Custom agents
+configuration. Acceptance-test authoring belongs to testing. Other prose and
+workflow files are outside implementation scope except as allowed above. Custom agents
 inherit session permissions; write limits are behavioral instructions.
 
 ## Code and security

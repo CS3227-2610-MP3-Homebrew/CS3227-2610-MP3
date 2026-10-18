@@ -49,6 +49,12 @@ its signature. List each in the report under "Interfaces defined by tests";
 the implementation agent conforms to them. Tests still assert only spec
 behaviour.
 
+Database tests target the local Supabase stack, using `bun run db:start` and
+`bun run db:reset` once the core-schema implementation task adds these scripts.
+Until that implementation exists, connection failures are expected failing-first
+results; report them separately from broken tests. Never use `supabase link`
+or hosted targets.
+
 The testing and implementation tasks are two issues sharing one branch and one
 PR, named after the testing issue. The pair covers up to three related stories
 of one role, or one story when the owner requests it. Testing runs

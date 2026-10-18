@@ -1,4 +1,29 @@
 prefix_rule(
+    pattern = ["bun", "run", "db:start"],
+    decision = "allow",
+    justification = "The local Supabase Docker stack needs to run outside the sandbox; the core-schema task adds this script.",
+    match = ["bun run db:start"],
+    not_match = [
+        "bun run db:start-all",
+        "bun run db:reset-all",
+        "supabase db reset",
+        "bun run verify",
+    ],
+)
+
+prefix_rule(
+    pattern = ["bun", "run", "db:reset"],
+    decision = "allow",
+    justification = "Replaying migrations on the local Supabase Docker stack needs to run outside the sandbox; the core-schema task adds this script.",
+    match = ["bun run db:reset"],
+    not_match = [
+        "bun run db:reset-all",
+        "supabase db reset",
+        "bun run verify",
+    ],
+)
+
+prefix_rule(
     pattern = ["bun", "run", "verify"],
     decision = "allow",
     justification = "The Next.js/Turbopack build needs a local port that the sandbox blocks; verify runs lint, typecheck, unit/integration tests, the traceability and spec checks, and build.",

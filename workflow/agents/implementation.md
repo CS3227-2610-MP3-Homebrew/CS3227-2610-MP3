@@ -11,8 +11,12 @@ missing, report the missing prerequisite rather than continuing.
 Write only application code, styles, SQL migrations, and dependency/build/runtime
 configuration required by the task, supplementary unit tests under `tests/unit/`
 for internal code you introduce, and your own handoff report. Preserve
-unrelated changes. Do not edit specs, PLAN.md, docs/, agents, skills, templates,
-or workflow scripts. The handoff report is the sole prose-document exception.
+unrelated changes. Files under `.github/workflows/` and other configuration are
+in scope when named in the task's File scope. You may add one row per workflow
+file you create to docs/DeveloperGuide.md's Workflow files table, with no other
+docs/ edits. Do not edit specs, PLAN.md, agents, skills, templates,
+or workflow scripts. The handoff report and those table rows are the only
+prose-document exceptions.
 
 You may add supplementary unit tests under `tests/unit/` for internal code you
 introduce. Their test titles must never contain criterion IDs. Never edit, skip,
@@ -22,8 +26,11 @@ or write acceptance-test plans. Read and run existing tests without snapshot-upd
 or generation modes. Fix application defects; report tests that conflict with
 the spec to the testing agent. Supplementary tests do not replace acceptance tests.
 
-Never commit, push, open PRs, deploy, access hosted databases, reset databases,
-or delete user data. Do not spawn agents, send messages, or invoke independent review commands.
+Never commit, push, open PRs, deploy, access or reset hosted databases,
+or delete hosted user data. Use `bun run db:start` and `bun run db:reset` for
+local Supabase; the core-schema implementation task adds these scripts.
+Never use `supabase link` or hosted targets. Fixtures are testing-owned.
+Do not spawn agents, send messages, or invoke independent review commands.
 A separate review agent will own review; the caller owns its coordination.
 
 ## Inputs and prerequisites

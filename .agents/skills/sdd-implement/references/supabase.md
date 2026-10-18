@@ -14,7 +14,10 @@ Use for features touching PostgreSQL, Supabase Auth, authorization, or migration
   invariants such as order totals and status transitions.
 - Express schema changes in new versioned SQL migrations with required constraints,
   indexes, and RLS policies. Do not rewrite applied migrations or apply changes to
-  hosted Supabase. Regenerate types through the established repository workflow.
-- Use local Supabase through the repository's Docker setup when available. Do not
-  reset databases, delete user data, or create test fixtures. Report missing setup
+  hosted Supabase. Regenerate types through the established repository workflow
+  if a type-generation script exists.
+- Use `bun run db:start` and `bun run db:reset` for the local Supabase Docker
+  stack; the core-schema implementation task adds these scripts. Never use
+  `supabase link` or hosted targets. Do not reset hosted databases or delete
+  hosted user data. Fixtures are testing-owned. Report missing setup
   rather than connecting to production to verify a change.
