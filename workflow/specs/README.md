@@ -2,7 +2,7 @@
 
 Write and agree specifications before implementation.
 
-## Planned specifications
+## Specifications
 
 Use several small spec files and one plan for the whole product:
 
@@ -21,8 +21,8 @@ workflow/
 | --- | --- | --- | --- |
 | `PRODUCT-SPEC.md` | Product overview; roles, including what each can and cannot access; navigation per role; and a "User stories" section grouped by role with each story's ID (for example `CUS-03`), story text and priority. This section is the source of story specs. | Coverage rules below; no separate template. | Written |
 | `TECHNICAL-SPEC.md` | Architecture, data model, row-level security, configuration and `SYS-nn` requirements from `SYS-04`. | Coverage rules below; no separate template. | Written |
-| `INTEGRATION-SPEC.md` | API contracts, exact LLM prompt text and LLM input/output schemas. | Coverage rules below; no separate template. | Planned |
-| `AI-SECURITY-SPEC.md` | Attack surfaces, mitigations, usage control, security test plan and `SEC-nn` requirements. | Coverage rules below; no separate template. | Planned |
+| `INTEGRATION-SPEC.md` | API contracts, exact LLM prompt text and LLM input/output schemas. | Coverage rules below; no separate template. | Written |
+| `AI-SECURITY-SPEC.md` | Attack surfaces, mitigations, usage control, security test plan and `SEC-nn` requirements. | Coverage rules below; no separate template. | Written |
 | `stories/<ID>-<slug>.md` | One user story per file, with its story ID as its only requirement ID (`CUS-nn`, `OWN-nn`, `ADM-nn`, or `SYS-01`–`SYS-03` for shared user-facing stories: sign up, sign in, and role-based navigation). | `workflow/templates/story-spec.md` for ordinary stories; `workflow/templates/ai-feature-spec.md` for AI stories. | Planned |
 
 Order of work: PRODUCT-SPEC → TECHNICAL-SPEC and INTEGRATION-SPEC → story specs
@@ -34,11 +34,16 @@ Keep all task planning in workflow/PLAN.md; there are no per-story planning file
 
 The spec agent uses `spec-create` for story specs and `plan-create` for PLAN.md.
 The plan contains verified conventions, links to shared design contracts, then
-tasks in dependency order: foundation tasks first, then a test task followed by
-its implementation task for each story. Every task becomes a GitHub issue.
-Group tasks under "Foundations", "Customer", "Café owner", and "Admin", with Foundations first and each role's story test task followed by its implementation task, keeping `T-nn` IDs globally unique across sections and writing cross-section dependencies by task ID.
-Only the spec agent writes PLAN.md. A feature PR changes only the Status line
-of its own task. Plans link contracts rather than copying or redefining them.
+tasks in dependency order: foundation tasks first, then test/implementation
+pairs under "Customer", "Café owner", and "Admin". A pair is two issues, one
+branch and one PR; the branch and handoff folder use the testing task's issue.
+A pair may cover up to three closely related stories of the same role that share
+screens or data; a role owner may ask for one story per pair. Keep `T-nn` IDs
+globally unique and write cross-section dependencies by task ID.
+Only the spec agent writes PLAN.md. A feature PR changes only the Status lines
+of its own pair's tasks. The session running a pair sets both tasks to `done`
+when the latest reviewer report passes. Plans link contracts rather than copying
+or redefining them.
 
 ## Requirement IDs
 
@@ -91,7 +96,10 @@ Acceptance criteria must be testable without asking the author.
 A spec is approved when its PR is merged. Specs carry no status, owner or
 open questions. Unresolved points are listed in the spec agent's report under
 **Open issues for the next step** and in the PR description, and resolved before
-merge. Testing and implementation agents work only from specs on master.
+merge. After merge, an assumption may remain open only when it records an
+external fact the team cannot verify; each Assumptions section lists only open
+assumptions and one line naming retired IDs. Testing and implementation agents
+work only from specs on master.
 Changes to an approved spec go through a new spec PR.
 
 For changes: spec PR merged → PLAN.md updated by the spec agent → tests for the affected IDs updated → code updated.

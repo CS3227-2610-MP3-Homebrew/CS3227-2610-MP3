@@ -41,7 +41,7 @@ single responsibility principle (SRP) and don't repeat yourself (DRY).
 ## Product-level functional requirements
 
 The IDs in the User stories section identify the product requirements. Detailed
-story criteria and shared contracts belong in the planned specifications listed
+story criteria and shared contracts belong in the specifications listed
 below; this document does not supply missing behavioral decisions.
 
 | IDs | Required product behavior |
@@ -73,35 +73,18 @@ below; this document does not supply missing behavioral decisions.
 - Preserve a non-AI fallback for every AI feature.
 
 Detailed safeguards, kill-switch behavior, usage limits and enforcement belong
-in the planned [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and the written
+in [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). Exact LLM prompts and input/output
-schemas belong in the planned [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md).
+schemas belong in [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md).
 
 ### Usage control
 
 The SoC LLM quota must not be easy to exhaust during normal use or peer testing.
-Usage control includes per-user limits, per-feature limits, caching and a daily
-quota cap measured in SoCLaaS dollar units, with the non-AI fallbacks specified
-above. The SoC LLM is free for SoC students, and the team incurs no cost. Dollar
-amounts track quotas only, never charges.
-
-The team supplied these documented quota defaults per SoC LLM key: **90 requests
-per minute, $80 per day and $800 per month**. The dollar values are quota units,
-not charges. These defaults are not verified limits for the project's individual
-keys; see assumption ASM-02.
-
-| Scope | Proposed app limit, subject to confirmation against actual key limits |
-| --- | --- |
-| Global | 60 requests per minute in prod; 30 requests per minute in dev. |
-| Per user | 5 AI actions per minute and 30 per day. |
-| Brew Finder | 2 LLM calls per search; identical queries cached for 10 minutes. |
-| Prep Advisor | Cached per café per day; at most 3 manual refreshes per day. |
-| Moderation Assistant | At most 20 reviews per call; at most 10 runs per admin per day. |
-| Daily quota cap measured in SoCLaaS dollar units | $5 in prod; $2 in dev. |
-
-These are proposed limits, not final enforcement contracts. Detailed limit
-definitions and enforcement belong in the planned AI security specification
-and the written TECHNICAL-SPEC.md.
+Usage control includes per-user and per-feature limits, caching and a global
+daily provider-call cap, with the non-AI fallbacks specified above. Values belong
+to [AI-SECURITY-SPEC limits](AI-SECURITY-SPEC.md#limits-and-configuration);
+unverifiable per-key limits are recorded in
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
 ### Environments, cost and UI
 
@@ -133,8 +116,8 @@ features, their non-AI fallbacks, security and usage control, and the environmen
 kill switch.
 
 Four stories are stretch: favourite cafés (CUS-07), requesting a boost (OWN-08),
-runtime Admin AI controls (ADM-05) and boost decisions (ADM-06). OWN-08 and ADM-06
-are confirmed stretch. There is no in-app payment system in either scope.
+runtime Admin AI controls (ADM-05) and boost decisions (ADM-06). There is no
+in-app payment system in either scope.
 
 ## User stories
 
@@ -184,25 +167,14 @@ are confirmed stretch. There is no in-app payment system in either scope.
 
 ## Assumptions
 
-- **[ASSUMPTION ASM-02] Actual per-key SoC LLM limits remain unconfirmed.**
-  Rationale: the team supplied documented quota defaults, but no confirmed limits
-  for each project key. Effect if wrong: the proposed app usage limits and
-  dependent technical/security contracts may need revision against the actual
-  key limits. The assessment now belongs to
-  [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md#assumptions), TECHNICAL-SPEC ASM-01; free
-  access for SoC students and the quota-only meaning of dollar units are
-  confirmed facts, not assumptions.
+Retired IDs: ASM-01–ASM-02. Per-key quota uncertainty is recorded in
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
-## Planned supporting specifications
+## Supporting specifications
 
-| Planned document | Authoritative scope |
+| Document | Authoritative scope |
 | --- | --- |
 | [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md) | Architecture, data model, row-level security, configuration, environments and usage-control enforcement. |
 | [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md) | API contracts, exact LLM prompts and LLM input/output schemas. |
 | [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) | AI attack surfaces, mitigations, environment kill switch, usage-control limits and security test plan. |
-| `stories/<ID>-<slug>.md` | One story specification per source story, including testable acceptance criteria, relevant edge cases and failure paths, linked to shared contracts. |
-
-TECHNICAL-SPEC.md is written; the integration, AI security and story
-specifications remain planned. Detailed data fields, API contracts, lifecycle
-rules and failure semantics remain outside this product-level document until
-specified in their supporting specifications.
+| [Story specifications](README.md#specifications) in `stories/<ID>-<slug>.md` | One story specification per source story, including testable acceptance criteria, relevant edge cases and failure paths, linked to shared contracts. |
