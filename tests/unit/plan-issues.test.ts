@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { existingIssueNumbers, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
+import { existingIssueNumbers, needsIssue, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
 import { parsePlan } from "../../workflow/scripts/lib/plan";
 
 const repoUrl = "https://github.com/example/homebrew";
@@ -71,4 +71,14 @@ test("Issues: existing issues match by task prefix and only unassigned Issue lin
   expect(updated).toContain(`- **Issue:** [#3](${repoUrl}/issues/3)`);
   expect(updated.match(/- \*\*Issue:\*\* unassigned/g)).toHaveLength(1);
   expect(setPlanIssue(updated, "T-02", 9, repoUrl)).toBe(updated);
+});
+
+test("Issues: only unassigned, non-removed tasks need an issue", () => {
+  const tasks = parsePlan(
+    setPlanIssue(plan, "T-01", 5, repoUrl)
+      .replace("### T-02: Implement the boundary", "### T-02: Implement the boundary (removed)")
+      .concat("\n### T-03: Specify a contract\n\n- **Issue:** none (spec task)\n"),
+  );
+  expect(tasks.map(needsIssue)).toEqual([false, false, false]);
+  expect(parsePlan(plan).map(needsIssue)).toEqual([true, true]);
 });

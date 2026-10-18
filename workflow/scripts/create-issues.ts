@@ -3,13 +3,13 @@
 // Idea adapted from MP2's issue-extractor skill; see Developer Guide credits.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
-import { existingIssueNumbers, planIssue, roleLabels, setPlanIssue } from "./lib/issues";
+import { existingIssueNumbers, needsIssue, planIssue, roleLabels, setPlanIssue } from "./lib/issues";
 import { parsePlan } from "./lib/plan";
 import { checkRepository } from "./lib/spec-checks";
 
 const usage = `Usage: bun workflow/scripts/create-issues.ts --repo OWNER/NAME [options]
 
-  --tasks T-03,T-04  Only these tasks (default: every task not marked removed).
+  --tasks T-03,T-04  Only these tasks (default: every task whose Issue field is unassigned).
   --base REF         Ref whose PLAN.md must match the working copy (default: master).
   --show-bodies      Print each new issue body in the dry run.
   --apply            Create missing labels, milestones and issues (asks to confirm).
@@ -41,7 +41,11 @@ function main(): number {
   const repoUrl = `https://github.com/${repo}`;
   let plan = readFileSync(planPath, "utf8");
   const allTasks = parsePlan(plan);
-  const tasks = allTasks.filter((task) => !task.removed && (!only || only.includes(task.id)));
+  const selected = allTasks.filter((task) => !only || only.includes(task.id));
+  for (const task of selected.filter((task) => !needsIssue(task))) {
+    console.log(`skip    ${task.id}: Issue field is "${task.fields.get("Issue")?.trim()}"`);
+  }
+  const tasks = selected.filter(needsIssue);
   const unknown = only?.filter((id) => !allTasks.some((task) => task.id === id)) ?? [];
   if (unknown.length) {
     console.error(`Unknown tasks: ${unknown.join(", ")}.`);
@@ -61,9 +65,11 @@ function main(): number {
       (milestone: { title: string }) => milestone.title,
     ),
   );
+  // Issue links always use the default branch; --base may be a remote-tracking ref.
+  const branch = run("gh", ["repo", "view", repo, "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name"]).trim();
   const numbers = existingIssueNumbers(allTasks, issues);
   const missing = tasks.filter((task) => !numbers.has(task.id));
-  const planned = missing.map((task) => planIssue(task, allTasks, { repoUrl, branch: base, issueNumbers: numbers }));
+  const planned = missing.map((task) => planIssue(task, allTasks, { repoUrl, branch, issueNumbers: numbers }));
   const newLabels = [...new Set(planned.flatMap((issue) => issue.labels))].filter((label) => !labels.has(label));
   const newMilestones = [...new Set(planned.map((issue) => issue.milestone))].filter((title) => !milestones.has(title));
 
@@ -107,7 +113,7 @@ function main(): number {
     const bodies = new Map<string, string>();
     for (const task of missing) {
       // Re-render so dependencies created earlier in this run get their numbers.
-      const issue = planIssue(task, allTasks, { repoUrl, branch: base, issueNumbers: numbers });
+      const issue = planIssue(task, allTasks, { repoUrl, branch, issueNumbers: numbers });
       const args = ["issue", "create", "-R", repo, "--title", issue.title, "--body-file", "-", "--milestone", issue.milestone];
       for (const label of issue.labels) args.push("--label", label);
       const url = run("gh", args, issue.body).trim();
@@ -117,7 +123,7 @@ function main(): number {
     }
     // Earlier issues may reference tasks created later in this run, such as a testing task's pair.
     for (const task of missing) {
-      const body = planIssue(task, allTasks, { repoUrl, branch: base, issueNumbers: numbers }).body;
+      const body = planIssue(task, allTasks, { repoUrl, branch, issueNumbers: numbers }).body;
       if (body === bodies.get(task.id)) continue;
       run("gh", ["issue", "edit", String(numbers.get(task.id)), "-R", repo, "--body-file", "-"], body);
       console.log(`linked  ${task.id}: updated references in #${numbers.get(task.id)}`);

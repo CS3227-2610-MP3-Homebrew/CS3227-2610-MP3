@@ -15,6 +15,11 @@ export interface PlannedIssue {
   milestone: string;
 }
 
+/** Only `Issue: unassigned` tasks need one; others are mapped or, like spec tasks, have none. */
+export function needsIssue(task: PlanTask): boolean {
+  return !task.removed && /^\s*unassigned\s*$/.test(task.fields.get("Issue") ?? "");
+}
+
 export function issueTitle(task: PlanTask): string {
   return `${task.id}: ${task.title}`;
 }
