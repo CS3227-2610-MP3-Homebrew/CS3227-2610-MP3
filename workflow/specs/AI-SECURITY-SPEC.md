@@ -1,7 +1,5 @@
 # Homebrew AI security specification
 
-**Last updated:** 2026-10-18
-
 **Related specs:** [Product](PRODUCT-SPEC.md), [Technical](TECHNICAL-SPEC.md),
 [specification conventions](README.md).
 
@@ -19,10 +17,10 @@ admission and cache scope remain authoritative in
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). This file adds security policy to those
 mechanisms without redefining SYS-04–SYS-11. Product stories own feature behavior
 and domain permissions. Exact HTTP/error contracts, prompt text, schemas,
-fingerprints and source revisions belong to the not-yet-written
-INTEGRATION-SPEC.md in the [spec registry](README.md#planned-specifications).
-Story specifications are also not yet written. No missing contract is treated
-as an existing implementation or an implicit permission.
+fingerprints and source revisions belong to
+[INTEGRATION-SPEC.md](INTEGRATION-SPEC.md). Story-owned contracts are identified
+in the [spec registry](README.md#specifications). No missing contract grants
+an implicit permission.
 
 ## Assets, actors and trust boundaries
 
@@ -83,11 +81,9 @@ of tools/writes contain the result even when an injection is not detected.
 
 ### Limits and configuration
 
-The product's usage limits and the additional feature call limits below are
-the human-confirmed initial app policy (former ASM-01). These limits are app
-caps, not verified provider entitlements. They use the database-clock
-fixed-minute and Singapore-day windows
-already defined by the [technical contract](TECHNICAL-SPEC.md#rate-windows).
+The usage limits and feature call limits below are the app policy. These
+limits are app caps, not verified provider entitlements. They use the
+database-clock fixed-minute and Singapore-day windows already defined by the [technical contract](TECHNICAL-SPEC.md#rate-windows).
 
 All keys below are server-only nonnegative integer configuration. Zero denies
 the relevant work. Missing/invalid required policy configuration disables AI
@@ -118,22 +114,20 @@ not require a second call or permit a retry after failure. Moderation requests
 over the configured batch size are rejected before action admission, not split
 into unlimited calls.
 
-The global daily provider-call cap is 100 attempts in prod and 40 in dev,
-confirmed by the human on 2026-10-18. Every dispatched attempt counts, including
+The global daily provider-call cap is 100 attempts in prod and 40 in dev. Every
+dispatched attempt counts, including
 timeouts, provider errors, 429s and invalid output; cache hits make no provider
 attempt. Admission atomically enforces this cap alongside the other applicable
 call limits, using Singapore calendar days and the database clock. Exhaustion
 uses the feature's non-AI fallback.
 
-The product's proposed $5/$2 daily quota budgets remain planning inputs, not
-measured or enforced spend limits. For 100/40 calls to fit those respective
-budgets, each call would need to consume at most $0.05 quota units; no evidence
-establishes that bound. The call cap therefore makes no monetary-quota guarantee.
+The call cap makes no monetary-quota guarantee.
 Actual per-key entitlements remain unknown under
 [TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
-The documented 90 requests/minute, $80/day and $800/month are unverified per-key
-planning defaults. Fixed-minute buckets can permit a boundary burst that exceeds
+The documented per-key planning defaults remain unverified under
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions). Fixed-minute buckets can
+permit a boundary burst that exceeds
 a provider's differently defined rolling window. Provider 429 always uses the
 fallback; no live exhaustion probe is part of verification. No monthly monetary
 enforcement is claimed.
@@ -175,8 +169,8 @@ remain in the stretch story contract. No runtime controls are added to the MVP.
 
 Use no automatic provider retries and a 30-second maximum
 provider-attempt duration, with at most 65,536 UTF-8 bytes each for the serialized
-feature context and response body. These human-confirmed safety ceilings
-(former ASM-04) are not performance guarantees. Integration schemas can impose smaller field/payload
+feature context and response body. These safety ceilings are not performance
+guarantees. Integration schemas can impose smaller field/payload
 limits. Oversized input is rejected before dispatch; response overflow, timeout,
 transport/non-success response, malformed JSON, schema/semantic failure or
 unavailable admission stops the operation and invokes the fallback. Never
@@ -197,9 +191,10 @@ HTTP status codes and typed reason identifiers belong to INTEGRATION-SPEC.
 
 ## Cache, rendering and human confirmation
 
-The [technical cache contract](TECHNICAL-SPEC.md#cache-eligibility-and-scope)
-owns Brew Finder's same-actor 10-minute cache and Prep Advisor's café/day cache,
-including source/model/contract binding and refresh. Moderation has no reusable
+Brew Finder's same-actor cache expires 10 minutes after creation; Prep Advisor's
+café/day cache expires at the next Singapore midnight. The
+[technical cache contract](TECHNICAL-SPEC.md#cache-eligibility-and-scope) defines
+source/model/contract binding and refresh. Moderation has no reusable
 AI-result cache. A rejected or invalid result is never cached as a success.
 Failed refreshes do not overwrite a valid cache; that refresh request receives
 the fallback, and later ordinary requests may reuse the old result only if it
@@ -237,7 +232,7 @@ human's moderation reason remain in their separate domain/audit records.
 
 Retain AI audit events for 30 days, expired AI cache entries
 for at most 24 hours after expiry, and closed usage-counter/admission windows
-for 7 days after their end (human-confirmed former ASM-05).
+for 7 days after their end.
 Cleanup applies only to expired/closed records;
 active windows and single-use admission state cannot be reset by cleanup or a
 deploy. Cache expiry is enforced at read time even if cleanup is delayed. These
@@ -399,12 +394,7 @@ retention, provider-side deletion, sales calculations or new Admin permissions.
 
 ## Assumptions
 
-None introduced by this specification remain unconfirmed. On 2026-10-17 the
-human adopted former ASM-01, ASM-04 and ASM-05 as written, rejected the global
-daily call-cap addition (ASM-02), and removed the need for the additional
-charging policy (ASM-03). On 2026-10-18 the human reversed the ASM-02 rejection
-and adopted the previously proposed daily cap of 100 prod / 40 dev attempts.
-All five identifiers are retired and must not be reused.
-The adopted policies appear in their relevant sections above. These decisions
-do not claim that a spec PR has merged. Existing per-key uncertainty remains
-TECHNICAL-SPEC ASM-01.
+Retired IDs: ASM-01–ASM-05.
+
+Per-key uncertainty remains
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).

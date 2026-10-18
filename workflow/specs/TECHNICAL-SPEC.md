@@ -1,7 +1,5 @@
 # Homebrew technical specification
 
-**Last updated:** 2026-10-18
-
 ## Purpose and boundaries
 
 This specification defines the shared architecture, data ownership, RLS,
@@ -11,31 +9,28 @@ SYS-04; the shared sign-up, session and navigation stories remain in the product
 specification. It supplies foundation contracts, not implementation steps.
 
 Exact HTTP contracts, LLM prompts and LLM input/output schemas belong to the
-planned [INTEGRATION-SPEC.md](README.md#planned-specifications). Attack surfaces,
+[INTEGRATION-SPEC.md](README.md#specifications). Attack surfaces,
 mitigations, usage-limit values, kill-switch semantics
 and the security test plan belong to
 [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md). Detailed order, café,
-review, sales and account behavior belongs to the planned
-[story specifications](README.md#planned-specifications). Those documents must
+review, sales and account behavior belongs to the
+[story specifications](README.md#specifications). Those documents must
 resolve their contracts before dependent implementation; this specification
 does not fill their gaps.
 
 ## Assumptions
 
-ASM-01 is the sole remaining assumption. Former ASM-02–ASM-07 were confirmed
-as decisions (with the accessibility amendment below); their IDs are retired
-and must never be reused.
+Retired IDs: ASM-02–ASM-07.
 
 **[ASSUMPTION ASM-01] Individual SoCLaaS key limits remain unobservable; use the
-documented defaults only as planning assumptions.** The team supplied a live
-probe on 17 October 2026 returning 200 without rate-limit or cost headers and
-a key-info endpoint returning 404. Real per-key limits cannot be established
+documented defaults only as planning assumptions.** A live probe returned 200
+without rate-limit or cost headers and a key-info endpoint returned 404. Real
+per-key limits cannot be established
 without exhausting a key. The documented defaults are 90 requests/minute,
 $80/day and $800/month, expressed in quota units and free for SoC students.
 Rationale: these observations do not confirm either project key's entitlement.
 Effect if wrong: app limits must be revised; they cannot promise quota safety
-against an unknown smaller entitlement. This assumption replaces dependence on
-PRODUCT-SPEC ASM-02; no new live probe is required or authorized.
+against an unknown smaller entitlement.
 
 ## Architecture
 
@@ -70,11 +65,10 @@ account fields, role changes and multiple-role accounts remain story decisions.
 ### Decisions: rendering, authentication and caches
 
 Keep `cacheComponents: true` and `partialPrefetching: true` in `next.config.ts`.
-The team selected the framework default for new apps: it matches the bundled
-docs agents read, is slated to become mandatory in the next major release, and follows
-the pattern of Vercel's own with-supabase example. The new-app/example rationale
-is supplied by the team; the specific framework behavior below was checked in
-the installed Next.js documentation.
+These framework defaults for new apps match the bundled documentation, are
+slated to become mandatory in the next major release, and follow the pattern
+of Vercel's with-supabase example. The framework behavior below follows the
+installed Next.js documentation.
 
 - Refresh Supabase sessions in `src/proxy.ts`. Recheck authentication and
   authorization near every protected data read or mutation; proxy and UI checks
@@ -85,8 +79,8 @@ the installed Next.js documentation.
   private data. Per-user and RLS-dependent reads stream behind `Suspense`.
 - The MVP uses no `"use cache"` directive in `src/`. All catalogue reads use
   session-bound Supabase clients under RLS and stream behind `Suspense`. The
-  team removed catalogue caching because it provided no meaningful benefit at
-  this scale and the proposed path required bypassing RLS.
+  MVP has no catalogue cache because caching gives no meaningful benefit at
+  this scale and a cached read path would bypass RLS.
 - If catalogue caching is introduced in future, its cookie-less Supabase client
   must use the publishable key under RLS. A secret key must never be used inside
   or passed to a `"use cache"` scope. This future constraint does not introduce
@@ -98,8 +92,8 @@ the installed Next.js documentation.
   recorded with its route and reason in the PR. It must be placed as low as
   possible; no app-wide opt-out substitutes for the selected rendering pattern.
   This export changes navigation/static-shell validation, not permissions.
-- Brew Finder's 10-minute query cache, Prep Advisor's daily cache, rate limits
-  and daily caps live in Postgres. Plain `"use cache"` uses per-instance memory
+- Brew Finder's query cache, Prep Advisor's daily cache, rate limits and daily
+  caps live in Postgres. Plain `"use cache"` uses per-instance memory
   and cannot guarantee persistence across serverless invocations. Persistent
   enforcement never relies on process memory or the Next.js cache store.
 
@@ -210,7 +204,7 @@ deployment configuration, not inferred from an API key's contents.
 | `SOCLAAS_API_KEY` | Server-only environment-specific key, never shared between dev and prod; absent from CI. |
 | Model and reasoning configuration | Team-tested model `qwen3.5:9b` with `reasoning_effort: "none"`; the model remains configurable. Exact provider request schema belongs to INTEGRATION-SPEC. |
 | Environment identity | Distinguishes local, CI, dev and prod; selects the correct provider/database/limit configuration and cache/counter namespace. |
-| Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Final values and meanings belong to AI-SECURITY-SPEC; no proposed product number becomes final by appearing here. |
+| Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Values and meanings belong to AI-SECURITY-SPEC. |
 | `AI_GLOBAL_CALLS_PER_DAY` | Server-only nonnegative integer global provider-attempt cap per environment/Singapore day, enforced atomically alongside other call limits. Values and validation policy belong to [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration). |
 | Timezone | `Asia/Singapore` for daily resets and opening-hours/business-date calculations. |
 | Deployment credentials | Environment-specific Supabase migration database URL and Vercel deployment credentials held only in GitHub environment secrets for Actions. Never part of public application configuration. |
@@ -218,19 +212,13 @@ deployment configuration, not inferred from an API key's contents.
 ### Configuration names
 
 Application configuration uses `APP_ENV` (`local | ci | dev | prod`),
-`SOCLAAS_MODEL` and `SOCLAAS_REASONING_EFFORT`. Limit configuration keys and
-exact deployment credential names remain for AI-SECURITY-SPEC/delivery
-configuration.
+`SOCLAAS_MODEL` and `SOCLAAS_REASONING_EFFORT`. Limit configuration keys are
+defined in [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration); exact
+deployment credential names belong to delivery configuration.
 
 Supabase's projects use the publishable/secret key pair, Data API/RLS settings
 above, and email confirmation off in both dev and prod. No custom SMTP or
 production confirmation-on requirement is introduced.
-
-The starter manifest currently includes Next.js, React, TypeScript and Tailwind.
-Zod, `openai`, Supabase client/SSR support, shadcn/ui, Vitest and Playwright are
-target dependencies rather than evidence of installed integrations. In
-particular, shadcn/ui, Vitest, Playwright and `@supabase/ssr` are not yet installed.
-Dependency installation and test authoring are outside this specification PR.
 
 ## LLM module
 
@@ -262,16 +250,12 @@ Per-key quota uncertainty is recorded in TECHNICAL-SPEC ASM-01.
 
 The app enforces caps below documented defaults and handles provider throttling
 through fallbacks. It stores token counts from responses where present, without
-inventing tokens or cost when absent. Because provider cost is not reported,
-the product's proposed $5/$2 daily quota budgets remain planning inputs, not
-measurable spend counters. The human decision on 2026-10-18 supersedes the
-2026-10-17 removal of the global daily provider-call cap. As specified by the
-authoritative [AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration),
-`AI_GLOBAL_CALLS_PER_DAY` limits provider attempts to 100 in prod and 40 in dev
-per Singapore calendar day. These are call-count limits, not monetary budgets
-or guarantees about provider quota consumption. Adopted per-user, per-feature,
-global-minute and global-daily limits remain defined by that security policy.
-Actual per-key quota confirmation is still unavailable.
+inventing tokens or cost when absent. The authoritative
+[AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration) defines
+per-user, per-feature, global-minute and global-daily limit values.
+`AI_GLOBAL_CALLS_PER_DAY` limits provider attempts per Singapore calendar day;
+these are call-count limits, not monetary budgets or guarantees about provider
+quota consumption. Actual per-key quota confirmation remains unavailable.
 
 ### Admission and windows
 
@@ -303,8 +287,8 @@ and makes no call. A dispatched attempt remains charged on 429, timeout,
 transport failure or invalid output; no refund is inferred. A retry or second
 call requires its own admission. Reusing the same admission identity does not
 authorize a second dispatch. The provider may have consumed quota even when the
-result is unavailable. This confirmed counting mechanism does not define a
-user-facing AI action.
+result is unavailable. This counting mechanism does not define a user-facing
+AI action.
 
 The same atomic reservation includes the environment's global daily
 provider-attempt counter alongside global-minute, feature and operation call
@@ -323,10 +307,9 @@ a cache hit is distinguishable from a provider attempt. A manual refresh records
 a separate refresh event, and a cache miss/rebuild records any actual dispatched
 calls. The mechanism can independently enforce configured action, refresh and
 call counters. Missing or invalid required limit configuration cannot authorize
-a provider dispatch. The human decision on 2026-10-17 removes the additional
-action/cache-hit/failure/refresh charging-policy requirement. It does not remove
-the adopted usage limits or the per-attempt provider reservation above. No
-provider call bypasses its reservation.
+a provider dispatch. No additional action/cache-hit/failure/refresh charging
+policy is required. The usage limits and per-attempt provider reservation above
+apply to every provider call.
 
 If Postgres admission cannot be established, no provider call is dispatched and
 the feature uses its non-AI fallback. Concurrent serverless invocations share
@@ -346,7 +329,8 @@ INTEGRATION-SPEC.
 
 Brew Finder cache reuse is limited to the same actor and authorized input/source
 snapshot; Prep Advisor reuse is limited to the same café, business date and
-aggregate-data version. Brew Finder entries expire 10 minutes after creation;
+aggregate-data version. Brew Finder entries expire after the duration defined in
+[AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation);
 Prep Advisor entries expire at the next Singapore midnight, with a successful
 authorized manual refresh replacing the eligible daily result. Manual refresh
 bypasses the existing result, not admission. Moderation Assistant has no reusable
@@ -457,7 +441,7 @@ availability target is introduced.
   denied/unavailable admission, or a fake provider 429, Brew Finder offers its
   filtered list sorted by rating,
   Prep Advisor its top-items table and Moderation Assistant its manual queue.
-  Exact remaining errors/kill-switch cases await the security/integration
+  Exact remaining errors/kill-switch cases follow the security/integration
   contracts rather than a new fallback policy here.
 
 ### SYS-09 — Durable usage enforcement
@@ -496,7 +480,9 @@ availability target is introduced.
 
 - **SYS-10.1:** Postgres stores eligible AI results under the
   [cache scope decision](#cache-eligibility-and-scope). Tests with a controlled
-  clock check Brew Finder expiry at 10 minutes and Prep Advisor's
+  clock check Brew Finder expiry at its
+  [security-defined duration](AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation)
+  and Prep Advisor's
   Singapore-midnight rollover, scope isolation, source/model/schema changes
   and manual refresh bypassing a cached result while retaining admission.
 - **SYS-10.2:** Every cache hit rechecks role/ownership and current catalogue
