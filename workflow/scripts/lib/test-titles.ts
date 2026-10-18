@@ -12,7 +12,13 @@ export function testFiles(directory: string): string[] {
   });
 }
 
-export function testTitles(source: string): string[] {
+export interface TestTitle {
+  title: string;
+  /** False for tests that do not run or are expected to fail. */
+  coverage: boolean;
+}
+
+export function testTitles(source: string): TestTitle[] {
   // Tokenize without executing tests. Comments and complete strings stay opaque,
   // so IDs in test bodies, fixtures, imports or comments do not imply coverage.
   const tokens = Array.from(
@@ -21,17 +27,21 @@ export function testTitles(source: string): string[] {
     ),
     (match) => match[0],
   ).filter((token) => !token.startsWith("//") && !token.startsWith("/*"));
-  const titles: string[] = [];
+  const titles: TestTitle[] = [];
   for (let index = 0; index < tokens.length; index++) {
     if (!["test", "it"].includes(tokens[index]) || tokens[index - 1] === ".") continue;
     let cursor = index + 1;
     let isTest = true;
+    let coverage = true;
     while (tokens[cursor] === ".") {
       const modifier = tokens[cursor + 1];
+      // Parse every supported modifier, but tests that do not run or are
+      // expected to fail cannot provide coverage.
       if (!["only", "skip", "todo", "concurrent", "sequential", "fails", "fail", "fixme", "each", "for"].includes(modifier)) {
         isTest = false;
         break;
       }
+      if (["skip", "todo", "fixme", "fails", "fail"].includes(modifier)) coverage = false;
       cursor += 2;
       // Parameterized Vitest titles follow the data call: test.each([...])("...").
       if (["each", "for"].includes(modifier) && tokens[cursor] === "(") {
@@ -46,7 +56,7 @@ export function testTitles(source: string): string[] {
     const title = tokens[cursor + 1];
     // Require a literal title; dynamic/interpolated names need explicit IDs.
     if (isTest && tokens[cursor] === "(" && title && /^["'`]/.test(title) && !title.includes("${")) {
-      titles.push(title.slice(1, -1));
+      titles.push({ title: title.slice(1, -1), coverage });
     }
   }
   return titles;

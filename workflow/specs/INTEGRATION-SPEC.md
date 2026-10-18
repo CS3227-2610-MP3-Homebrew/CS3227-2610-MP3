@@ -1,7 +1,5 @@
 # Homebrew integration specification
 
-**Last updated:** 2026-10-17
-
 **Related specs:** [Product](PRODUCT-SPEC.md), [Technical](TECHNICAL-SPEC.md),
 [AI security](AI-SECURITY-SPEC.md), [spec conventions](README.md).
 
@@ -19,22 +17,19 @@ admission and cache scope. AI-SECURITY-SPEC owns SEC-01–SEC-09, security ceili
 limits, disable precedence, retention and failure policy. References below are
 traceability links, not competing requirement definitions.
 
-Statements marked `[ASSUMPTION ASM-nn]` are reviewable proposals, not approved
-contracts. The Assumptions section explains their rationale and consequences.
 Missing story-owned contracts are identified under Contract dependencies;
-this document does not supply their product decisions. No approval or
-implemented integration is claimed.
+this document does not supply their product decisions.
 
 ## Contract dependencies
 
-Story specs are planned in the [spec registry](README.md#planned-specifications)
-and do not exist at the time of drafting. The following boundaries require
-their owning story contracts before affected endpoints can be finalized.
+Story contracts belong in the [spec registry](README.md#specifications).
+The following boundaries require their owning story contracts before affected
+endpoints can be finalized.
 
 | Scope | Owning IDs | Contract reserved to the owning story |
 | --- | --- | --- |
 | Accounts and role navigation | SYS-01–SYS-03 | Account fields, validation, redirect paths, session errors and account lifecycle. Admin creation remains seed-only. |
-| Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Filter fields and time semantics, rating calculation/ties, candidate selection/size, suggested-item availability, result count and empty-result behavior. |
+| Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Filter fields and time semantics, rating calculation/ties, candidate selection/size, suggested-item availability, result count and empty-result behavior. Reconcile Brew Finder's empty model result with CUS-06's result-count contract. |
 | Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Pickup representation, quantities, price snapshots, lifecycle transitions, cancellation races, duplicate submission and conflict responses. |
 | Reviews and moderation | CUS-05, ADM-03–ADM-04 | Rating/text constraints, pending membership/order, concurrent review changes and hide/restore audit transaction. |
 | Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Profile/menu fields, money representation, hours, application transitions and suspension effects on existing activity. |
@@ -59,7 +54,7 @@ Cookie-authenticated AI and mutation routes require same-origin protection
 (SEC-01). Personalized AI content cannot enter public HTTP/framework caches
 (SEC-07). Unauthorized requests receive no protected AI or fallback data.
 
-**HTTP conventions — confirmed decision (former ASM-01).** The following
+**HTTP conventions.** The following
 transport conventions and status mappings apply to application-owned JSON endpoints.
 Provider HTTP errors are translated; their bodies and headers are not forwarded.
 
@@ -82,12 +77,14 @@ Provider HTTP errors are translated; their bodies and headers are not forwarded.
 | HTTP | Code | Meaning |
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | Malformed JSON, schema-invalid input or invalid source selection. |
-| 401 | `UNAUTHENTICATED` | No valid authenticated session. |
+| 401 | `UNAUTHENTICATED` | No valid authenticated session, or a missing/wrong maintenance bearer secret. |
 | 403 | `FORBIDDEN` | Wrong role or failed same-origin protection. |
 | 404 | `NOT_FOUND` | Requested record absent or outside the caller's authorized record scope. |
 | 405 | `METHOD_NOT_ALLOWED` | Unsupported HTTP method; `Allow` advertises the supported method. |
-| 413 | `PAYLOAD_TOO_LARGE` | Application request body exceeds the proposed limit below. |
+| 409 | `STATE_CONFLICT` | The target record is in scope but not in the state the operation requires; nothing changes. |
+| 413 | `PAYLOAD_TOO_LARGE` | Application request body exceeds the limit below. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | A JSON endpoint receives another content type. |
+| 429 | `RATE_LIMITED` | Demo-kit creation limit reached; `Retry-After` and a clear safe message say when to try again. |
 | 500 | `INTERNAL_ERROR` | Unexpected application failure; no protected data or exception detail. |
 | 503 | `SOURCE_UNAVAILABLE` | Authorized source/fallback cannot be safely obtained. |
 
@@ -96,14 +93,34 @@ authorized role's fallback (SEC-08). Its HTTP status is 200 with
 the fallback result below, including on app limits or provider 429. Therefore
 an HTTP client cannot mistake provider throttling for an authentication error.
 A source failure does not produce a fabricated successful empty fallback.
-Domain mutation conflict and duplicate-submission semantics are excluded until
-the owning story defines them.
+Domain operations use `409 STATE_CONFLICT` for state conflicts;
+duplicate-submission semantics remain with their owning stories.
+
+### Demo access and maintenance routes
+
+These are the only additional shared routes. Workspace, creation and maintenance
+behavior is authoritative in [SYS-12 and SYS-13](TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits);
+security controls are in [SEC-10](AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+
+| Method and route | Authorization and transport | Successful response |
+| --- | --- | --- |
+| `POST /api/demo-kits` | No session required. Shared JSON conventions and the same exact trusted-origin check used for cookie-authenticated POSTs apply even to anonymous creation. | `{requestId, kit: {accounts: [{role, email, password}]}}` with exactly the Customer, Café owner and Admin accounts; `Cache-Control: private, no-store`. |
+| `GET /api/internal/maintenance` | `Authorization: Bearer <CRON_SECRET>` using the environment-specific server-only secret and constant-time comparison. A missing/wrong secret returns 401 `UNAUTHENTICATED` and performs no work. | `{requestId, steps: [{step, outcome, count}]}` with per-step outcome counts only, never secrets, emails or record contents. |
+
+Kit emails/passwords follow SYS-12; credentials are returned only on successful
+creation and never in later responses. A kit-cap refusal uses the shared error
+shape with 429 `RATE_LIMITED`, a `Retry-After` header and a clear safe message
+saying when to try again. This code does not change AI usage-limit fallback
+responses, which remain HTTP 200. Maintenance returns outcomes for the ordered
+cleanup, main-Admin and showcase-café steps; a step failure does not prevent
+later steps. Both routes use the shared private no-store JSON response
+conventions; the maintenance GET authenticates with the bearer rather than a
+cookie session.
 
 ### AI routes and result envelope
 
-**[ASSUMPTION ASM-02] AI endpoint names and transport schemas.** Each operation
+**AI endpoint names and transport schemas.** Each operation
 is a POST, uses the shared JSON conventions, and returns the following union.
-These route names and JSON names are proposals; they do not exist in the starter.
 
 | Route | Role | Request | Authorized server source | Story |
 | --- | --- | --- | --- | --- |
@@ -119,7 +136,7 @@ the selection must be nonempty and within `AI_MODERATION_REVIEWS_PER_CALL`.
 Invalid selection is rejected before admission and is never silently split.
 The ordinary pending-queue query/order remains ADM-03–ADM-04's contract.
 
-Proposed success union (object notation denotes schemas, not literal values):
+Success union (object notation denotes schemas, not literal values):
 
 ```text
 AI result:
@@ -138,7 +155,7 @@ instruction to show the ordinary authorized domain view; it contains no AI
 content and does not redefine that view's still-missing data schema. This makes
 fallback transport independent of sales, catalogue and review pagination shapes.
 
-Under ASM-02, `disabled` covers disabled mode and missing live credentials;
+`disabled` covers disabled mode and missing live credentials;
 `usage_limited` covers configured admission denial and provider 429;
 `no_source_data` covers a source set that the owning story declares insufficient;
 `unavailable` covers other configuration, admission-service, transport, timeout,
@@ -147,8 +164,8 @@ The UI shows a brief safe explanation and labels successful advice as AI advice.
 
 ## Schema vocabulary and bounds
 
-**Integration schema vocabulary and normal bounds — confirmed decision
-(former ASM-03).** These constraints apply to all feature input/output/cache schemas below.
+**Integration schema vocabulary and normal bounds.** These constraints apply
+to all feature input/output/cache schemas below.
 They do not define the underlying database column types or domain edit limits.
 
 | Type/bound | Exact definition |
@@ -178,12 +195,12 @@ serialization does not change the Singapore business-time interpretation.
 Story-owned aggregation periods and opening-hours/pickup rules remain subject
 to their owning contracts.
 
-The confirmed security ceilings remain at most 65,536 UTF-8 bytes each for
+The security ceilings are at most 65,536 UTF-8 bytes each for
 serialized feature context and provider response body, 30 seconds per provider
 attempt, and zero automatic retries. See
 [bounded failure](AI-SECURITY-SPEC.md#disable-failure-and-fallback-behavior).
 Exceeding the feature-context ceiling prevents dispatch and yields fallback;
-HTTP-body overflow uses the confirmed 413 mapping. Provider-envelope overflow
+HTTP-body overflow uses the 413 mapping. Provider-envelope overflow
 or invalid output yields fallback and never a cached success.
 
 ## SoCLaaS transport
@@ -195,10 +212,10 @@ choose a destination, model, credential, trusted prompt or tools. Configuration
 validation and fake/disabled selection follow
 [the technical contract](TECHNICAL-SPEC.md#configuration-names).
 
-**Provider wire contract — confirmed decision (former ASM-04).** Use one non-streaming request
-per feature action on a cache miss, including Brew Finder. The security cap of
-two Brew calls permits fewer calls; this contract adds no extraction/subcall or
-repair sequence. Failure stops the action. SDK retry configuration is zero.
+**Provider wire contract.** Use one non-streaming request
+per feature action on a cache miss, including Brew Finder. The
+[security Brew-call cap](AI-SECURITY-SPEC.md#limits-and-configuration) permits
+fewer calls; this contract adds no extraction/subcall or repair sequence. Failure stops the action. SDK retry configuration is zero.
 
 The JSON request body has these fields only:
 
@@ -235,9 +252,9 @@ authorized by this document.
 
 ## Exact feature prompts and schemas
 
-**[ASSUMPTION ASM-05] Prompt and feature-schema proposal.** All three literal
-system messages, model contexts, output shapes and semantic rules in this
-section are proposed as one versioned contract. The system message is exactly
+**Prompt and feature-schema contract.** All three literal system messages,
+model contexts, output shapes and semantic rules in this section form one
+versioned contract. The system message is exactly
 the fenced text, with LF line endings and no terminal newline. Only the user
 message contains variable JSON data; source strings are JSON-escaped, never
 interpolated into the trusted system message. Prompt wording is a mitigation,
@@ -269,7 +286,7 @@ order is the ranking. Resolve names/navigation from authorized domain records,
 never model-generated URLs. Recheck eligibility before return, including caches;
 an invalid suggestion invalidates the entire AI result.
 
-Exact proposed system message:
+Exact system message:
 
 ```text
 You are Homebrew Brew Finder. Rank the supplied cafe candidates for the supplied query and suggest one supplied item for each cafe you recommend.
@@ -278,9 +295,8 @@ Use only cafeId and itemId pairs present in candidates. Do not repeat a cafe. Do
 Return only one JSON object with exactly this shape: {"suggestions":[{"cafeId":"supplied reference","itemId":"supplied reference","reason":"short plain text"}]}. Each reason must contain 1 to 300 Unicode code points. Do not return Markdown, HTML, links, tools or additional fields. If no supplied candidate matches, return {"suggestions":[]}.
 ```
 
-The proposed empty model result must be reconciled with CUS-06's result-count
-contract before approval. A nonempty eligible source is not a guarantee that
-the model finds a match. Semantic checks establish references and bounds;
+A nonempty eligible source is not a guarantee that the model finds a match.
+Semantic checks establish references and bounds;
 reason quality and ranking relevance require evaluation rather than a claim
 that arbitrary natural-language truth can be proved by a schema.
 
@@ -312,17 +328,17 @@ its actual dates/length are story-owned. Each advice item/weekday pair is
 unique; its evidence list is nonempty/distinct and refers only to supplied
 aggregates for that item. The model never authors a quoted number.
 
-Under ASM-05 the server produces `PrepResult`: evidence quantities are copied
+The server produces `PrepResult`: evidence quantities are copied
 exactly from matched aggregates and `reason` is `Prepare {direction} of this
 item on weekday {weekday}; recorded quantities: {quantities}.` Quantities use
 base-10 integer strings joined by `, ` in evidence-ID order. If the generated
-reason exceeds `Reason`, the full AI result is invalid. This proposed text
+reason exceeds `Reason`, the full AI result is invalid. This text
 ensures each suggestion quotes its supporting figures without accepting
 invented numerical prose. It does not establish that an item should be prepared
 more/less; that decision basis and evaluation remain OWN-07's contract.
 Nothing changes inventory, menu or orders.
 
-Exact proposed system message:
+Exact system message:
 
 ```text
 You are Homebrew Prep Advisor. Suggest which supplied items to prepare more or less of by weekday using only the supplied sales aggregates. These are suggestions for a human, never instructions to change records.
@@ -351,7 +367,7 @@ source. A review changed since classification cannot be treated as classified
 for its new text; confirmation repeats current domain checks. No classification
 automatically hides/restores a review or edits text (SEC-05).
 
-Exact proposed system message:
+Exact system message:
 
 ```text
 You are Homebrew Moderation Assistant. Classify each supplied pending review and give a short plain-text reason. Your labels are advice for an admin; you cannot hide, restore, edit or approve anything.
@@ -360,21 +376,22 @@ Return exactly one classification for each supplied reviewId, without duplicate 
 Return only one JSON object with exactly this shape: {"classifications":[{"reviewId":"supplied reference","label":"ok","reason":"short plain text"}]}. Each reason must contain 1 to 300 Unicode code points. Do not return Markdown, HTML, links, tools or additional fields.
 ```
 
-Label precedence above is an ASM-05 proposal; the five labels themselves come
+Label precedence follows the prompt above; the five labels themselves come
 from ADM-04. Classification accuracy needs evaluation with human-labeled cases;
 schema-valid text is not evidence that a label is correct.
 
 ## Cache payload, fingerprints and source revisions
 
 Cache scope and expiry remain owned by
-[TECHNICAL-SPEC](TECHNICAL-SPEC.md#cache-eligibility-and-scope): same-actor Brew
-reuse for 10 minutes; same-café/business-date Prep reuse through next Singapore
+[TECHNICAL-SPEC](TECHNICAL-SPEC.md#cache-eligibility-and-scope), with durations
+defined in [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation):
+same-actor Brew reuse; same-café/business-date Prep reuse through next Singapore
 midnight; authorized manual refresh bypasses cache, and failed refresh preserves
 the previous eligible entry. Moderation has no reusable result cache. Disabled
 mode bypasses all AI caches; the admission checks precede cache lookup.
 
-**[ASSUMPTION ASM-06] Canonical identity and stored envelope.** The following
-deterministic serialization, digests and envelope are proposed shared contracts.
+**Canonical identity and stored envelope.** The following deterministic
+serialization, digests and envelope are shared contracts.
 
 Canonical JSON recursively sorts object keys by Unicode code point, preserves
 array order and exact decoded string content, emits finite JSON numbers and
@@ -404,7 +421,7 @@ timestamp or caller-supplied version. The complete rating/filter snapshot cannot
 be finalized until its story contract exists; absent source-version inputs
 cannot silently produce an eligible Brew cache key.
 
-Proposed strict stored payload:
+Strict stored payload:
 
 ```text
 {
@@ -455,18 +472,7 @@ stories; this file does not expose a secret-key browser endpoint.
 
 ## Assumptions
 
-On 2026-10-17 the human adopted former ASM-01 and ASM-04 as written and former
-ASM-03 with the clarification that business dates and times are interpreted in
-Singapore. Their decisions appear in the relevant sections above. ASM-01,
-ASM-03 and ASM-04 are retired and must not be reused. Human confirmation of
-these decisions does not claim that a spec PR has merged. ASM-02, ASM-05 and
-ASM-06 remain assumptions with their original identifiers.
+Retired IDs: ASM-01–ASM-06.
 
-| ID | Proposed decision and rationale | Effect if wrong |
-| --- | --- | --- |
-| ASM-02 | Three POST routes, request/result names and fallback-view discriminators. Keeps advice separate from ordinary mutations and domain view schemas. | Routes, UI adapters and typed feature results require revision. |
-| ASM-05 | Exact prompts, feature fields, reference validation, Prep evidence rendering, empty model results and moderation label precedence. Makes model output inspectable and limits fabricated numerical claims. | Prompts/schemas/evaluations need amendment and version change; related story decisions may require a different shape. |
-| ASM-06 | Canonical JSON, SHA-256 source/input identities, contract version and strict stored envelope. Enables deterministic scoped invalidation. | Cache format/version and identity checks require revision; existing entries must not be silently reused. |
-
-No assumption grants additional data access or overrides a SYS/SEC contract.
-Unconfirmed provider entitlements remain TECHNICAL-SPEC ASM-01.
+Per-key provider uncertainty remains
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).

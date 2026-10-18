@@ -63,3 +63,33 @@ test("Traceability: literal test titles cover criteria and exit 0", () => {
   expect(result.stdout).toContain("Traceability passed (2 done tasks");
   expect(result.stderr).toBe("");
 });
+
+test.each([
+  ["test.skip", "test.skip('SYS-06.2: skipped behaviour', () => {});"],
+  ["it.todo", "it.todo('SYS-06.2: pending behaviour');"],
+  ["test.fixme", "test.fixme('SYS-06.2: broken behaviour', () => {});"],
+  ["test.fails", "test.fails('SYS-06.2: expected failure', () => {});"],
+  ["test.fail", "test.fail('SYS-06.2: expected failure', () => {});"],
+])("Traceability: %s titles do not count as coverage", (_modifier, excludedTest) => {
+  const result = check(`
+    ${excludedTest}
+    it.each([1, 2])('CUS-03.1: edge case %s', () => {});
+    test('SYS-06.20: separate boundary', () => {});
+  `);
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toMatch(/SYS-06\.2: T-01:/);
+  expect(result.stderr).toContain("Tests marked skip, todo, fixme or fail(s) do not count as coverage.");
+});
+
+test("Traceability: only and concurrent test titles cover criteria and exit 0", () => {
+  const result = check(`
+    test.only('SYS-06.2: allowed behaviour', () => {});
+    test.concurrent('CUS-03.1: concurrent behaviour', () => {});
+    test('SYS-06.20: separate boundary', () => {});
+  `);
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("Traceability passed (2 done tasks");
+  expect(result.stderr).toBe("");
+});

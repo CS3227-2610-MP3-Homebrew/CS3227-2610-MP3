@@ -147,7 +147,7 @@ export function checkRepository(root: string): Finding[] {
   }
   for (const path of testFiles(join(root, "tests"))) {
     const file = relative(root, path).split(sep).join("/");
-    for (const title of testTitles(readFileSync(path, "utf8"))) {
+    for (const { title } of testTitles(readFileSync(path, "utf8"))) {
       for (const id of title.match(criterionPattern) ?? []) {
         if (!criteria.has(id)) error(file, `Test title "${title}" names undefined criterion ${id}.`);
       }
@@ -235,8 +235,16 @@ function checkPlan(tasks: PlanTask[], criteria: Map<string, string>, error: Repo
       }
     }
   }
+  const unplanned = new Map<string, { file: string; ids: string[] }>();
   for (const [criterion, file] of criteria) {
-    if (!owners.has(criterion)) warning(file, `${criterion} is not planned in any PLAN.md task yet.`);
+    if (owners.has(criterion)) continue;
+    const requirement = criterion.replace(/\.\d+$/, "");
+    const entry = unplanned.get(requirement) ?? { file, ids: [] };
+    entry.ids.push(criterion);
+    unplanned.set(requirement, entry);
+  }
+  for (const [requirement, { file, ids }] of unplanned) {
+    warning(file, `${requirement} has ${ids.length} criteria not planned in any PLAN.md task yet: ${ids.join(", ")}.`);
   }
   const cycle = findCycle(tasks.map((task) => [task.id, taskDependencies(task)]));
   if (cycle) error(planPath, `Dependency cycle: ${cycle.join(" → ")}.`);

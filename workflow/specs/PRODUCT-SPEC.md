@@ -20,7 +20,19 @@ Moderation Assistant for admins.
 | --- | --- |
 | Customer | Chooses Customer at sign-up. Sees only approved, non-suspended cafés and manages only their own orders and reviews. |
 | Café owner | Chooses Café owner at sign-up. Manages only their own café, menu and orders. Their café is visible to customers only after admin approval and while not suspended. |
-| Admin | Accounts come only from seed data, never from sign-up. Approves or rejects café applications, suspends and un-suspends cafés, and hides or restores reviews with a reason. |
+| Admin | The main Admin is seeded by the maintenance job; each demo kit has its own kit-scoped Admin. Sign-up never creates an Admin. Approves or rejects café applications, suspends and un-suspends cafés, and keeps, hides or restores reviews with a reason. |
+
+There is one main workspace and one isolated workspace per demo kit. Normal
+sign-ups join the main workspace. Every role, including Admin, reads and writes
+only inside its own workspace, including through AI features and caches. Anyone
+can choose **Create demo kit** on the sign-in page without signing in; creation
+shows Customer, Café owner and Admin credentials once, for normal sign-in. Kit
+Admins have the product's Admin operations only within their kit; they cannot
+create Admins or change roles. Existing Admin reasons, audit, reversible actions
+and the prohibition on editing review text apply. Kits never expire or undergo
+automatic deletion. The main workspace has a showcase café for new sign-ups;
+applications there may stay pending indefinitely. Demo kits are the end-to-end
+testing path.
 
 An un-suspended approved café becomes visible to customers again. Un-suspending
 does not make an unapproved café visible to customers.
@@ -34,6 +46,7 @@ single responsibility principle (SRP) and don't repeat yourself (DRY).
 
 | Role | MVP screens | Stretch screens |
 | --- | --- | --- |
+| Shared | Sign-in, including **Create demo kit**. | None. |
 | Customer | Browse cafés, including the Brew Finder search box; Café page; Pre-order; My orders; Review form. | No separate screen specified for favourite cafés. |
 | Café owner | Café application; Dashboard, including sales and the Prep Advisor panel; Order queue; Menu; Café profile, including opening hours and pickup rules. | No separate screen specified for requesting a boost. |
 | Admin | Café applications; Cafés (suspend and un-suspend); Moderation queue, including the "Triage pending reviews" button; Audit log. | AI settings for on/off controls; Boost requests. |
@@ -41,12 +54,12 @@ single responsibility principle (SRP) and don't repeat yourself (DRY).
 ## Product-level functional requirements
 
 The IDs in the User stories section identify the product requirements. Detailed
-story criteria and shared contracts belong in the planned specifications listed
+story criteria and shared contracts belong in the specifications listed
 below; this document does not supply missing behavioral decisions.
 
 | IDs | Required product behavior |
 | --- | --- |
-| SYS-01–SYS-03 | Support sign-up with Customer or Café owner selection, sign-in, sign-out, and navigation restricted to the signed-in user's role. Admin creation is limited to seed data. |
+| SYS-01–SYS-03 | Support sign-up with Customer or Café owner selection, sign-in, sign-out, and navigation restricted to the signed-in user's role. The maintenance job seeds the main Admin; each demo kit has a kit-scoped Admin; sign-up never creates an Admin. |
 | CUS-01–CUS-02 | Browse approved, non-suspended cafés. Filter by open now or open at a chosen time, drink type and area. A café page shows its menu, including sold-out items, opening hours and visible reviews. |
 | CUS-03–CUS-04 | Pre-order for a pickup slot within opening hours and the café's pickup rules, with payment at pickup. Customers view their own orders and may cancel before the café accepts the order. |
 | CUS-05 | Permit a customer to review a collected order once per order. |
@@ -56,7 +69,7 @@ below; this document does not supply missing behavioral decisions.
 | OWN-06 | Provide a sales dashboard with daily totals, top items and sales by day of week. |
 | OWN-07 | Show Prep Advisor as a dashboard panel. It suggests which items to prepare more or less of by day of week, using aggregated sales only. Every suggestion quotes its supporting numbers. Nothing is applied automatically. Its non-AI fallback is the top-items table. |
 | ADM-01–ADM-02 | Let admins approve or reject café applications with a reason and suspend and un-suspend cafés. An un-suspended approved café becomes visible to customers again; unapproved cafés remain hidden. |
-| ADM-03 | Provide a moderation queue to hide or restore reviews with a reason, never to edit review text. Record every hide or restore action in an audit log. |
+| ADM-03 | Provide a moderation queue to keep, hide or restore reviews with a reason, never to edit review text. Record every keep, hide or restore action in an audit log. |
 | ADM-04 | A "Triage pending reviews" button runs Moderation Assistant on pending reviews in batches. It classifies each review as ok, spam, abusive, off-topic or injection attempt, with a reason. The admin confirms every action. Its non-AI fallback is the manual queue. |
 | CUS-07, OWN-08, ADM-05–ADM-06 | Stretch only: save favourite cafés; request a boost with a time-limited Featured badge and a fee that is only recorded; switch AI features on or off at runtime from the Admin page; approve or reject boost requests. |
 
@@ -73,38 +86,22 @@ below; this document does not supply missing behavioral decisions.
 - Preserve a non-AI fallback for every AI feature.
 
 Detailed safeguards, kill-switch behavior, usage limits and enforcement belong
-in the planned [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and the written
+in [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) and
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). Exact LLM prompts and input/output
-schemas belong in the planned [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md).
+schemas belong in [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md).
 
 ### Usage control
 
 The SoC LLM quota must not be easy to exhaust during normal use or peer testing.
-Usage control includes per-user limits, per-feature limits, caching and a daily
-quota cap measured in SoCLaaS dollar units, with the non-AI fallbacks specified
-above. The SoC LLM is free for SoC students, and the team incurs no cost. Dollar
-amounts track quotas only, never charges.
-
-The team supplied these documented quota defaults per SoC LLM key: **90 requests
-per minute, $80 per day and $800 per month**. The dollar values are quota units,
-not charges. These defaults are not verified limits for the project's individual
-keys; see assumption ASM-02.
-
-| Scope | Proposed app limit, subject to confirmation against actual key limits |
-| --- | --- |
-| Global | 60 requests per minute in prod; 30 requests per minute in dev. |
-| Per user | 5 AI actions per minute and 30 per day. |
-| Brew Finder | 2 LLM calls per search; identical queries cached for 10 minutes. |
-| Prep Advisor | Cached per café per day; at most 3 manual refreshes per day. |
-| Moderation Assistant | At most 20 reviews per call; at most 10 runs per admin per day. |
-| Daily quota cap measured in SoCLaaS dollar units | $5 in prod; $2 in dev. |
-
-These are proposed limits, not final enforcement contracts. Detailed limit
-definitions and enforcement belong in the planned AI security specification
-and the written TECHNICAL-SPEC.md.
+Usage control includes per-user and per-feature limits, caching and a global
+daily provider-call cap, with the non-AI fallbacks specified above. Values belong
+to [AI-SECURITY-SPEC limits](AI-SECURITY-SPEC.md#limits-and-configuration);
+unverifiable per-key limits are recorded in
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
 ### Environments, cost and UI
 
+- Peer testers reach every role on production through isolated demo kits without team action after submission.
 - Keep dev and prod deployments, databases and LLM keys separate.
 - Operate at $0 cost, using free tiers only.
 - Provide a simple, responsive and accessible UI with separate screens and
@@ -114,7 +111,7 @@ and the written TECHNICAL-SPEC.md.
 
 | Use case | Actor and trigger | Required result and constraints | Story IDs |
 | --- | --- | --- | --- |
-| Access a role's UI | A user signs up or signs in. | Sign-up offers Customer and Café owner only; sign-in leads to the user's own role screens. Users can sign out. Admin accounts originate from seed data. | SYS-01–SYS-03 |
+| Access a role's UI | A user signs up or signs in. | Sign-up offers Customer and Café owner only; sign-in leads to the user's own role screens. Users can sign out. The maintenance job seeds the main Admin; demo kits provide kit-scoped Admins; sign-up never creates an Admin. | SYS-01–SYS-03 |
 | Find a café and drink | A customer browses, filters or enters a natural-language request. | Show eligible cafés; café pages include menus, sold-out items, hours and visible reviews. Brew Finder gives ranked suggestions with reasons and suggested items, or the filtered list sorted by rating. | CUS-01–CUS-02, CUS-06 |
 | Arrange a pickup | A customer chooses drinks and a pickup slot. | Create a pre-order within the café's hours and pickup rules, with payment at pickup. The customer can view their orders and cancel before acceptance. | CUS-03–CUS-04 |
 | Review a pickup | A customer reviews a collected order. | Allow one review per collected order, limited to the customer's own order. | CUS-05 |
@@ -122,7 +119,7 @@ and the written TECHNICAL-SPEC.md.
 | Fulfil pre-orders | A café owner uses the order queue. | Support accept, reject, mark ready and mark collected for their own café's orders. | OWN-05 |
 | Understand sales and preparation | A café owner opens the dashboard. | Show daily totals, top items and sales by day of week. Prep Advisor uses only aggregated sales and quotes numbers; no suggestion is applied automatically. The fallback is the top-items table. | OWN-06–OWN-07 |
 | Manage café eligibility | An admin reviews applications, suspends a café or un-suspends a café. | Approve or reject applications with a reason; suspended cafés are not visible to customers. An un-suspended approved café becomes visible to customers again; an unapproved café remains hidden. | ADM-01–ADM-02 |
-| Moderate reviews | An admin reviews the queue or requests AI triage. | Classify pending reviews with reasons or use the manual queue; the admin confirms each action. Hide or restore with a reason, retain review text, and record moderation actions in the audit log. | ADM-03–ADM-04 |
+| Moderate reviews | An admin reviews the queue or requests AI triage. | Classify pending reviews with reasons or use the manual queue; the admin confirms each action. Keep, hide or restore with a reason, retain review text, and record moderation actions in the audit log. | ADM-03–ADM-04 |
 | Use optional features | A customer saves a favourite, a café owner requests a boost, or an admin manages boosts or runtime AI settings. | Provide only the stretch capabilities listed in the User stories section; a boost fee is recorded without adding a payment system. | CUS-07, OWN-08, ADM-05–ADM-06 |
 
 ## MVP and stretch scope
@@ -133,8 +130,8 @@ features, their non-AI fallbacks, security and usage control, and the environmen
 kill switch.
 
 Four stories are stretch: favourite cafés (CUS-07), requesting a boost (OWN-08),
-runtime Admin AI controls (ADM-05) and boost decisions (ADM-06). OWN-08 and ADM-06
-are confirmed stretch. There is no in-app payment system in either scope.
+runtime Admin AI controls (ADM-05) and boost decisions (ADM-06). There is no
+in-app payment system in either scope.
 
 ## User stories
 
@@ -184,25 +181,14 @@ are confirmed stretch. There is no in-app payment system in either scope.
 
 ## Assumptions
 
-- **[ASSUMPTION ASM-02] Actual per-key SoC LLM limits remain unconfirmed.**
-  Rationale: the team supplied documented quota defaults, but no confirmed limits
-  for each project key. Effect if wrong: the proposed app usage limits and
-  dependent technical/security contracts may need revision against the actual
-  key limits. The assessment now belongs to
-  [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md#assumptions), TECHNICAL-SPEC ASM-01; free
-  access for SoC students and the quota-only meaning of dollar units are
-  confirmed facts, not assumptions.
+Retired IDs: ASM-01–ASM-02. Per-key quota uncertainty is recorded in
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
-## Planned supporting specifications
+## Supporting specifications
 
-| Planned document | Authoritative scope |
+| Document | Authoritative scope |
 | --- | --- |
 | [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md) | Architecture, data model, row-level security, configuration, environments and usage-control enforcement. |
 | [INTEGRATION-SPEC.md](INTEGRATION-SPEC.md) | API contracts, exact LLM prompts and LLM input/output schemas. |
 | [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md) | AI attack surfaces, mitigations, environment kill switch, usage-control limits and security test plan. |
-| `stories/<ID>-<slug>.md` | One story specification per source story, including testable acceptance criteria, relevant edge cases and failure paths, linked to shared contracts. |
-
-TECHNICAL-SPEC.md is written; the integration, AI security and story
-specifications remain planned. Detailed data fields, API contracts, lifecycle
-rules and failure semantics remain outside this product-level document until
-specified in their supporting specifications.
+| [Story specifications](README.md#specifications) in `stories/<ID>-<slug>.md` | One story specification per source story, including testable acceptance criteria, relevant edge cases and failure paths, linked to shared contracts. |

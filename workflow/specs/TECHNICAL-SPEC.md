@@ -1,7 +1,5 @@
 # Homebrew technical specification
 
-**Last updated:** 2026-10-18
-
 ## Purpose and boundaries
 
 This specification defines the shared architecture, data ownership, RLS,
@@ -11,31 +9,28 @@ SYS-04; the shared sign-up, session and navigation stories remain in the product
 specification. It supplies foundation contracts, not implementation steps.
 
 Exact HTTP contracts, LLM prompts and LLM input/output schemas belong to the
-planned [INTEGRATION-SPEC.md](README.md#planned-specifications). Attack surfaces,
+[INTEGRATION-SPEC.md](README.md#specifications). Attack surfaces,
 mitigations, usage-limit values, kill-switch semantics
 and the security test plan belong to
 [AI-SECURITY-SPEC.md](AI-SECURITY-SPEC.md). Detailed order, café,
-review, sales and account behavior belongs to the planned
-[story specifications](README.md#planned-specifications). Those documents must
+review, sales and account behavior belongs to the
+[story specifications](README.md#specifications). Those documents must
 resolve their contracts before dependent implementation; this specification
 does not fill their gaps.
 
 ## Assumptions
 
-ASM-01 is the sole remaining assumption. Former ASM-02–ASM-07 were confirmed
-as decisions (with the accessibility amendment below); their IDs are retired
-and must never be reused.
+Retired IDs: ASM-02–ASM-07.
 
 **[ASSUMPTION ASM-01] Individual SoCLaaS key limits remain unobservable; use the
-documented defaults only as planning assumptions.** The team supplied a live
-probe on 17 October 2026 returning 200 without rate-limit or cost headers and
-a key-info endpoint returning 404. Real per-key limits cannot be established
+documented defaults only as planning assumptions.** A live probe returned 200
+without rate-limit or cost headers and a key-info endpoint returned 404. Real
+per-key limits cannot be established
 without exhausting a key. The documented defaults are 90 requests/minute,
 $80/day and $800/month, expressed in quota units and free for SoC students.
 Rationale: these observations do not confirm either project key's entitlement.
 Effect if wrong: app limits must be revised; they cannot promise quota safety
-against an unknown smaller entitlement. This assumption replaces dependence on
-PRODUCT-SPEC ASM-02; no new live probe is required or authorized.
+against an unknown smaller entitlement.
 
 ## Architecture
 
@@ -61,20 +56,19 @@ contract. Database constraints remain authoritative for relational integrity;
 client validation is supplemental. Exact validation schemas and HTTP error
 contracts belong to INTEGRATION-SPEC and the relevant story specifications.
 
-Supabase Auth uses email and password. Sign-up offers Customer or Café owner;
-Admin accounts come only from seed data. Email confirmation is off in both dev
-and prod. The authenticated user's protected profile supplies the application
+Supabase Auth uses email and password. Sign-up offers Customer or Café owner.
+The maintenance job seeds the main Admin; each demo kit has a kit-scoped Admin.
+Sign-up never creates an Admin. Email confirmation is off in both dev and prod. The authenticated user's protected profile supplies the application
 role; caller-controlled sign-up metadata cannot grant Admin access. User-facing
 account fields, role changes and multiple-role accounts remain story decisions.
 
 ### Decisions: rendering, authentication and caches
 
 Keep `cacheComponents: true` and `partialPrefetching: true` in `next.config.ts`.
-The team selected the framework default for new apps: it matches the bundled
-docs agents read, is slated to become mandatory in the next major release, and follows
-the pattern of Vercel's own with-supabase example. The new-app/example rationale
-is supplied by the team; the specific framework behavior below was checked in
-the installed Next.js documentation.
+These framework defaults for new apps match the bundled documentation, are
+slated to become mandatory in the next major release, and follow the pattern
+of Vercel's with-supabase example. The framework behavior below follows the
+installed Next.js documentation.
 
 - Refresh Supabase sessions in `src/proxy.ts`. Recheck authentication and
   authorization near every protected data read or mutation; proxy and UI checks
@@ -85,8 +79,8 @@ the installed Next.js documentation.
   private data. Per-user and RLS-dependent reads stream behind `Suspense`.
 - The MVP uses no `"use cache"` directive in `src/`. All catalogue reads use
   session-bound Supabase clients under RLS and stream behind `Suspense`. The
-  team removed catalogue caching because it provided no meaningful benefit at
-  this scale and the proposed path required bypassing RLS.
+  MVP has no catalogue cache because caching gives no meaningful benefit at
+  this scale and a cached read path would bypass RLS.
 - If catalogue caching is introduced in future, its cookie-less Supabase client
   must use the publishable key under RLS. A secret key must never be used inside
   or passed to a `"use cache"` scope. This future constraint does not introduce
@@ -98,8 +92,8 @@ the installed Next.js documentation.
   recorded with its route and reason in the PR. It must be placed as low as
   possible; no app-wide opt-out substitutes for the selected rendering pattern.
   This export changes navigation/static-shell validation, not permissions.
-- Brew Finder's 10-minute query cache, Prep Advisor's daily cache, rate limits
-  and daily caps live in Postgres. Plain `"use cache"` uses per-instance memory
+- Brew Finder's query cache, Prep Advisor's daily cache, rate limits and daily
+  caps live in Postgres. Plain `"use cache"` uses per-instance memory
   and cannot guarantee persistence across serverless invocations. Persistent
   enforcement never relies on process memory or the Next.js cache store.
 
@@ -130,16 +124,26 @@ dates and opening-hours calculations use `Asia/Singapore`.
 
 | Entity | Fixed data and relationships | Ownership and RLS policy intent | Dependency intentionally left to story specs |
 | --- | --- | --- | --- |
-| Profiles | Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
-| Cafés | Owner profile reference; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner, profile fields, reapplication/reapproval, and effects on existing orders/access: OWN-01–OWN-04 and ADM-01–ADM-02. |
+| Workspaces | Stable workspace identity; one main workspace and one workspace per demo kit. | Actor access is limited to their own workspace; no role, including Admin, gains cross-workspace access. | None for workspace identity and isolation. |
+| Profiles | Workspace reference; Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
+| Cafés | Workspace and owner profile references; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner and profile fields: OWN-01–OWN-04. Application decisions and one-way approval: [ADM-01](stories/ADM-01-cafe-applications.md); rejection resubmission is OWN-01's owner action. Suspension and effects on existing orders/access: [ADM-02](stories/ADM-02-cafe-suspension.md). |
 | Menu items | Café reference; item identity, name, drink type, price and availability/sold-out state. | Owners manage items only through their own café. Customer reads are restricted by parent café eligibility and include sold-out items. No extra Admin menu-write permission is implied. | Item fields, price representation, categories, deletion/history and sold-out ordering eligibility: OWN-03 and CUS-01–CUS-03. |
 | Opening hours | Café reference and Singapore-local opening/closing information. | Owners manage only their café's hours. Customer reads require eligible parent café. | Overnight/boundary rules and changes affecting pickups: OWN-02, OWN-04 and CUS-01–CUS-03. |
 | Orders | Customer profile and café references, pickup timing and fulfilment state; payment occurs at pickup without a payment integration. | Customers access only their own orders; owners access orders only for their café. Authorized mutations must satisfy story transitions as well as RLS. No unrelated Admin order access is granted. | Exact states/transitions, cancellation races, rejection/no-show behavior, duplicate submission and later café/hour changes: CUS-03–CUS-04 and OWN-05. |
 | Order items | Parent order and menu-item identity, quantity and data required to represent the ordered purchase. | Access follows the parent order. A customer cannot attach items to another customer's order or mix an item from another café. Owner access follows ownership of the order's café. | Historical item/price snapshots and sales treatment when menus change: CUS-03 and OWN-06. |
-| Reviews | Customer and collected-order references, café relationship, review content and moderation state; unique order reference prevents a second review for the same order. | Review creation requires the caller's own collected order. Customers can read their own reviews and visible reviews of eligible cafés. Admins access the moderation queue and hide/restore with a reason, never edit review text. Any further write/read permission remains denied until specified. | Fields, rating scale/formula, initial state, editing/deletion, restore and label/action relationship: CUS-02, CUS-05 and ADM-03–ADM-04. |
+| Reviews | Customer and collected-order references, café relationship, review content and moderation state (`pending`, `kept`, `hidden`) as defined by [ADM-03](stories/ADM-03-review-moderation.md); unique order reference prevents a second review for the same order. Review text and rating are immutable after creation; customers cannot edit or delete reviews in the MVP. | Review creation requires the caller's own collected order. Customers can read their own reviews and visible reviews of eligible cafés. Admins access the moderation queue and keep, hide or restore with a reason, never edit review text. Any further write/read permission remains denied until specified. | Fields and rating scale/formula: CUS-01–CUS-02 and CUS-05. Initial state and moderation transitions: [ADM-03](stories/ADM-03-review-moderation.md); AI label/action relationship: [ADM-04](stories/ADM-04-moderation-assistant.md). |
 | AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Adopted usage-limit values: AI-SECURITY-SPEC; mechanism below. |
 | AI caches | Environment, feature, scope identity, input fingerprint, model/contract version, source revision, creation/expiry or Singapore business date, and validated result. | Server-only reads/writes. Every hit repeats caller authorization; Prep Advisor entries are café-scoped; Brew Finder entries cannot cross actor scopes under the [cache scope decision](#cache-eligibility-and-scope). No client Data API access. | Exact feature payloads: INTEGRATION-SPEC; source selection and sales windows: AI/story specifications. |
-| Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Review-moderation events: acting Admin, review reference, hide/restore action, reason and timestamp. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields and any retention/deletion policy: ADM-03/ADM-04 and AI-SECURITY-SPEC. Moderation reasons are separate from AI prompt/output payloads. |
+| Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Admin-action events: approve, reject, suspend, un-suspend, keep, hide and restore, each with acting Admin, target café or review reference, action, reason and timestamp. Admin-action entries are never deleted automatically. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields: [ADM-03](stories/ADM-03-review-moderation.md). AI retention: AI-SECURITY-SPEC. Admin reasons are separate from AI prompt/output payloads. |
+
+Workspace references are stored on Profiles and Cafés only. Menu items,
+opening hours, orders, order items and reviews inherit their workspace through
+their café. Relations must not join actors or parent/child records across
+workspaces. All server and RLS reads/writes, including Admin audit access, AI
+source selection and AI cache access, enforce the verified actor's workspace
+in addition to existing role/ownership rules. A kit Admin cannot access the main
+workspace or another kit. Normal sign-ups always join the main workspace;
+untrusted input cannot select or reassign a workspace.
 
 The model intentionally does not decide account/café cardinality beyond each
 café's single owner, enumerate a full order/review lifecycle, define aggregate
@@ -169,8 +173,8 @@ that bypass RLS validate actor/scope and expose only their allowed operation.
 
 CI queries the local database catalogue and fails if any application table lacks
 RLS. CI also exercises a deny/allow matrix for unauthenticated callers, two
-customers, two owners and a seeded Admin, including parent-child access and
-attempts to change ownership/protected state. The RLS catalogue check covers
+customers, two owners, a main Admin and a kit Admin across workspaces, including
+cross-workspace and parent-child access and attempts to change ownership/protected state. The RLS catalogue check covers
 new tables even when Data API exposure is disabled; hosted settings alone are
 not evidence that a migration is safe.
 
@@ -210,27 +214,26 @@ deployment configuration, not inferred from an API key's contents.
 | `SOCLAAS_API_KEY` | Server-only environment-specific key, never shared between dev and prod; absent from CI. |
 | Model and reasoning configuration | Team-tested model `qwen3.5:9b` with `reasoning_effort: "none"`; the model remains configurable. Exact provider request schema belongs to INTEGRATION-SPEC. |
 | Environment identity | Distinguishes local, CI, dev and prod; selects the correct provider/database/limit configuration and cache/counter namespace. |
-| Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Final values and meanings belong to AI-SECURITY-SPEC; no proposed product number becomes final by appearing here. |
+| Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Values and meanings belong to AI-SECURITY-SPEC. |
 | `AI_GLOBAL_CALLS_PER_DAY` | Server-only nonnegative integer global provider-attempt cap per environment/Singapore day, enforced atomically alongside other call limits. Values and validation policy belong to [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration). |
+| `CRON_SECRET` | Server-only, environment-specific bearer secret for the maintenance endpoint; absent from responses and logs. |
+| `MAIN_ADMIN_EMAIL` | Server-only email used only to create the main Admin if no account with that email exists. |
+| `MAIN_ADMIN_PASSWORD` | Server-only initial password for that creation; maintenance never resets or updates an existing account. |
+| `DEMO_KITS_PER_10_MINUTES` | Server-only global kit-creation cap: 5 kits per fixed 10-minute window, using durable Postgres counters and the database clock. |
+| `DEMO_KITS_PER_DAY` | Server-only global kit-creation cap: 30 kits per Singapore calendar day, using the same durable Postgres counter/window mechanism as AI usage control. |
 | Timezone | `Asia/Singapore` for daily resets and opening-hours/business-date calculations. |
 | Deployment credentials | Environment-specific Supabase migration database URL and Vercel deployment credentials held only in GitHub environment secrets for Actions. Never part of public application configuration. |
 
 ### Configuration names
 
 Application configuration uses `APP_ENV` (`local | ci | dev | prod`),
-`SOCLAAS_MODEL` and `SOCLAAS_REASONING_EFFORT`. Limit configuration keys and
-exact deployment credential names remain for AI-SECURITY-SPEC/delivery
-configuration.
+`SOCLAAS_MODEL` and `SOCLAAS_REASONING_EFFORT`. Limit configuration keys are
+defined in [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration); exact
+deployment credential names belong to delivery configuration.
 
 Supabase's projects use the publishable/secret key pair, Data API/RLS settings
 above, and email confirmation off in both dev and prod. No custom SMTP or
 production confirmation-on requirement is introduced.
-
-The starter manifest currently includes Next.js, React, TypeScript and Tailwind.
-Zod, `openai`, Supabase client/SSR support, shadcn/ui, Vitest and Playwright are
-target dependencies rather than evidence of installed integrations. In
-particular, shadcn/ui, Vitest, Playwright and `@supabase/ssr` are not yet installed.
-Dependency installation and test authoring are outside this specification PR.
 
 ## LLM module
 
@@ -262,16 +265,12 @@ Per-key quota uncertainty is recorded in TECHNICAL-SPEC ASM-01.
 
 The app enforces caps below documented defaults and handles provider throttling
 through fallbacks. It stores token counts from responses where present, without
-inventing tokens or cost when absent. Because provider cost is not reported,
-the product's proposed $5/$2 daily quota budgets remain planning inputs, not
-measurable spend counters. The human decision on 2026-10-18 supersedes the
-2026-10-17 removal of the global daily provider-call cap. As specified by the
-authoritative [AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration),
-`AI_GLOBAL_CALLS_PER_DAY` limits provider attempts to 100 in prod and 40 in dev
-per Singapore calendar day. These are call-count limits, not monetary budgets
-or guarantees about provider quota consumption. Adopted per-user, per-feature,
-global-minute and global-daily limits remain defined by that security policy.
-Actual per-key quota confirmation is still unavailable.
+inventing tokens or cost when absent. The authoritative
+[AI security usage policy](AI-SECURITY-SPEC.md#limits-and-configuration) defines
+per-user, per-feature, global-minute and global-daily limit values.
+`AI_GLOBAL_CALLS_PER_DAY` limits provider attempts per Singapore calendar day;
+these are call-count limits, not monetary budgets or guarantees about provider
+quota consumption. Actual per-key quota confirmation remains unavailable.
 
 ### Admission and windows
 
@@ -303,8 +302,8 @@ and makes no call. A dispatched attempt remains charged on 429, timeout,
 transport failure or invalid output; no refund is inferred. A retry or second
 call requires its own admission. Reusing the same admission identity does not
 authorize a second dispatch. The provider may have consumed quota even when the
-result is unavailable. This confirmed counting mechanism does not define a
-user-facing AI action.
+result is unavailable. This counting mechanism does not define a user-facing
+AI action.
 
 The same atomic reservation includes the environment's global daily
 provider-attempt counter alongside global-minute, feature and operation call
@@ -323,10 +322,9 @@ a cache hit is distinguishable from a provider attempt. A manual refresh records
 a separate refresh event, and a cache miss/rebuild records any actual dispatched
 calls. The mechanism can independently enforce configured action, refresh and
 call counters. Missing or invalid required limit configuration cannot authorize
-a provider dispatch. The human decision on 2026-10-17 removes the additional
-action/cache-hit/failure/refresh charging-policy requirement. It does not remove
-the adopted usage limits or the per-attempt provider reservation above. No
-provider call bypasses its reservation.
+a provider dispatch. No additional action/cache-hit/failure/refresh charging
+policy is required. The usage limits and per-attempt provider reservation above
+apply to every provider call.
 
 If Postgres admission cannot be established, no provider call is dispatched and
 the feature uses its non-AI fallback. Concurrent serverless invocations share
@@ -346,7 +344,8 @@ INTEGRATION-SPEC.
 
 Brew Finder cache reuse is limited to the same actor and authorized input/source
 snapshot; Prep Advisor reuse is limited to the same café, business date and
-aggregate-data version. Brew Finder entries expire 10 minutes after creation;
+aggregate-data version. Brew Finder entries expire after the duration defined in
+[AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation);
 Prep Advisor entries expire at the next Singapore midnight, with a successful
 authorized manual refresh replacing the eligible daily result. Manual refresh
 bypasses the existing result, not admission. Moderation Assistant has no reusable
@@ -418,13 +417,16 @@ availability target is introduced.
   application table, including newly added/unexposed infrastructure tables.
   Migrations explicitly define RLS and grants; an unexposed table does not
   bypass the check.
-- **SYS-06.3:** The two-customer/two-owner/Admin/unauthenticated access matrix
-  verifies each defined allow/deny boundary, including cross-owner records,
+- **SYS-06.3:** The two-customer/two-owner/main-Admin/kit-Admin/unauthenticated
+  access matrix verifies each defined allow/deny boundary, including
+  cross-workspace cases for every role, cross-owner records,
   parent-child rows, self-approval, role escalation and ownership reassignment.
   No unspecified permission is granted.
 - **SYS-06.4:** Email/password sign-up accepts only Customer or Café owner;
-  client metadata cannot create an Admin. Admin accounts originate from seed
-  data, and email confirmation configuration is off in both dev and prod.
+  client metadata cannot create an Admin in any workspace. The maintenance job
+  seeds the main Admin, each demo kit has its own kit-scoped Admin, and sign-up
+  never creates an Admin. Email confirmation configuration is off in both dev
+  and prod.
 
 ### SYS-07 — Environment and configuration isolation
 
@@ -457,7 +459,7 @@ availability target is introduced.
   denied/unavailable admission, or a fake provider 429, Brew Finder offers its
   filtered list sorted by rating,
   Prep Advisor its top-items table and Moderation Assistant its manual queue.
-  Exact remaining errors/kill-switch cases await the security/integration
+  Exact remaining errors/kill-switch cases follow the security/integration
   contracts rather than a new fallback policy here.
 
 ### SYS-09 — Durable usage enforcement
@@ -496,7 +498,9 @@ availability target is introduced.
 
 - **SYS-10.1:** Postgres stores eligible AI results under the
   [cache scope decision](#cache-eligibility-and-scope). Tests with a controlled
-  clock check Brew Finder expiry at 10 minutes and Prep Advisor's
+  clock check Brew Finder expiry at its
+  [security-defined duration](AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation)
+  and Prep Advisor's
   Singapore-midnight rollover, scope isolation, source/model/schema changes
   and manual refresh bypassing a cached result while retaining admission.
 - **SYS-10.2:** Every cache hit rechecks role/ownership and current catalogue
@@ -505,7 +509,7 @@ availability target is introduced.
 - **SYS-10.3:** Authorized AI invocations record who, what, when and outcome,
   including cache/fallback/provider outcomes, without prompts or outputs.
   Ordinary clients cannot insert or mutate audit/counter/cache rows. Admin
-  hide/restore operations record the separate moderation action and reason.
+  state changes record a separate Admin audit entry with action and reason.
 
 ### SYS-11 — Accessible responsive core flows
 
@@ -517,6 +521,96 @@ availability target is introduced.
   clipping, overlap or page-level horizontal scrolling under the
   [responsive decision](#responsive-core-flows). Tests do not impose an invented
   numeric performance target.
+
+### SYS-12 — Workspaces and demo kits
+
+- **SYS-12.1:** Local migrations provide a Workspaces entity with one main
+  workspace and one workspace per demo kit. Only Profiles and Cafés store a
+  workspace reference; menu items, opening hours, orders, order items and
+  reviews inherit it through their café. Constraints prevent cross-workspace
+  parent/child and actor/café relationships.
+- **SYS-12.2:** Server authorization and RLS restrict every role's reads and
+  writes to its own workspace, including Admin operations, AI source reads and
+  AI caches. Main-to-kit, kit-to-main and kit-to-kit access is denied without
+  relaxing any existing role/ownership boundary.
+- **SYS-12.3:** Normal sign-ups always join the main workspace. Caller-supplied
+  metadata/references cannot select or reassign a workspace or escalate a role;
+  sign-up never creates an Admin in any workspace.
+- **SYS-12.4:** The sign-in page offers **Create demo kit** without requiring a
+  session. Successful `POST /api/demo-kits` creates a new isolated workspace
+  and returns exactly three published sign-in accounts: Customer, Café owner
+  and Admin. Emails are `customer-<code>@example.com`,
+  `owner-<code>@example.com` and `admin-<code>@example.com`, with the same random
+  code for the three accounts. All sign in through the normal sign-in screen.
+- **SYS-12.5:** Each published account receives its own cryptographically
+  secure random password of at least 16 characters. Passwords persist only as
+  Supabase Auth stores them; they appear only in the creation response, shown
+  once, never in logs, audit rows or later responses.
+- **SYS-12.6:** Kit creation is all-or-nothing: failures leave no partial kit,
+  workspace, seeded domain data or accounts, including the unpublished owner.
+- **SYS-12.7:** Creation obeys both globally shared server-only configured caps:
+  5 kits per fixed 10-minute window and 30 per Singapore calendar day. The same
+  durable Postgres atomic counter/window mechanism as AI usage control enforces
+  both across callers and app instances. Exhaustion returns 429 `RATE_LIMITED`
+  with `Retry-After` and a clear message saying when to try again. Unavailable
+  counters fail creation closed.
+- **SYS-12.8:** Kit creation makes no LLM call. Kits never expire and are never
+  deleted automatically.
+- **SYS-12.9:** Inside each kit, the Customer has several collected orders still
+  eligible for review and at least one order in another state. The published
+  Café owner owns one approved, non-suspended café with a menu including a
+  sold-out item, opening hours, pickup rules and about four weeks of sales
+  history dated relative to kit creation, sufficient for non-trivial sales
+  dashboard and Prep Advisor results. Seeded states and review eligibility use
+  the owning CUS-03–CUS-05 and OWN-01–OWN-05 story contracts.
+- **SYS-12.10:** Each kit also contains a second café with a pending application
+  for Admin approval or rejection, owned by a separate seeded owner account
+  with no published credentials. Its states follow OWN-01–OWN-05 and
+  ADM-01–ADM-03.
+- **SYS-12.11:** The approved café has pending reviews, including clearly
+  synthetic spam, abusive and prompt-injection examples for moderation and
+  Moderation Assistant. Their state names follow CUS-03–CUS-05,
+  OWN-01–OWN-05 and ADM-01–ADM-03; seeded review text remains untrusted.
+- **SYS-12.12:** A kit Admin has exactly the product's Admin operations within
+  its kit, cannot create Admins or change roles, and retains all existing audit,
+  reason, no-review-text-editing and reversible-action limits. AI per-user
+  limits apply separately to each kit account; global AI caps are shared by
+  main-workspace and kit accounts.
+
+### SYS-13 — Daily maintenance
+
+- **SYS-13.1:** The main workspace has at most one Admin, created only by
+  maintenance. If a main-workspace Admin already exists, the step does nothing,
+  even if `MAIN_ADMIN_EMAIL` changed. If none exists and no account uses
+  `MAIN_ADMIN_EMAIL`, it creates the main Admin from server-only
+  `MAIN_ADMIN_EMAIL` and `MAIN_ADMIN_PASSWORD`. If none exists but an account
+  with that email exists in any role or workspace, it creates and changes
+  nothing and reports a `conflict` outcome. It never updates, promotes, resets
+  or deletes any account, preserving password changes made after first sign-in.
+- **SYS-13.2:** Maintenance ensures one approved showcase café in the main
+  workspace, with a menu and opening hours, owned by a seeded owner account
+  whose random password is never shown. Normal sign-ups see a nonempty
+  catalogue. Main-workspace applications may remain pending indefinitely;
+  product documentation identifies demo kits as the end-to-end testing path.
+- **SYS-13.3:** Server-only `GET /api/internal/maintenance` requires
+  `Authorization: Bearer <CRON_SECRET>`. Missing/wrong secrets receive 401
+  `UNAUTHENTICATED` and perform no work. The environment-specific server-only
+  secret is compared in constant time.
+- **SYS-13.4:** Production Vercel Cron invokes maintenance daily at about
+  03:00 Singapore time using UTC cron `0 19 * * *`. The production deploy
+  workflow invokes the same endpoint once after each successful deploy.
+- **SYS-13.5:** Maintenance is idempotent: two successive runs have the same
+  effect as one. It runs AI retention cleanup, ensure-main-Admin and
+  ensure-showcase-café steps in that order; failure of any step does not stop
+  later steps.
+- **SYS-13.6:** Success follows the integration response
+  `{requestId, steps: [{step, outcome, count}]}` with per-step outcome counts
+  only, never secrets, emails or record contents.
+- **SYS-13.7:** Missing `MAIN_ADMIN_EMAIL` or `MAIN_ADMIN_PASSWORD` reports a
+  failure outcome for the main-Admin step; cleanup and showcase steps still run.
+- **SYS-13.8:** Maintenance never touches demo kits, deletes user or domain
+  data, resets passwords or calls the LLM. AI retention cleanup follows
+  AI-SECURITY-SPEC and preserves active enforcement state.
 
 The requirements describe future acceptance evidence. Existing starter
 verification does not establish that unimplemented architecture, integrations,

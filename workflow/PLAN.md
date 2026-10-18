@@ -1,35 +1,31 @@
 # Homebrew product plan
 
-Last updated: 2026-10-18.
-
-Sources: merged, approved [PRODUCT-SPEC.md](specs/PRODUCT-SPEC.md) and
-[TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md), the master version of
-[AI-SECURITY-SPEC.md](specs/AI-SECURITY-SPEC.md), its unmerged 2026-10-18 daily-cap
-amendment, and the unmerged [INTEGRATION-SPEC.md](specs/INTEGRATION-SPEC.md).
-Foundations cover SYS-04–SYS-11 and SEC-01–SEC-09. Integration ASM-02, ASM-05
-and ASM-06 remain unconfirmed; former ASM-01/03/04 are adopted decisions.
-No story specs exist. Dependent execution waits for consistent required specs
-on master; written drafts and human-confirmed decisions alone do not satisfy
-that gate. This plan update awaits human review and merge.
+Sources: [PRODUCT-SPEC.md](specs/PRODUCT-SPEC.md),
+[TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md),
+[INTEGRATION-SPEC.md](specs/INTEGRATION-SPEC.md) and
+[AI-SECURITY-SPEC.md](specs/AI-SECURITY-SPEC.md).
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs, plus three spec tasks.
+Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
 
 - Verified baseline: Next.js 16.4.2 App Router in `src/app/`, React 19.3.0,
   strict TypeScript, Tailwind 4 and Bun 1.4.3. `next.config.ts` enables
   cacheComponents and partialPrefetching; existing CI selects Node 24.
-  Supabase/SSR, Zod and openai are intended integrations, not installed dependencies.
-- Vitest, Playwright and Testing Library are declared; `bun run test`,
+  Supabase SSR, Zod and `openai` are not installed; the tasks that need them
+  add them.
+- Vitest, Playwright and Testing Library are installed; `bun run test`,
   `bun run test:e2e` and `bun run check:traceability` exist. CI runs
-  `bun run verify` and `bun run test:e2e`. The former missing-tooling gate is
-  satisfied. Every implementation requires its own tests and `bun run verify`;
+  `bun run verify` and `bun run test:e2e`. Every implementation requires its own
+  tests and `bun run verify`;
   testing records expected failing-first evidence. Database/accessibility tooling
   needed by a task remains part of that task's separate testing file scope.
 - Follow [AGENTS.md](../AGENTS.md), [spec rules](specs/README.md),
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- New file scopes below are proposed. Core schema uses the approved technical
-  entities, relationships and ownership columns now; later story-specific fields,
+- No story specs exist. New file scopes below identify their owning tasks. Core
+  schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
   not block core schema, local seeds or the fixed role matrix. No screens or
   story behavior are added here.
@@ -38,13 +34,23 @@ that gate. This plan update awaits human review and merge.
   dependency. Each pair owns its listed surface; later work extends it rather
   than duplicating it. Testing owns tests/fixtures/mocks; implementation owns
   application/configuration/migration code.
-- `todo` means specified queued work subject to its explicit prerequisites.
-  `blocked` means named unmerged/unconfirmed/conflicting contracts or core screens.
-  Only Requirements fields allocate criteria: each has one testing and one
-  implementation owner. Spec tasks replace neither. Each task fits one agent run;
-  each test/implementation pair shares one branch and one PR (two issues, one PR),
-  because master's required `verify` check runs tests and a failing-first test PR
-  cannot merge alone. Issues remain unassigned. Dependencies below preserve parallel work.
+- `todo` means specified queued work subject to its explicit prerequisites;
+  `blocked` means a named missing contract or required screen prevents execution;
+  `awaiting-decision` means a human or spec decision is required; `done` means
+  the task has completion evidence. Only Requirements fields allocate criteria:
+  each has one testing and one implementation owner. Spec tasks replace neither.
+  Each task fits one agent run. A test/implementation pair is two issues, one
+  branch and one PR; the branch and handoff folder use the testing task's issue.
+  A pair may cover up to three closely related stories of the same role that
+  share screens or data; a role owner may ask for one story per pair. The session
+  running a pair sets both tasks to `done` when the latest reviewer report passes.
+  On every PLAN update, the spec agent reconciles statuses from handoff evidence.
+  CI does not enforce these status rules. Issue mappings are recorded per task;
+  dependencies below preserve parallel work.
+
+## Assumptions
+
+Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23.
 
 ## Shared design
 
@@ -64,8 +70,8 @@ that gate. This plan update awaits human review and merge.
   [provider wire contract](specs/INTEGRATION-SPEC.md#soclaas-transport),
   [prompts/schemas](specs/INTEGRATION-SPEC.md#exact-feature-prompts-and-schemas),
   [cache identity/payload](specs/INTEGRATION-SPEC.md#cache-payload-fingerprints-and-source-revisions).
-  T-01 retains the [unconfirmed assumptions](specs/INTEGRATION-SPEC.md#assumptions)
-  and [story dependencies](specs/INTEGRATION-SPEC.md#contract-dependencies).
+  T-01 defines shared integration contracts and identifies
+  [story dependencies](specs/INTEGRATION-SPEC.md#contract-dependencies).
 - Security: [trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries),
   [data allowlists](specs/AI-SECURITY-SPEC.md#feature-data-boundaries),
   [limits/configuration](specs/AI-SECURITY-SPEC.md#limits-and-configuration),
@@ -73,13 +79,14 @@ that gate. This plan update awaits human review and merge.
   [retention](specs/AI-SECURITY-SPEC.md#audit-retention-and-operational-response),
   [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria)
   and [evaluation cases](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
-- Contract conflict: current SEC-06.2 requires the daily provider-call cap;
-  SYS-09.5 and the technical usage-control prose still prohibit it. T-02 owns
-  the prerequisite technical amendment and consistent spec merge. T-11/T-12
-  and their dependents remain blocked; the plan cannot select between contracts.
-  No additional action/cache-hit/refresh charging policy is required by the
-  security spec. PLAN ASM-01's production Admin provisioning proposal remains
-  unconfirmed and is separate from local seed work.
+- Demo access: [workspaces/kits](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits),
+  [maintenance](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance),
+  [shared routes](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and
+  [safeguards](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+  T-05/T-06 own SYS-12.1; T-07/T-08 own SYS-12.2/12.3 and amended
+  SYS-06.3/06.4. T-24/T-25 own SYS-12.4–12.12 and SEC-10.1–10.3;
+  T-26/T-27 own SYS-13.1–13.8 and SEC-10.4/10.5. T-15/T-16 retain
+  amended SEC-09.2 cleanup ownership; maintenance invokes that cleanup.
 - SEC ownership extends existing pairs: T-11/T-12 own SEC-06.1/06.2/06.3;
   T-13/T-14 own SEC-02.1, SEC-03.1/03.2, SEC-04.1, SEC-05.1, SEC-08.1/08.2;
   T-15/T-16 own SEC-07.1/07.2 and SEC-09.1/09.2. New T-21/T-22 own application
@@ -94,30 +101,30 @@ that gate. This plan update awaits human review and merge.
 - **Depends on:** None
 - **Owner role:** spec
 - **Requirements:** SYS-04, SYS-08, SYS-10 — [contract boundaries](specs/TECHNICAL-SPEC.md#purpose-and-boundaries); prerequisite, no criterion ownership.
-- **Description:** Finalize the written [integration draft](specs/INTEGRATION-SPEC.md) reserved by the shared LLM design.
-- **Work:** Preserve adopted HTTP, bounds/Singapore-time and provider decisions. Resolve INTEGRATION-SPEC ASM-02/05/06 and linked story-owned fields without inventing them; finalize routes/envelopes, exact prompts/schemas and cache identities before merge.
+- **Description:** Define the [integration contracts](specs/INTEGRATION-SPEC.md) reserved by the shared LLM design.
+- **Work:** The integration spec defines HTTP conventions, bounds/Singapore-time interpretation, provider transport, routes/envelopes, exact prompts/schemas and cache identities. Its Contract dependencies table reserves story-owned fields and behavior to their owners.
 - **File scope:** Existing `workflow/specs/INTEGRATION-SPEC.md` and own handoff.
-- **Prerequisite:** Human decisions on remaining integration assumptions and required story contracts; dependent execution waits for this spec on master.
+- **Prerequisite:** None for shared integration contracts; affected endpoints require the story contracts identified in the integration spec.
 - **Acceptance criteria:**
-  - [ ] Contracts are traceable; remaining story/security gaps are explicit.
-  - [ ] Human-reviewed spec merges before dependent execution.
-- **Status:** awaiting-decision
-- **Issue:** unassigned
+  - [x] Contracts are traceable; remaining story/security gaps are explicit.
+  - [x] Human-reviewed spec merges before dependent execution.
+- **Status:** done
+- **Issue:** none (spec task)
 
-### T-02: Specify AI security and production Admin provisioning
+### T-02: Specify AI security and reconcile the daily cap
 
 - **Depends on:** None
 - **Owner role:** spec
 - **Requirements:** SYS-06, SYS-08–SYS-10 — [security boundary](specs/TECHNICAL-SPEC.md#purpose-and-boundaries); prerequisite, no criterion ownership.
-- **Description:** Reconcile the [written security policy](specs/AI-SECURITY-SPEC.md) with the technical contract and resolve credential-safe seed-only production Admin provisioning.
-- **Work:** Carry the unmerged daily-cap amendment into consistent technical usage-control prose and SYS-09.5 through spec review. Preserve the security spec's existing limits, kill switch, no-retry/bounded failures, retention and evaluations; do not recreate the removed additional charging policy. **[ASSUMPTION ASM-01] Proposed, awaiting approval:** provision production seed Admins through a human-triggered production-environment workflow using environment secrets. Rationale: preserve seed-only creation without committed credentials. Effect if rejected: replace this provisioning contract before implementation; local seed/RLS work continues. This PLAN assumption is not an AI-SECURITY-SPEC assumption.
+- **Description:** Define the [security policy](specs/AI-SECURITY-SPEC.md) and consistent technical daily-cap contract.
+- **Work:** The security and technical specs on master agree on daily provider-call admission, fixed windows, per-attempt accounting and quota uncertainty. The security spec defines limits, kill switch, no-retry/bounded failures, retention and evaluations; no additional charging policy is required. PLAN ASM-01 is retired; hosted account contracts belong to T-23.
 - **File scope:** Existing `workflow/specs/AI-SECURITY-SPEC.md`, affected usage-control/SYS-09.5 sections of `workflow/specs/TECHNICAL-SPEC.md`, and own handoff; no workflow execution.
-- **Prerequisite:** Conflicting daily-cap contracts require a consistent spec amendment on master before T-11/T-12 execute. Human decides PLAN ASM-01 before production provisioning implementation; unrelated local seed/RLS work remains independent.
+- **Prerequisite:** None for daily-cap reconciliation; hosted account specification is scoped to T-23 and local seed/RLS work remains independent.
 - **Acceptance criteria:**
-  - [ ] Security amendment and technical criteria agree on daily-cap admission while preserving fixed windows, per-attempt accounting and quota uncertainty.
-  - [ ] Human approves or replaces ASM-01; approved spec merges without credentials or known hosted passwords.
-- **Status:** awaiting-decision
-- **Issue:** unassigned
+  - [x] Security and technical criteria agree on daily-cap admission while preserving fixed windows, per-attempt accounting and quota uncertainty.
+  - [x] Hosted account contracts are assigned to T-23; no credentials or known hosted passwords are specified here.
+- **Status:** done
+- **Issue:** none (spec task)
 
 ### T-03: Test runtime, configuration and import isolation
 
@@ -153,11 +160,11 @@ that gate. This plan update awaits human review and merge.
 
 - **Depends on:** T-04
 - **Owner role:** testing
-- **Requirements:** SYS-06.1, SYS-06.2 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify the fixed [core entities/relationships](specs/TECHNICAL-SPEC.md#data-model-and-ownership) independently of later story fields.
-- **Work:** Test local replay and core profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Counter/admission and cache/audit tables belong to their later pairs.
+- **Work:** Test local replay and core workspaces/profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Verify workspace references only on profiles/cafés and inherited workspace consistency for café children. Counter/admission and cache/audit tables belong to their later pairs.
 - **File scope:** Proposed `tests/foundations/schema/` and local migration/catalogue fixtures.
-- **Prerequisite:** Existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
+- **Prerequisite:** SYS-12 schema contract on master; existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
 - **Acceptance criteria:**
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
@@ -168,11 +175,11 @@ that gate. This plan update awaits human review and merge.
 
 - **Depends on:** T-05, T-04
 - **Owner role:** implementation
-- **Requirements:** SYS-06.1, SYS-06.2 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Build fixed [data/RLS foundations](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
-- **Work:** Add local Supabase lifecycle/migration tooling and core profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
+- **Work:** Add local Supabase lifecycle/migration tooling and core workspaces/profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Add the Workspaces entity, workspace references only on profiles/cafés and inherited-workspace consistency constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
 - **File scope:** Proposed `supabase/config.toml`, `supabase/migrations/`, `scripts/` database checks; existing manifest/lockfile and CI.
-- **Prerequisite:** T-05 evidence; serialize shared files.
+- **Prerequisite:** SYS-12 schema contract on master; T-05 evidence; serialize shared files.
 - **Acceptance criteria:**
   - [ ] Local replay, integrity tests and catalogue CI checks pass.
   - [ ] `bun run verify` passes without hosted access.
@@ -183,11 +190,11 @@ that gate. This plan update awaits human review and merge.
 
 - **Depends on:** T-06
 - **Owner role:** testing
-- **Requirements:** SYS-06.3, SYS-06.4 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.3, SYS-06.4; SYS-12.2, SYS-12.3 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify defined [role/record boundaries](specs/TECHNICAL-SPEC.md#rls-and-database-exposure) and local seeds.
-- **Work:** Test two customers/two owners/Admin/unauthenticated callers, parent-child access, cross-owner records, self-approval, role escalation and ownership reassignment. Test Customer/owner-only account role acceptance, metadata refusing Admin, seed-only Admin creation and confirmation-off declarations. Local seed replay includes all roles, approved cafés, menus/hours and past orders; hosted seed targets/password artifacts are rejected.
+- **Work:** Test two customers/two owners/main Admin/kit Admin/unauthenticated callers, parent-child access, cross-owner records, self-approval, role escalation and ownership reassignment. Test Customer/owner-only account role acceptance, metadata refusing Admin, the maintenance-created main Admin/kit-scoped Admin distinction and refusal of Admin sign-up and confirmation-off declarations. Test main-to-kit, kit-to-main and kit-to-kit denial server-side and under RLS, including AI sources/caches; normal sign-up always selects the main workspace and untrusted metadata cannot change it. Local seed replay includes all roles, approved cafés, menus/hours and past orders; hosted seed targets/password artifacts are rejected.
 - **File scope:** Proposed `tests/foundations/roles-seeds/` and local multi-actor/demo fixtures.
-- **Prerequisite:** Global tooling; production Admin provisioning is excluded and does not block these tests.
+- **Prerequisite:** Amended SYS-06.3/06.4 and SYS-12 isolation contracts on master; global tooling; T-25 owns kit creation and T-27 owns production maintenance provisioning; local matrix fixtures exercise authority without duplicating those owners.
 - **Acceptance criteria:**
   - [ ] Every fixed allow/deny boundary and local seed requirement has recorded tests.
   - [ ] No unspecified permission or story lifecycle is inferred.
@@ -198,11 +205,11 @@ that gate. This plan update awaits human review and merge.
 
 - **Depends on:** T-07, T-06
 - **Owner role:** implementation
-- **Requirements:** SYS-06.3, SYS-06.4 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.3, SYS-06.4; SYS-12.2, SYS-12.3 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Complete fixed [role protections](specs/TECHNICAL-SPEC.md#data-model-and-ownership) and reproducible local data.
-- **Work:** Complete technical allow/deny policies and protected role/account enforcement; seed local demo accounts for every role, approved cafés with menus/hours and past orders. Keep confirmation off in dev/prod configuration. Reject hosted seed execution and exclude demo passwords from hosted artifacts. Production Admin credentials remain T-02's proposal; add no sign-up screen or unspecified lifecycle.
+- **Work:** Complete technical allow/deny policies and protected role/account enforcement across main and kit workspaces, including Admin, parent-child and AI-source/cache isolation. Ensure normal sign-ups join main and cannot select/reassign workspace; seed local demo accounts for every role, approved cafés with menus/hours and past orders. Keep confirmation off in dev/prod configuration. Reject hosted seed execution and exclude demo passwords from hosted artifacts. T-25 owns kit creation; T-27 owns maintenance provisioning. Add no ordinary sign-up screen or unspecified lifecycle.
 - **File scope:** Proposed additive policy migrations, local seed script/data and server-only role guards; local Supabase configuration.
-- **Prerequisite:** T-07 evidence; no dependency on the production provisioning decision.
+- **Prerequisite:** Amended SYS-06.3/06.4 and SYS-12 isolation contracts on master; T-07 evidence; T-25/T-27 retain kit/maintenance provisioning ownership.
 - **Acceptance criteria:**
   - [ ] Full local matrix/account/seed checks and catalogue checks pass.
   - [ ] `bun run verify` passes; known passwords never ship to hosted projects.
@@ -245,13 +252,13 @@ that gate. This plan update awaits human review and merge.
 - **Owner role:** testing
 - **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5; SEC-06.1, SEC-06.2, SEC-06.3 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SEC-06](specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 - **Description:** Verify fixed [atomic admission/window mechanics](specs/TECHNICAL-SPEC.md#admission-and-windows).
-- **Work:** With synthetic configured caps, test independent instances/restarts, concurrent all-or-none reservations, user/action/refresh/run and provider-attempt limits, duplicate identities and minute/Singapore-midnight boundaries. Derive configuration validity and zero/missing/invalid-limit cases from the security limits contract. After T-02 resolves the conflict, test daily provider-cap exhaustion/concurrency/rollover, failed-attempt accounting, preserved returned tokens, unknown absent cost/tokens and fake-429/denied/unavailable-admission fallback. No real quota exhaustion or monetary guarantee.
+- **Work:** With synthetic configured caps, test independent instances/restarts, concurrent all-or-none reservations, user/action/refresh/run and provider-attempt limits, duplicate identities and minute/Singapore-midnight boundaries. Derive configuration validity and zero/missing/invalid-limit cases from the security limits contract. Test daily provider-cap exhaustion/concurrency/rollover, failed-attempt accounting, preserved returned tokens, unknown absent cost/tokens and fake-429/denied/unavailable-admission fallback. No real quota exhaustion or monetary guarantee.
 - **File scope:** Proposed `tests/foundations/usage/` and local concurrency/clock/provider fixtures.
-- **Prerequisite:** BLOCKED: T-02's consistent daily-cap amendment must be on master; current SEC-06.2 conflicts with SYS-09.5. Synthetic limits do not resolve that conflict.
+- **Prerequisite:** T-06 provides local schema; tests follow the consistent technical/security daily-cap contracts linked above.
 - **Acceptance criteria:**
   - [ ] Concurrency, persistence, boundary, telemetry and fake-429 cases record deterministic results.
   - [ ] No cleanup reset or fabricated monetary cost is assumed.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-12: Implement durable admission, windows and quota telemetry
@@ -260,13 +267,13 @@ that gate. This plan update awaits human review and merge.
 - **Owner role:** implementation
 - **Requirements:** SYS-09.1, SYS-09.2, SYS-09.3, SYS-09.5; SEC-06.1, SEC-06.2, SEC-06.3 — [SYS-09](specs/TECHNICAL-SPEC.md#sys-09--durable-usage-enforcement), [SEC-06](specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 - **Description:** Implement [durable admission](specs/TECHNICAL-SPEC.md#provider-call-accounting) and the reconciled [usage policy](specs/AI-SECURITY-SPEC.md#limits-and-configuration).
-- **Work:** Add server-only Postgres counters/admissions and atomic reservations with environment/scope/event/window identities. Enforce the approved configurable user/action/refresh/run and per-attempt limits, including the daily provider cap only after contract reconciliation. Derive scopes from verified actors, fail closed for invalid required caps/unavailable admission, preserve unknown telemetry and expose fake-429 fallback behavior through the local seam. Use database-clock fixed minutes/Singapore days; add no extra charging policy or monetary accounting.
+- **Work:** Add server-only Postgres counters/admissions and atomic reservations with environment/scope/event/window identities. Enforce the approved configurable user/action/refresh/run and per-attempt limits, including the daily provider cap. Derive scopes from verified actors, fail closed for invalid required caps/unavailable admission, preserve unknown telemetry and expose fake-429 fallback behavior through the local seam. Use database-clock fixed minutes/Singapore days; add no extra charging policy or monetary accounting.
 - **File scope:** Proposed usage migrations and `src/server/llm/` admission/telemetry modules.
-- **Prerequisite:** BLOCKED: T-11 evidence and T-02's consistent daily-cap specs on master; serialize migrations.
+- **Prerequisite:** T-11 evidence; serialize migrations.
 - **Acceptance criteria:**
   - [ ] Atomicity/window/telemetry/fallback tests and catalogue checks pass.
   - [ ] `bun run verify` passes without live calls.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-13: Test validated LLM operations and fallbacks
@@ -274,14 +281,14 @@ that gate. This plan update awaits human review and merge.
 - **Depends on:** T-01, T-02, T-12
 - **Owner role:** testing
 - **Requirements:** SYS-04.2; SYS-08.1, SYS-08.2, SYS-08.3; SEC-02.1, SEC-03.1, SEC-03.2, SEC-04.1, SEC-05.1, SEC-08.1, SEC-08.2 — [SYS-04](specs/TECHNICAL-SPEC.md#sys-04--runtime-and-application-boundaries), [SYS-08](specs/TECHNICAL-SPEC.md#sys-08--llm-isolation-and-validated-fallbacks), [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
-- **Description:** Verify shared [LLM/validation boundaries](specs/TECHNICAL-SPEC.md#llm-module) after contracts merge.
+- **Description:** Verify shared [LLM/validation boundaries](specs/TECHNICAL-SPEC.md#llm-module) under the linked contracts.
 - **Work:** Test the linked integration HTTP/provider/feature schemas and exact data-separated prompts using fake transport. Include direct/indirect/multilingual injection, feature input allowlists, aggregate-only Prep input, references/evidence, strict whole-result rejection, no tools/writes and no invalid success-cache write. Test configured model/reasoning, disable precedence before cache/dispatch/return, no retries, bounded timeout/overflow/cancellation, empty-source handling and safe typed fallbacks. Follow security evaluation cases for these owned criteria; no screen implementation is tested here.
 - **File scope:** Proposed `tests/foundations/llm/` and contract-derived fake/invalid fixtures.
-- **Prerequisite:** BLOCKED: T-01 resolves integration ASM-02/05/06 and required story fields before the integration spec merges; T-02 reconciles daily-cap specs; T-12 provides admission. No proposed schema is executable authority.
+- **Prerequisite:** T-12 provides admission. Story-owned fields remain dependencies of affected endpoints; shared operation tests use contract-derived authorized input snapshots.
 - **Acceptance criteria:**
   - [ ] Each malformed boundary rejects before effects/results; all three operations/fallbacks have deterministic tests.
   - [ ] Evidence traces exact cases to approved contracts; no live SoCLaaS call.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-14: Implement validated LLM operations and fallbacks
@@ -292,11 +299,11 @@ that gate. This plan update awaits human review and merge.
 - **Description:** Build shared [provider/validation adapters](specs/TECHNICAL-SPEC.md#llm-module), consuming story-owned data.
 - **Work:** Add server-only Zod feature/provider gates, exact fixed prompts with JSON data separation, authorized minimal context selection, validated references/evidence and typed fallback envelopes from the approved integration contract. Implement configurable single-call non-streaming transport, fake/disabled behavior, zero SDK retries, bounded transport/cancellation and disable rechecks. Route every dispatch through admission; invalid output cannot write a success cache or mutate domain records. Accept authorized snapshots/aggregates without implementing story queries, sales calculations, endpoints or UI. T-16 owns persistent cache/audit repositories.
 - **File scope:** Proposed `src/server/llm/` adapters and shared schemas under `src/server/`; existing manifest/lockfile for required packages.
-- **Prerequisite:** BLOCKED: merged INTEGRATION-SPEC.md and AI-SECURITY-SPEC.md contracts named in T-13; T-13 evidence.
+- **Prerequisite:** T-12 admission and T-13 evidence under the linked integration/security contracts.
 - **Acceptance criteria:**
   - [ ] Shared boundary/provider/operation/fallback tests pass with fake transports.
   - [ ] `bun run verify` passes; no live verification call or story screen is added.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-15: Test AI caches, catalogue eligibility, accounting and audit
@@ -307,11 +314,11 @@ that gate. This plan update awaits human review and merge.
 - **Description:** Verify [cache eligibility/scopes](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope) and per-attempt/audit behavior.
 - **Work:** Test session-RLS streamed catalogue and no use cache directive; suspension/unapproval, actor/café isolation, TTL/Singapore-midnight/version/source changes, exact canonical fingerprints, failed refresh preserving an eligible old entry, refresh admission and invalid payload rejection. Check cache hits reserve no call and every permitted dispatch/failure has one reservation, without retry or extra charging-policy tests. Test content-free actor/time/outcome audit, denial/failure events, unavailable-storage fail-closed behavior, denied client infrastructure writes and clock-controlled retention cleanup preserving active state. Keep separate moderation audit records outside AI cleanup; domain confirmation security belongs to T-21/T-22.
 - **File scope:** Proposed `tests/foundations/ai-state/`, local clock/cache/accounting/audit fixtures.
-- **Prerequisite:** BLOCKED: T-01 resolves integration ASM-06 and required catalogue/sales source fields; integration contracts and T-02's consistent security/technical amendment must merge; T-12 admission is required. Existing security retention/refresh policies are written, not missing decisions.
+- **Prerequisite:** T-12 admission is required. Catalogue/sales source fields remain story-owned; shared repository tests use contract-derived source snapshots and the linked retention/refresh policy.
 - **Acceptance criteria:**
   - [ ] Cache/eligibility/accounting/audit cases trace to contracts with controlled local evidence.
   - [ ] Reusable repository tests need no completed LLM feature implementation.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-16: Implement AI caches, catalogue eligibility, accounting and audit
@@ -322,11 +329,11 @@ that gate. This plan update awaits human review and merge.
 - **Description:** Build shared [durable cache/accounting repositories](specs/TECHNICAL-SPEC.md#usage-control-and-cache-enforcement) independently of feature adapters.
 - **Work:** Add authorized Postgres cache/audit storage and validated repositories using approved fingerprint/source/model/contract identities. Recheck current ownership/source eligibility on every hit; enforce expiry, preserve eligible results on failed refresh and integrate admission without an extra charging policy. Record content-free AI outcomes, fail closed when required storage is unavailable, and add local cleanup honoring security retention without resetting active state or deleting moderation audit. Support separate moderation audit persistence; T-22 connects its human-confirmed domain action. No Next catalogue cache, prompt/output audit data or story lifecycle/UI work.
 - **File scope:** Proposed cache/audit migrations and `src/server/` eligibility plus `src/server/llm/` repositories; no feature-adapter ownership overlap.
-- **Prerequisite:** BLOCKED: merged integration/security contracts named in T-15; T-15 evidence. T-14 is not a prerequisite.
+- **Prerequisite:** T-12 admission and T-15 evidence under the linked integration/security contracts. T-14 is not a prerequisite.
 - **Acceptance criteria:**
   - [ ] Repository/eligibility/accounting/audit tests and catalogue checks pass locally.
   - [ ] `bun run verify` passes; ordinary clients cannot forge infrastructure rows.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** unassigned
 
 ### T-17: Test delivery workflow configuration
@@ -350,7 +357,7 @@ that gate. This plan update awaits human review and merge.
 - **Owner role:** implementation
 - **Requirements:** SYS-07.1 — [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Author [Actions deploy/migration workflows](specs/TECHNICAL-SPEC.md#environments-and-delivery); humans execute them.
-- **Work:** Write environment-bound application/hosted migration workflows and runtime/region mappings with production approval protection. Exclude local demos/credentials; do not implement unapproved Admin provisioning. Record the human step to configure protections/regions, approve/execute workflows and verify hosted targets/migrations. Agents never run deploy, vercel or supabase db push.
+- **Work:** Write environment-bound application/hosted migration workflows and runtime/region mappings with production approval protection. Exclude local demos/credentials; T-25 owns demo-kit creation and T-27 extends this production workflow with its post-deploy maintenance call and adds Vercel Cron, without duplicating workflow ownership. Record the human step to configure protections/regions, approve/execute workflows and verify hosted targets/migrations. Agents never run deploy, vercel or supabase db push.
 - **File scope:** Proposed delivery files under `.github/workflows/` and non-secret Vercel configuration; serialize shared CI edits.
 - **Prerequisite:** T-17 evidence; human environment protection/setup before deployment.
 - **Acceptance criteria:**
@@ -416,6 +423,79 @@ that gate. This plan update awaits human review and merge.
 - **Acceptance criteria:**
   - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
   - [ ] `bun run verify` and `bun run test:e2e` pass with local Supabase/fake AI; no live verification or deployment.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-23: Specify peer-tester demo access and daily maintenance
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** SYS-06, SYS-12, SYS-13, SEC-09, SEC-10 — specification only, no testing/implementation criterion ownership; [SYS-12/SYS-13](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Specify how peer testers access every role on production without team action and without interfering with each other, plus a daily maintenance job.
+- **Work:** Specified SYS-12 workspace/demo-kit and SYS-13 daily-maintenance contracts, SEC-10 safeguards, POST /api/demo-kits and GET /api/internal/maintenance, with unique criterion ownership and story prerequisites in this plan.
+- **File scope:** `workflow/specs/PRODUCT-SPEC.md`, `workflow/specs/TECHNICAL-SPEC.md`, `workflow/specs/AI-SECURITY-SPEC.md`, `workflow/specs/INTEGRATION-SPEC.md`, `workflow/PLAN.md` and `workflow/handoffs/spec-demo-access/01-spec.md`.
+- **Acceptance criteria:**
+  - [x] Cross-cutting draft contracts, ownership mapping and dependent task prerequisites are recorded; human review and merge remain prerequisites for execution.
+- **Status:** done
+- **Issue:** none (spec task)
+
+### T-24: Test demo kits
+
+- **Depends on:** T-08, T-10, T-12
+- **Owner role:** testing
+- **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Test anonymous production demo access under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes), using local Supabase and fake AI.
+- **Work:** Derive failing-first cases for the sign-in creation control, three once-shown normal-sign-in accounts, email/code pattern, secure distinct passwords, Auth-only persistence, no credential logging/later responses and all-or-nothing rollback. Test concurrent global 10-minute/day caps, rollover, restart, unavailable counters, 429/Retry-After, no LLM call, no expiry/deletion, kit-scoped Admin operations and per-account/shared-global AI limits. Verify all seeded content and relative sales history against the owning stories, including unpublished-owner and untrusted synthetic review cases. Reuse T-08 isolation guards and T-12 counters rather than assigning their criteria again.
+- **File scope:** Proposed `tests/foundations/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases; testing owns all fixtures/mocks.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters.
+- **Acceptance criteria:**
+  - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-25: Implement demo kits
+
+- **Depends on:** T-24, T-08, T-10, T-12
+- **Owner role:** implementation
+- **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Implement self-service demo kits under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
+- **Work:** Add the sign-in Create demo kit control and POST /api/demo-kits with one-time credential display, secure account/code generation, Supabase Auth-only password storage and atomic complete-kit creation/rollback. Extend T-12's durable counter/window mechanism for both global kit caps, fail closed and return the specified 429/Retry-After response. Seed the kit's Customer, approved owner/café/menu/hours/pickup rules/relative sales history, separate unpublished owner/pending application and untrusted pending reviews using owning-story states. Apply existing kit Admin controls, account/global AI limits, no LLM call and no automatic expiry/deletion. Reuse T-08 isolation and T-10 session gates; author no tests or ordinary sign-in lifecycle.
+- **File scope:** Proposed `src/app/api/demo-kits/route.ts`, server-only kit provisioning and additive migrations; existing sign-in screen after its owning story exists. Serialize migrations/shared configuration; no hosted execution.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence.
+- **Acceptance criteria:**
+  - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-26: Test daily maintenance
+
+- **Depends on:** T-16, T-18, T-25
+- **Owner role:** testing
+- **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Test the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and production trigger configuration locally.
+- **Work:** Derive cases for constant-time bearer comparison, missing/wrong secret 401/no work, ordered independent steps, consecutive-run idempotence, at-most-one maintenance-created main Admin, no-op when one exists even after a configured-email change, creation only when no Admin or matching account exists, cross-role/workspace email-conflict outcomes with no changes, preserved changed passwords, missing main-Admin settings, showcase café/hidden owner credentials, count-only sanitized responses and no kit/user/domain deletion, password reset or LLM call. Exercise T-16 cleanup through the endpoint without taking SEC-09.2 ownership. Statically verify daily UTC cron and exactly one post-successful-production-deploy call extending T-18's workflow, with environment-specific server-only secrets. Use synthetic secrets and local seeded data; do not execute hosted triggers.
+- **File scope:** Proposed `tests/foundations/maintenance/` local endpoint/clock/fault fixtures and static Vercel/workflow checks; testing owns fixtures/mocks.
+- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and T-25 kit fixtures/surfaces. BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01).
+- **Acceptance criteria:**
+  - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
+  - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-27: Implement daily maintenance
+
+- **Depends on:** T-26, T-16, T-18, T-25
+- **Owner role:** implementation
+- **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Add the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and extend delivery triggers.
+- **Work:** Add GET /api/internal/maintenance with server-only environment-specific bearer authentication, constant-time comparison and count-only sanitized outcomes. Invoke T-16's retention cleanup, ensure at most one main Admin under SYS-13.1, retaining an existing main Admin regardless of configured-email changes and reporting conflict without changes when the email is already used but no main Admin exists, then ensure the main showcase café/hidden owner. Preserve step order and independence, idempotence, changed passwords and every no-touch/no-delete/no-LLM restriction. Missing main-Admin variables report that step's failure while other steps run. Add the Vercel production cron entry and extend T-18's production deploy workflow with one maintenance call after each successful deploy; reuse its workflow/configuration ownership rather than recreating it. No tests or hosted execution.
+- **File scope:** Proposed `src/app/api/internal/maintenance/route.ts` and server-only maintenance modules; Vercel cron configuration; extend existing `.github/workflows/` production deployment from T-18. Serialize shared workflow/configuration edits.
+- **Prerequisite:** BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18. Human approval/execution remains required for production delivery.
+- **Acceptance criteria:**
+  - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
+  - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
 - **Status:** blocked
 - **Issue:** unassigned
 

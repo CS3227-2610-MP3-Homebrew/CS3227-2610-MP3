@@ -1,7 +1,5 @@
 # Homebrew AI security specification
 
-**Last updated:** 2026-10-18
-
 **Related specs:** [Product](PRODUCT-SPEC.md), [Technical](TECHNICAL-SPEC.md),
 [specification conventions](README.md).
 
@@ -19,10 +17,10 @@ admission and cache scope remain authoritative in
 [TECHNICAL-SPEC.md](TECHNICAL-SPEC.md). This file adds security policy to those
 mechanisms without redefining SYS-04–SYS-11. Product stories own feature behavior
 and domain permissions. Exact HTTP/error contracts, prompt text, schemas,
-fingerprints and source revisions belong to the not-yet-written
-INTEGRATION-SPEC.md in the [spec registry](README.md#planned-specifications).
-Story specifications are also not yet written. No missing contract is treated
-as an existing implementation or an implicit permission.
+fingerprints and source revisions belong to
+[INTEGRATION-SPEC.md](INTEGRATION-SPEC.md). Story-owned contracts are identified
+in the [spec registry](README.md#specifications). No missing contract grants
+an implicit permission.
 
 ## Assets, actors and trust boundaries
 
@@ -77,17 +75,19 @@ of tools/writes contain the result even when an injection is not detected.
 | Cache poisoning | Malformed output is stored, a source changes, or a caller supplies a cache/admission identity. | Store validated successes only; server-derived keys and identities; schema/model/source binding and current-scope checks. | SEC-07 |
 | Secret or content leakage | Provider error body or telemetry records a prompt, cookie or key. | Allowlisted metadata only; sanitize application errors and exclude payloads from logs, traces and analytics. | SEC-02, SEC-09 |
 | Disable bypass | Existing AI cache is shown after AI is disabled, or a follow-up call races a disable. | Disable takes precedence over cache/provider work; recheck before each dispatch and before returning AI output. | SEC-08 |
+| Kit-creation flooding | Anonymous callers create kits concurrently or restart an app to evade limits. | Enforce the global fixed-10-minute and Singapore-day caps with durable atomic Postgres admission; unavailable counters fail closed. | SEC-10 |
+| Kit Admin escalation or cross-kit access | A kit Admin supplies main-workspace or another kit's records/cache references or attempts role changes. | Verify workspace alongside existing role/ownership boundaries server-side and under RLS, including AI reads/caches; deny Admin creation and role changes. | SEC-10 |
+| Maintenance-endpoint abuse | An anonymous request or incorrect bearer attempts cleanup or account creation. | Environment-specific server-only bearer secret, constant-time comparison, 401 and no work on missing/wrong secret; idempotent limited maintenance operations. | SEC-10 |
+| Credential leakage from kit creation | Passwords appear in a later response, cache, audit, error or log. | Unique secure random passwords, Supabase Auth storage only, one-time creation response with private no-store caching, content-free sanitized telemetry. | SEC-10 |
 | Forged mutation request | Cross-site request attempts AI triage or confirms a moderation action using a victim's cookies. | Cookie-authenticated AI and mutation endpoints enforce same-origin protection; ordinary authorization is repeated for every action. | SEC-01, SEC-05 |
 
 ## Usage policy
 
 ### Limits and configuration
 
-The product's usage limits and the additional feature call limits below are
-the human-confirmed initial app policy (former ASM-01). These limits are app
-caps, not verified provider entitlements. They use the database-clock
-fixed-minute and Singapore-day windows
-already defined by the [technical contract](TECHNICAL-SPEC.md#rate-windows).
+The usage limits and feature call limits below are the app policy. These
+limits are app caps, not verified provider entitlements. They use the
+database-clock fixed-minute and Singapore-day windows already defined by the [technical contract](TECHNICAL-SPEC.md#rate-windows).
 
 All keys below are server-only nonnegative integer configuration. Zero denies
 the relevant work. Missing/invalid required policy configuration disables AI
@@ -118,22 +118,20 @@ not require a second call or permit a retry after failure. Moderation requests
 over the configured batch size are rejected before action admission, not split
 into unlimited calls.
 
-The global daily provider-call cap is 100 attempts in prod and 40 in dev,
-confirmed by the human on 2026-10-18. Every dispatched attempt counts, including
+The global daily provider-call cap is 100 attempts in prod and 40 in dev. Every
+dispatched attempt counts, including
 timeouts, provider errors, 429s and invalid output; cache hits make no provider
 attempt. Admission atomically enforces this cap alongside the other applicable
 call limits, using Singapore calendar days and the database clock. Exhaustion
 uses the feature's non-AI fallback.
 
-The product's proposed $5/$2 daily quota budgets remain planning inputs, not
-measured or enforced spend limits. For 100/40 calls to fit those respective
-budgets, each call would need to consume at most $0.05 quota units; no evidence
-establishes that bound. The call cap therefore makes no monetary-quota guarantee.
+The call cap makes no monetary-quota guarantee.
 Actual per-key entitlements remain unknown under
 [TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).
 
-The documented 90 requests/minute, $80/day and $800/month are unverified per-key
-planning defaults. Fixed-minute buckets can permit a boundary burst that exceeds
+The documented per-key planning defaults remain unverified under
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions). Fixed-minute buckets can
+permit a boundary burst that exceeds
 a provider's differently defined rolling window. Provider 429 always uses the
 fallback; no live exhaustion probe is part of verification. No monthly monetary
 enforcement is claimed.
@@ -175,8 +173,8 @@ remain in the stretch story contract. No runtime controls are added to the MVP.
 
 Use no automatic provider retries and a 30-second maximum
 provider-attempt duration, with at most 65,536 UTF-8 bytes each for the serialized
-feature context and response body. These human-confirmed safety ceilings
-(former ASM-04) are not performance guarantees. Integration schemas can impose smaller field/payload
+feature context and response body. These safety ceilings are not performance
+guarantees. Integration schemas can impose smaller field/payload
 limits. Oversized input is rejected before dispatch; response overflow, timeout,
 transport/non-success response, malformed JSON, schema/semantic failure or
 unavailable admission stops the operation and invokes the fallback. Never
@@ -197,9 +195,10 @@ HTTP status codes and typed reason identifiers belong to INTEGRATION-SPEC.
 
 ## Cache, rendering and human confirmation
 
-The [technical cache contract](TECHNICAL-SPEC.md#cache-eligibility-and-scope)
-owns Brew Finder's same-actor 10-minute cache and Prep Advisor's café/day cache,
-including source/model/contract binding and refresh. Moderation has no reusable
+Brew Finder's same-actor cache expires 10 minutes after creation; Prep Advisor's
+café/day cache expires at the next Singapore midnight. The
+[technical cache contract](TECHNICAL-SPEC.md#cache-eligibility-and-scope) defines
+source/model/contract binding and refresh. Moderation has no reusable
 AI-result cache. A rejected or invalid result is never cached as a success.
 Failed refreshes do not overwrite a valid cache; that refresh request receives
 the fallback, and later ordinary requests may reuse the old result only if it
@@ -215,7 +214,7 @@ missing classifications invalidate the complete AI result. Brew Finder results
 cannot disclose an ineligible café even if its eligibility changed mid-request.
 
 Prep advice cannot change menu, inventory or orders. Moderation labels are
-suggestions; an Admin explicitly confirms each hide/restore with a reason.
+suggestions; an Admin explicitly confirms each keep, hide or restore with a reason.
 That request repeats Admin authorization, current review-state checks and the
 ordinary mutation contract and creates the separate moderation audit entry.
 No label, including `ok` or `injection attempt`, automatically changes visibility
@@ -235,9 +234,11 @@ Caches may hold validated feature results under their restricted scope and
 expiry; they are not an alternative prompt log. Ordinary review data and the
 human's moderation reason remain in their separate domain/audit records.
 
-Retain AI audit events for 30 days, expired AI cache entries
-for at most 24 hours after expiry, and closed usage-counter/admission windows
-for 7 days after their end (human-confirmed former ASM-05).
+Retain AI audit events for 30 days and closed usage-counter/admission windows
+for 7 days after their end; delete them on the first daily maintenance run after
+their respective deadline. Delete expired AI cache entries on the next daily
+maintenance run, at most 48 hours after expiry. Vercel Hobby daily cron has about
+±59 minutes precision.
 Cleanup applies only to expired/closed records;
 active windows and single-use admission state cannot be reset by cleanup or a
 deploy. Cache expiry is enforced at read time even if cleanup is delayed. These
@@ -303,7 +304,7 @@ they do not assert that the starter application already satisfies them.
   interface; injected tool calls and claims of approval cannot mutate domain
   data. Generating any of the three AI results changes no order, menu, café or
   review visibility.
-- **SEC-05.2:** Review hide/restore requires explicit per-review Admin
+- **SEC-05.2:** Review keep, hide or restore requires explicit per-review Admin
   confirmation, current domain validation and a reason; it preserves original
   text and records the separate moderation audit entry. Stale/forged AI advice
   cannot bypass authorization or review-state rules.
@@ -351,10 +352,40 @@ they do not assert that the starter application already satisfies them.
   cache, denial and failure outcomes when audit storage is available. Synthetic
   payload/secret canaries never appear in audit/log/trace/error records;
   unavailable audit/admission storage never authorizes a provider dispatch.
-- **SEC-09.2:** Clock-controlled cleanup checks delete records by their stated
-  retention deadline while preserving active counters/reservations. Expired
+- **SEC-09.2:** Clock-controlled cleanup checks delete expired cache entries
+  by the next daily maintenance run, at most 48 hours after expiry, and delete
+  AI audit events and closed counter/admission windows on the first maintenance
+  run after their respective 30-day and 7-day deadlines, while preserving
+  active counters/reservations. Expired
   entries remain unreadable before deletion, and ordinary clients cannot
   mutate audit history. AI cleanup does not delete moderation audit records.
+
+### SEC-10 — Demo access and maintenance safeguards
+
+- **SEC-10.1:** Concurrent anonymous kit creation across app instances cannot
+  exceed either configured global cap: 5 kits per fixed 10-minute window and
+  30 per Singapore calendar day. Both use the same durable Postgres
+  counter/window mechanism as AI usage control; unavailable counters fail
+  closed. Limit refusal returns 429 `RATE_LIMITED`, `Retry-After` and a safe
+  message saying when to try again; restart/deploy cannot restore capacity.
+- **SEC-10.2:** Every published kit account has its own cryptographically secure
+  random password of at least 16 characters. Passwords are stored only as
+  Supabase Auth stores them and appear only in the once-shown creation response
+  with `Cache-Control: private, no-store`. Synthetic password canaries never
+  appear in logs, audit rows, errors or later responses; unpublished seeded
+  owner credentials are never returned.
+- **SEC-10.3:** Kit Admin attempts to read or mutate the main workspace or
+  another kit, including through AI sources/caches, fail server authorization
+  and RLS. Kit Admins cannot create Admins or change roles; ordinary Admin
+  audit, reasons, reversible actions and preservation of review text remain
+  enforced. Seeded prompt-injection reviews remain untrusted data.
+- **SEC-10.4:** Maintenance accepts only the environment-specific server-only
+  `CRON_SECRET` bearer credential, compared in constant time. Missing/wrong
+  secrets return 401 `UNAUTHENTICATED` before any work, including cleanup.
+- **SEC-10.5:** Maintenance responses contain only `requestId` and per-step
+  outcome counts, with no secrets, emails or record contents. Synthetic
+  `CRON_SECRET` and main-Admin credential canaries never appear in responses,
+  logs or audit rows; configuration and internal failures remain sanitized.
 
 ## Security evaluation plan
 
@@ -379,6 +410,12 @@ after these contracts and their dependencies are approved.
 | E-12 | Synthetic secret/content canaries in errors and source payloads; controlled clock crosses retention deadlines. | No forbidden telemetry/client leakage; due records deleted without active quota reset. | Secret isolation/retention; SEC-02.2, SEC-09.1–SEC-09.2 |
 | E-13 | Cross-site cookie request and stale/forged Admin confirmation. | Request denied or domain action rejected; no unaudited/unauthorized visibility change. | Request integrity/human control; SEC-01.1, SEC-05.2 |
 
+| E-14 | Parallel anonymous kit requests at both caps, fixed-window/day rollover, restart and unavailable counters. | Both shared global caps hold; 429 has a safe retry message and `Retry-After`; unavailable counters create no kit. | Durable kit admission; SEC-10.1 |
+| E-15 | Capture one successful creation, later responses, errors, audit/log output and unpublished-owner paths with synthetic password canaries. | Three distinct secure random passwords of at least 16 characters occur only in the once-shown private no-store creation response; Auth is their only persistent storage. | Credential isolation; SEC-10.2 |
+| E-16 | Kit Admin targets main/other-kit domain records, AI sources/caches, role changes and Admin creation; seeded injection review claims authority. | Server and RLS deny cross-workspace access/escalation; ordinary moderation controls hold and review text grants no authority. | Kit authority; SEC-10.3 |
+| E-17 | Missing/wrong maintenance bearer and constant-time comparison inspection using synthetic secrets. | 401 `UNAUTHENTICATED`, no step executes; configured secret comparison is constant time. | Maintenance authentication; SEC-10.4 |
+| E-18 | Maintenance success/partial failure/missing main-Admin config, with credential/email/content canaries. | Response has per-step outcome counts only; secrets/emails/contents absent, secrets absent from logs/audit and failures sanitized. | Maintenance disclosure; SEC-10.5 |
+
 Unit/contract checks cover request selection, prompt data encoding, validation,
 transport bounds and fake failures. Local database integration checks cover RLS,
 concurrent admission, windows, cache isolation and retention. Browser checks
@@ -399,12 +436,7 @@ retention, provider-side deletion, sales calculations or new Admin permissions.
 
 ## Assumptions
 
-None introduced by this specification remain unconfirmed. On 2026-10-17 the
-human adopted former ASM-01, ASM-04 and ASM-05 as written, rejected the global
-daily call-cap addition (ASM-02), and removed the need for the additional
-charging policy (ASM-03). On 2026-10-18 the human reversed the ASM-02 rejection
-and adopted the previously proposed daily cap of 100 prod / 40 dev attempts.
-All five identifiers are retired and must not be reused.
-The adopted policies appear in their relevant sections above. These decisions
-do not claim that a spec PR has merged. Existing per-key uncertainty remains
-TECHNICAL-SPEC ASM-01.
+Retired IDs: ASM-01–ASM-05.
+
+Per-key uncertainty remains
+[TECHNICAL-SPEC ASM-01](TECHNICAL-SPEC.md#assumptions).

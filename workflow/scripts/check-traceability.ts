@@ -10,7 +10,9 @@ const testsPath = resolve(process.argv[3] ?? "tests");
 function main(): number {
   const covered = new Set(
     testFiles(testsPath).flatMap((path) =>
-      testTitles(readFileSync(path, "utf8")).flatMap((title) => title.match(criterionPattern) ?? []),
+      testTitles(readFileSync(path, "utf8"))
+        .filter(({ coverage }) => coverage)
+        .flatMap(({ title }) => title.match(criterionPattern) ?? []),
     ),
   );
   const plan = readFileSync(planPath, "utf8");
@@ -34,6 +36,7 @@ function main(): number {
   if (uncovered.size) {
     console.error("Uncovered criteria in done tasks:");
     for (const [criterion, tasks] of uncovered) console.error(`- ${criterion}: ${tasks.join("; ")}`);
+    console.error("Tests marked skip, todo, fixme or fail(s) do not count as coverage.");
     return 1;
   }
   console.log(`Traceability passed (${doneTasks} done tasks; all listed criteria have test titles).`);

@@ -118,7 +118,7 @@ ${task("T-04", "Spec prerequisite", "spec", "CUS-01.1, OWN-07", "T-03", "started
       "Dependency cycle: T-03 → T-04 → T-03.",
     ]),
   );
-  expect(warnings).toContain("SEC-01.1 is not planned in any PLAN.md task yet.");
+  expect(warnings).toContain("SEC-01 has 1 criteria not planned in any PLAN.md task yet: SEC-01.1.");
 });
 
 test("check-specs: reports broken links and missing anchors outside handoffs", () => {
