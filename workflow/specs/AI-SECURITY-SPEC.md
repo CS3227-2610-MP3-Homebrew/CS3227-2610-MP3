@@ -75,6 +75,10 @@ of tools/writes contain the result even when an injection is not detected.
 | Cache poisoning | Malformed output is stored, a source changes, or a caller supplies a cache/admission identity. | Store validated successes only; server-derived keys and identities; schema/model/source binding and current-scope checks. | SEC-07 |
 | Secret or content leakage | Provider error body or telemetry records a prompt, cookie or key. | Allowlisted metadata only; sanitize application errors and exclude payloads from logs, traces and analytics. | SEC-02, SEC-09 |
 | Disable bypass | Existing AI cache is shown after AI is disabled, or a follow-up call races a disable. | Disable takes precedence over cache/provider work; recheck before each dispatch and before returning AI output. | SEC-08 |
+| Kit-creation flooding | Anonymous callers create kits concurrently or restart an app to evade limits. | Enforce the global fixed-10-minute and Singapore-day caps with durable atomic Postgres admission; unavailable counters fail closed. | SEC-10 |
+| Kit Admin escalation or cross-kit access | A kit Admin supplies main-workspace or another kit's records/cache references or attempts role changes. | Verify workspace alongside existing role/ownership boundaries server-side and under RLS, including AI reads/caches; deny Admin creation and role changes. | SEC-10 |
+| Maintenance-endpoint abuse | An anonymous request or incorrect bearer attempts cleanup or account creation. | Environment-specific server-only bearer secret, constant-time comparison, 401 and no work on missing/wrong secret; idempotent limited maintenance operations. | SEC-10 |
+| Credential leakage from kit creation | Passwords appear in a later response, cache, audit, error or log. | Unique secure random passwords, Supabase Auth storage only, one-time creation response with private no-store caching, content-free sanitized telemetry. | SEC-10 |
 | Forged mutation request | Cross-site request attempts AI triage or confirms a moderation action using a victim's cookies. | Cookie-authenticated AI and mutation endpoints enforce same-origin protection; ordinary authorization is repeated for every action. | SEC-01, SEC-05 |
 
 ## Usage policy
@@ -230,9 +234,11 @@ Caches may hold validated feature results under their restricted scope and
 expiry; they are not an alternative prompt log. Ordinary review data and the
 human's moderation reason remain in their separate domain/audit records.
 
-Retain AI audit events for 30 days, expired AI cache entries
-for at most 24 hours after expiry, and closed usage-counter/admission windows
-for 7 days after their end.
+Retain AI audit events for 30 days and closed usage-counter/admission windows
+for 7 days after their end; delete them on the first daily maintenance run after
+their respective deadline. Delete expired AI cache entries on the next daily
+maintenance run, at most 48 hours after expiry. Vercel Hobby daily cron has about
+±59 minutes precision.
 Cleanup applies only to expired/closed records;
 active windows and single-use admission state cannot be reset by cleanup or a
 deploy. Cache expiry is enforced at read time even if cleanup is delayed. These
@@ -346,10 +352,40 @@ they do not assert that the starter application already satisfies them.
   cache, denial and failure outcomes when audit storage is available. Synthetic
   payload/secret canaries never appear in audit/log/trace/error records;
   unavailable audit/admission storage never authorizes a provider dispatch.
-- **SEC-09.2:** Clock-controlled cleanup checks delete records by their stated
-  retention deadline while preserving active counters/reservations. Expired
+- **SEC-09.2:** Clock-controlled cleanup checks delete expired cache entries
+  by the next daily maintenance run, at most 48 hours after expiry, and delete
+  AI audit events and closed counter/admission windows on the first maintenance
+  run after their respective 30-day and 7-day deadlines, while preserving
+  active counters/reservations. Expired
   entries remain unreadable before deletion, and ordinary clients cannot
   mutate audit history. AI cleanup does not delete moderation audit records.
+
+### SEC-10 — Demo access and maintenance safeguards
+
+- **SEC-10.1:** Concurrent anonymous kit creation across app instances cannot
+  exceed either configured global cap: 5 kits per fixed 10-minute window and
+  30 per Singapore calendar day. Both use the same durable Postgres
+  counter/window mechanism as AI usage control; unavailable counters fail
+  closed. Limit refusal returns 429 `RATE_LIMITED`, `Retry-After` and a safe
+  message saying when to try again; restart/deploy cannot restore capacity.
+- **SEC-10.2:** Every published kit account has its own cryptographically secure
+  random password of at least 16 characters. Passwords are stored only as
+  Supabase Auth stores them and appear only in the once-shown creation response
+  with `Cache-Control: private, no-store`. Synthetic password canaries never
+  appear in logs, audit rows, errors or later responses; unpublished seeded
+  owner credentials are never returned.
+- **SEC-10.3:** Kit Admin attempts to read or mutate the main workspace or
+  another kit, including through AI sources/caches, fail server authorization
+  and RLS. Kit Admins cannot create Admins or change roles; ordinary Admin
+  audit, reasons, reversible actions and preservation of review text remain
+  enforced. Seeded prompt-injection reviews remain untrusted data.
+- **SEC-10.4:** Maintenance accepts only the environment-specific server-only
+  `CRON_SECRET` bearer credential, compared in constant time. Missing/wrong
+  secrets return 401 `UNAUTHENTICATED` before any work, including cleanup.
+- **SEC-10.5:** Maintenance responses contain only `requestId` and per-step
+  outcome counts, with no secrets, emails or record contents. Synthetic
+  `CRON_SECRET` and main-Admin credential canaries never appear in responses,
+  logs or audit rows; configuration and internal failures remain sanitized.
 
 ## Security evaluation plan
 
@@ -373,6 +409,12 @@ after these contracts and their dependencies are approved.
 | E-11 | Missing/invalid/zero config, unavailable database, oversized input/output and request cancellation. | No unadmitted dispatch; bounded stop/fallback; no further subcall after disconnect. | Fail closed/resource bounds; SEC-06.3, SEC-08.2 |
 | E-12 | Synthetic secret/content canaries in errors and source payloads; controlled clock crosses retention deadlines. | No forbidden telemetry/client leakage; due records deleted without active quota reset. | Secret isolation/retention; SEC-02.2, SEC-09.1–SEC-09.2 |
 | E-13 | Cross-site cookie request and stale/forged Admin confirmation. | Request denied or domain action rejected; no unaudited/unauthorized visibility change. | Request integrity/human control; SEC-01.1, SEC-05.2 |
+
+| E-14 | Parallel anonymous kit requests at both caps, fixed-window/day rollover, restart and unavailable counters. | Both shared global caps hold; 429 has a safe retry message and `Retry-After`; unavailable counters create no kit. | Durable kit admission; SEC-10.1 |
+| E-15 | Capture one successful creation, later responses, errors, audit/log output and unpublished-owner paths with synthetic password canaries. | Three distinct secure random passwords of at least 16 characters occur only in the once-shown private no-store creation response; Auth is their only persistent storage. | Credential isolation; SEC-10.2 |
+| E-16 | Kit Admin targets main/other-kit domain records, AI sources/caches, role changes and Admin creation; seeded injection review claims authority. | Server and RLS deny cross-workspace access/escalation; ordinary moderation controls hold and review text grants no authority. | Kit authority; SEC-10.3 |
+| E-17 | Missing/wrong maintenance bearer and constant-time comparison inspection using synthetic secrets. | 401 `UNAUTHENTICATED`, no step executes; configured secret comparison is constant time. | Maintenance authentication; SEC-10.4 |
+| E-18 | Maintenance success/partial failure/missing main-Admin config, with credential/email/content canaries. | Response has per-step outcome counts only; secrets/emails/contents absent, secrets absent from logs/audit and failures sanitized. | Maintenance disclosure; SEC-10.5 |
 
 Unit/contract checks cover request selection, prompt data encoding, validation,
 transport bounds and fake failures. Local database integration checks cover RLS,

@@ -4,7 +4,8 @@ Sources: [PRODUCT-SPEC.md](specs/PRODUCT-SPEC.md),
 [TECHNICAL-SPEC.md](specs/TECHNICAL-SPEC.md),
 [INTEGRATION-SPEC.md](specs/INTEGRATION-SPEC.md) and
 [AI-SECURITY-SPEC.md](specs/AI-SECURITY-SPEC.md).
-Foundations cover SYS-04–SYS-11 and SEC-01–SEC-09.
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs, plus three spec tasks.
+Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
 
@@ -49,7 +50,7 @@ Foundations cover SYS-04–SYS-11 and SEC-01–SEC-09.
 
 ## Assumptions
 
-Retired IDs: ASM-01. Hosted account contracts belong to T-23.
+Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23.
 
 ## Shared design
 
@@ -78,6 +79,14 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
   [retention](specs/AI-SECURITY-SPEC.md#audit-retention-and-operational-response),
   [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria)
   and [evaluation cases](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
+- Demo access: [workspaces/kits](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits),
+  [maintenance](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance),
+  [shared routes](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and
+  [safeguards](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+  T-05/T-06 own SYS-12.1; T-07/T-08 own SYS-12.2/12.3 and amended
+  SYS-06.3/06.4. T-24/T-25 own SYS-12.4–12.12 and SEC-10.1–10.3;
+  T-26/T-27 own SYS-13.1–13.8 and SEC-10.4/10.5. T-15/T-16 retain
+  amended SEC-09.2 cleanup ownership; maintenance invokes that cleanup.
 - SEC ownership extends existing pairs: T-11/T-12 own SEC-06.1/06.2/06.3;
   T-13/T-14 own SEC-02.1, SEC-03.1/03.2, SEC-04.1, SEC-05.1, SEC-08.1/08.2;
   T-15/T-16 own SEC-07.1/07.2 and SEC-09.1/09.2. New T-21/T-22 own application
@@ -151,11 +160,11 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 
 - **Depends on:** T-04
 - **Owner role:** testing
-- **Requirements:** SYS-06.1, SYS-06.2 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify the fixed [core entities/relationships](specs/TECHNICAL-SPEC.md#data-model-and-ownership) independently of later story fields.
-- **Work:** Test local replay and core profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Counter/admission and cache/audit tables belong to their later pairs.
+- **Work:** Test local replay and core workspaces/profiles/cafés/menu/hours/orders/items/reviews relationships, unique review-per-order and cross-café order-item rejection. Catalogue fixtures must fail for any application table lacking RLS, including unexposed/new infrastructure tables; verify explicit RLS/grants. Verify workspace references only on profiles/cafés and inherited workspace consistency for café children. Counter/admission and cache/audit tables belong to their later pairs.
 - **File scope:** Proposed `tests/foundations/schema/` and local migration/catalogue fixtures.
-- **Prerequisite:** Existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
+- **Prerequisite:** SYS-12 schema contract on master; existing test tooling; story-specific fields, states and transitions are later additive work, not blockers.
 - **Acceptance criteria:**
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
@@ -166,11 +175,11 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 
 - **Depends on:** T-05, T-04
 - **Owner role:** implementation
-- **Requirements:** SYS-06.1, SYS-06.2 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.1, SYS-06.2; SYS-12.1 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Build fixed [data/RLS foundations](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
-- **Work:** Add local Supabase lifecycle/migration tooling and core profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
+- **Work:** Add local Supabase lifecycle/migration tooling and core workspaces/profiles/cafés/menu/hours/orders/items/reviews with ownership references/integrity constraints. Add the Workspaces entity, workspace references only on profiles/cafés and inherited-workspace consistency constraints. Define explicit RLS/grants and baseline role-lookup access; add CI's all-table catalogue check. Counter/admission tables belong to T-12; cache/audit tables to T-16. Later story fields/lifecycles are additive.
 - **File scope:** Proposed `supabase/config.toml`, `supabase/migrations/`, `scripts/` database checks; existing manifest/lockfile and CI.
-- **Prerequisite:** T-05 evidence; serialize shared files.
+- **Prerequisite:** SYS-12 schema contract on master; T-05 evidence; serialize shared files.
 - **Acceptance criteria:**
   - [ ] Local replay, integrity tests and catalogue CI checks pass.
   - [ ] `bun run verify` passes without hosted access.
@@ -181,11 +190,11 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 
 - **Depends on:** T-06
 - **Owner role:** testing
-- **Requirements:** SYS-06.3, SYS-06.4 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.3, SYS-06.4; SYS-12.2, SYS-12.3 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Verify defined [role/record boundaries](specs/TECHNICAL-SPEC.md#rls-and-database-exposure) and local seeds.
-- **Work:** Test two customers/two owners/Admin/unauthenticated callers, parent-child access, cross-owner records, self-approval, role escalation and ownership reassignment. Test Customer/owner-only account role acceptance, metadata refusing Admin, seed-only Admin creation and confirmation-off declarations. Local seed replay includes all roles, approved cafés, menus/hours and past orders; hosted seed targets/password artifacts are rejected.
+- **Work:** Test two customers/two owners/main Admin/kit Admin/unauthenticated callers, parent-child access, cross-owner records, self-approval, role escalation and ownership reassignment. Test Customer/owner-only account role acceptance, metadata refusing Admin, the maintenance-created main Admin/kit-scoped Admin distinction and refusal of Admin sign-up and confirmation-off declarations. Test main-to-kit, kit-to-main and kit-to-kit denial server-side and under RLS, including AI sources/caches; normal sign-up always selects the main workspace and untrusted metadata cannot change it. Local seed replay includes all roles, approved cafés, menus/hours and past orders; hosted seed targets/password artifacts are rejected.
 - **File scope:** Proposed `tests/foundations/roles-seeds/` and local multi-actor/demo fixtures.
-- **Prerequisite:** Global tooling; production Admin provisioning is excluded and does not block these tests.
+- **Prerequisite:** Amended SYS-06.3/06.4 and SYS-12 isolation contracts on master; global tooling; T-25 owns kit creation and T-27 owns production maintenance provisioning; local matrix fixtures exercise authority without duplicating those owners.
 - **Acceptance criteria:**
   - [ ] Every fixed allow/deny boundary and local seed requirement has recorded tests.
   - [ ] No unspecified permission or story lifecycle is inferred.
@@ -196,11 +205,11 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 
 - **Depends on:** T-07, T-06
 - **Owner role:** implementation
-- **Requirements:** SYS-06.3, SYS-06.4 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls).
+- **Requirements:** SYS-06.3, SYS-06.4; SYS-12.2, SYS-12.3 — [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 - **Description:** Complete fixed [role protections](specs/TECHNICAL-SPEC.md#data-model-and-ownership) and reproducible local data.
-- **Work:** Complete technical allow/deny policies and protected role/account enforcement; seed local demo accounts for every role, approved cafés with menus/hours and past orders. Keep confirmation off in dev/prod configuration. Reject hosted seed execution and exclude demo passwords from hosted artifacts. Hosted account contracts belong to T-23; add no sign-up screen or unspecified lifecycle.
+- **Work:** Complete technical allow/deny policies and protected role/account enforcement across main and kit workspaces, including Admin, parent-child and AI-source/cache isolation. Ensure normal sign-ups join main and cannot select/reassign workspace; seed local demo accounts for every role, approved cafés with menus/hours and past orders. Keep confirmation off in dev/prod configuration. Reject hosted seed execution and exclude demo passwords from hosted artifacts. T-25 owns kit creation; T-27 owns maintenance provisioning. Add no ordinary sign-up screen or unspecified lifecycle.
 - **File scope:** Proposed additive policy migrations, local seed script/data and server-only role guards; local Supabase configuration.
-- **Prerequisite:** T-07 evidence; hosted account contracts belong to T-23.
+- **Prerequisite:** Amended SYS-06.3/06.4 and SYS-12 isolation contracts on master; T-07 evidence; T-25/T-27 retain kit/maintenance provisioning ownership.
 - **Acceptance criteria:**
   - [ ] Full local matrix/account/seed checks and catalogue checks pass.
   - [ ] `bun run verify` passes; known passwords never ship to hosted projects.
@@ -348,7 +357,7 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 - **Owner role:** implementation
 - **Requirements:** SYS-07.1 — [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Author [Actions deploy/migration workflows](specs/TECHNICAL-SPEC.md#environments-and-delivery); humans execute them.
-- **Work:** Write environment-bound application/hosted migration workflows and runtime/region mappings with production approval protection. Exclude local demos/credentials; hosted account contracts belong to T-23. Record the human step to configure protections/regions, approve/execute workflows and verify hosted targets/migrations. Agents never run deploy, vercel or supabase db push.
+- **Work:** Write environment-bound application/hosted migration workflows and runtime/region mappings with production approval protection. Exclude local demos/credentials; T-25 owns demo-kit creation and T-27 extends this production workflow with its post-deploy maintenance call and adds Vercel Cron, without duplicating workflow ownership. Record the human step to configure protections/regions, approve/execute workflows and verify hosted targets/migrations. Agents never run deploy, vercel or supabase db push.
 - **File scope:** Proposed delivery files under `.github/workflows/` and non-secret Vercel configuration; serialize shared CI edits.
 - **Prerequisite:** T-17 evidence; human environment protection/setup before deployment.
 - **Acceptance criteria:**
@@ -421,13 +430,73 @@ Retired IDs: ASM-01. Hosted account contracts belong to T-23.
 
 - **Depends on:** None
 - **Owner role:** spec
-- **Requirements:** SYS-06, SYS-07 — prerequisite, no criterion ownership; [SYS-06](specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls), [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
+- **Requirements:** SYS-06, SYS-12, SYS-13, SEC-09, SEC-10 — specification only, no testing/implementation criterion ownership; [SYS-12/SYS-13](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Specify how peer testers access every role on production without team action and without interfering with each other, plus a daily maintenance job.
-- **Work:** Contracts to be specified by the spec agent from human decisions recorded in its prompt.
-- **File scope:** `workflow/specs/PRODUCT-SPEC.md`, `workflow/specs/TECHNICAL-SPEC.md`, `workflow/specs/AI-SECURITY-SPEC.md` and `workflow/PLAN.md`.
+- **Work:** Specified SYS-12 workspace/demo-kit and SYS-13 daily-maintenance contracts, SEC-10 safeguards, POST /api/demo-kits and GET /api/internal/maintenance, with unique criterion ownership and story prerequisites in this plan.
+- **File scope:** `workflow/specs/PRODUCT-SPEC.md`, `workflow/specs/TECHNICAL-SPEC.md`, `workflow/specs/AI-SECURITY-SPEC.md`, `workflow/specs/INTEGRATION-SPEC.md`, `workflow/PLAN.md` and `workflow/handoffs/spec-demo-access/01-spec.md`.
 - **Acceptance criteria:**
-  - [ ] Human-reviewed spec merged; affected T-05–T-08, T-16–T-18 updated.
-- **Status:** todo
+  - [x] Cross-cutting draft contracts, ownership mapping and dependent task prerequisites are recorded; human review and merge remain prerequisites for execution.
+- **Status:** done
+- **Issue:** none (spec task)
+
+### T-24: Test demo kits
+
+- **Depends on:** T-08, T-10, T-12
+- **Owner role:** testing
+- **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Test anonymous production demo access under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes), using local Supabase and fake AI.
+- **Work:** Derive failing-first cases for the sign-in creation control, three once-shown normal-sign-in accounts, email/code pattern, secure distinct passwords, Auth-only persistence, no credential logging/later responses and all-or-nothing rollback. Test concurrent global 10-minute/day caps, rollover, restart, unavailable counters, 429/Retry-After, no LLM call, no expiry/deletion, kit-scoped Admin operations and per-account/shared-global AI limits. Verify all seeded content and relative sales history against the owning stories, including unpublished-owner and untrusted synthetic review cases. Reuse T-08 isolation guards and T-12 counters rather than assigning their criteria again.
+- **File scope:** Proposed `tests/foundations/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases; testing owns all fixtures/mocks.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters.
+- **Acceptance criteria:**
+  - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-25: Implement demo kits
+
+- **Depends on:** T-24, T-08, T-10, T-12
+- **Owner role:** implementation
+- **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Implement self-service demo kits under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
+- **Work:** Add the sign-in Create demo kit control and POST /api/demo-kits with one-time credential display, secure account/code generation, Supabase Auth-only password storage and atomic complete-kit creation/rollback. Extend T-12's durable counter/window mechanism for both global kit caps, fail closed and return the specified 429/Retry-After response. Seed the kit's Customer, approved owner/café/menu/hours/pickup rules/relative sales history, separate unpublished owner/pending application and untrusted pending reviews using owning-story states. Apply existing kit Admin controls, account/global AI limits, no LLM call and no automatic expiry/deletion. Reuse T-08 isolation and T-10 session gates; author no tests or ordinary sign-in lifecycle.
+- **File scope:** Proposed `src/app/api/demo-kits/route.ts`, server-only kit provisioning and additive migrations; existing sign-in screen after its owning story exists. Serialize migrations/shared configuration; no hosted execution.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence.
+- **Acceptance criteria:**
+  - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-26: Test daily maintenance
+
+- **Depends on:** T-16, T-18, T-25
+- **Owner role:** testing
+- **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Test the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and production trigger configuration locally.
+- **Work:** Derive cases for constant-time bearer comparison, missing/wrong secret 401/no work, ordered independent steps, consecutive-run idempotence, at-most-one maintenance-created main Admin, no-op when one exists even after a configured-email change, creation only when no Admin or matching account exists, cross-role/workspace email-conflict outcomes with no changes, preserved changed passwords, missing main-Admin settings, showcase café/hidden owner credentials, count-only sanitized responses and no kit/user/domain deletion, password reset or LLM call. Exercise T-16 cleanup through the endpoint without taking SEC-09.2 ownership. Statically verify daily UTC cron and exactly one post-successful-production-deploy call extending T-18's workflow, with environment-specific server-only secrets. Use synthetic secrets and local seeded data; do not execute hosted triggers.
+- **File scope:** Proposed `tests/foundations/maintenance/` local endpoint/clock/fault fixtures and static Vercel/workflow checks; testing owns fixtures/mocks.
+- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and T-25 kit fixtures/surfaces. BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01).
+- **Acceptance criteria:**
+  - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
+  - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
+- **Status:** blocked
+- **Issue:** unassigned
+
+### T-27: Implement daily maintenance
+
+- **Depends on:** T-26, T-16, T-18, T-25
+- **Owner role:** implementation
+- **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+- **Description:** Add the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and extend delivery triggers.
+- **Work:** Add GET /api/internal/maintenance with server-only environment-specific bearer authentication, constant-time comparison and count-only sanitized outcomes. Invoke T-16's retention cleanup, ensure at most one main Admin under SYS-13.1, retaining an existing main Admin regardless of configured-email changes and reporting conflict without changes when the email is already used but no main Admin exists, then ensure the main showcase café/hidden owner. Preserve step order and independence, idempotence, changed passwords and every no-touch/no-delete/no-LLM restriction. Missing main-Admin variables report that step's failure while other steps run. Add the Vercel production cron entry and extend T-18's production deploy workflow with one maintenance call after each successful deploy; reuse its workflow/configuration ownership rather than recreating it. No tests or hosted execution.
+- **File scope:** Proposed `src/app/api/internal/maintenance/route.ts` and server-only maintenance modules; Vercel cron configuration; extend existing `.github/workflows/` production deployment from T-18. Serialize shared workflow/configuration edits.
+- **Prerequisite:** BLOCKED on T-25 and the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18. Human approval/execution remains required for production delivery.
+- **Acceptance criteria:**
+  - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
+  - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
+- **Status:** blocked
 - **Issue:** unassigned
 
 ## Customer

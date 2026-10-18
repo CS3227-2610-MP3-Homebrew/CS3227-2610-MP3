@@ -56,9 +56,9 @@ contract. Database constraints remain authoritative for relational integrity;
 client validation is supplemental. Exact validation schemas and HTTP error
 contracts belong to INTEGRATION-SPEC and the relevant story specifications.
 
-Supabase Auth uses email and password. Sign-up offers Customer or Café owner;
-Admin accounts come only from seed data. Email confirmation is off in both dev
-and prod. The authenticated user's protected profile supplies the application
+Supabase Auth uses email and password. Sign-up offers Customer or Café owner.
+The maintenance job seeds the main Admin; each demo kit has a kit-scoped Admin.
+Sign-up never creates an Admin. Email confirmation is off in both dev and prod. The authenticated user's protected profile supplies the application
 role; caller-controlled sign-up metadata cannot grant Admin access. User-facing
 account fields, role changes and multiple-role accounts remain story decisions.
 
@@ -124,8 +124,9 @@ dates and opening-hours calculations use `Asia/Singapore`.
 
 | Entity | Fixed data and relationships | Ownership and RLS policy intent | Dependency intentionally left to story specs |
 | --- | --- | --- | --- |
-| Profiles | Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
-| Cafés | Owner profile reference; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner, profile fields, reapplication/reapproval, and effects on existing orders/access: OWN-01–OWN-04 and ADM-01–ADM-02. |
+| Workspaces | Stable workspace identity; one main workspace and one workspace per demo kit. | Actor access is limited to their own workspace; no role, including Admin, gains cross-workspace access. | None for workspace identity and isolation. |
+| Profiles | Workspace reference; Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
+| Cafés | Workspace and owner profile references; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner, profile fields, reapplication/reapproval, and effects on existing orders/access: OWN-01–OWN-04 and ADM-01–ADM-02. |
 | Menu items | Café reference; item identity, name, drink type, price and availability/sold-out state. | Owners manage items only through their own café. Customer reads are restricted by parent café eligibility and include sold-out items. No extra Admin menu-write permission is implied. | Item fields, price representation, categories, deletion/history and sold-out ordering eligibility: OWN-03 and CUS-01–CUS-03. |
 | Opening hours | Café reference and Singapore-local opening/closing information. | Owners manage only their café's hours. Customer reads require eligible parent café. | Overnight/boundary rules and changes affecting pickups: OWN-02, OWN-04 and CUS-01–CUS-03. |
 | Orders | Customer profile and café references, pickup timing and fulfilment state; payment occurs at pickup without a payment integration. | Customers access only their own orders; owners access orders only for their café. Authorized mutations must satisfy story transitions as well as RLS. No unrelated Admin order access is granted. | Exact states/transitions, cancellation races, rejection/no-show behavior, duplicate submission and later café/hour changes: CUS-03–CUS-04 and OWN-05. |
@@ -134,6 +135,15 @@ dates and opening-hours calculations use `Asia/Singapore`.
 | AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Adopted usage-limit values: AI-SECURITY-SPEC; mechanism below. |
 | AI caches | Environment, feature, scope identity, input fingerprint, model/contract version, source revision, creation/expiry or Singapore business date, and validated result. | Server-only reads/writes. Every hit repeats caller authorization; Prep Advisor entries are café-scoped; Brew Finder entries cannot cross actor scopes under the [cache scope decision](#cache-eligibility-and-scope). No client Data API access. | Exact feature payloads: INTEGRATION-SPEC; source selection and sales windows: AI/story specifications. |
 | Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Review-moderation events: acting Admin, review reference, hide/restore action, reason and timestamp. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields and any retention/deletion policy: ADM-03/ADM-04 and AI-SECURITY-SPEC. Moderation reasons are separate from AI prompt/output payloads. |
+
+Workspace references are stored on Profiles and Cafés only. Menu items,
+opening hours, orders, order items and reviews inherit their workspace through
+their café. Relations must not join actors or parent/child records across
+workspaces. All server and RLS reads/writes, including Admin audit access, AI
+source selection and AI cache access, enforce the verified actor's workspace
+in addition to existing role/ownership rules. A kit Admin cannot access the main
+workspace or another kit. Normal sign-ups always join the main workspace;
+untrusted input cannot select or reassign a workspace.
 
 The model intentionally does not decide account/café cardinality beyond each
 café's single owner, enumerate a full order/review lifecycle, define aggregate
@@ -163,8 +173,8 @@ that bypass RLS validate actor/scope and expose only their allowed operation.
 
 CI queries the local database catalogue and fails if any application table lacks
 RLS. CI also exercises a deny/allow matrix for unauthenticated callers, two
-customers, two owners and a seeded Admin, including parent-child access and
-attempts to change ownership/protected state. The RLS catalogue check covers
+customers, two owners, a main Admin and a kit Admin across workspaces, including
+cross-workspace and parent-child access and attempts to change ownership/protected state. The RLS catalogue check covers
 new tables even when Data API exposure is disabled; hosted settings alone are
 not evidence that a migration is safe.
 
@@ -206,6 +216,11 @@ deployment configuration, not inferred from an API key's contents.
 | Environment identity | Distinguishes local, CI, dev and prod; selects the correct provider/database/limit configuration and cache/counter namespace. |
 | Usage limits | Configurable nonnegative integer call/action/refresh limits for each supported scope/window and environment. Values and meanings belong to AI-SECURITY-SPEC. |
 | `AI_GLOBAL_CALLS_PER_DAY` | Server-only nonnegative integer global provider-attempt cap per environment/Singapore day, enforced atomically alongside other call limits. Values and validation policy belong to [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration). |
+| `CRON_SECRET` | Server-only, environment-specific bearer secret for the maintenance endpoint; absent from responses and logs. |
+| `MAIN_ADMIN_EMAIL` | Server-only email used only to create the main Admin if no account with that email exists. |
+| `MAIN_ADMIN_PASSWORD` | Server-only initial password for that creation; maintenance never resets or updates an existing account. |
+| `DEMO_KITS_PER_10_MINUTES` | Server-only global kit-creation cap: 5 kits per fixed 10-minute window, using durable Postgres counters and the database clock. |
+| `DEMO_KITS_PER_DAY` | Server-only global kit-creation cap: 30 kits per Singapore calendar day, using the same durable Postgres counter/window mechanism as AI usage control. |
 | Timezone | `Asia/Singapore` for daily resets and opening-hours/business-date calculations. |
 | Deployment credentials | Environment-specific Supabase migration database URL and Vercel deployment credentials held only in GitHub environment secrets for Actions. Never part of public application configuration. |
 
@@ -402,13 +417,16 @@ availability target is introduced.
   application table, including newly added/unexposed infrastructure tables.
   Migrations explicitly define RLS and grants; an unexposed table does not
   bypass the check.
-- **SYS-06.3:** The two-customer/two-owner/Admin/unauthenticated access matrix
-  verifies each defined allow/deny boundary, including cross-owner records,
+- **SYS-06.3:** The two-customer/two-owner/main-Admin/kit-Admin/unauthenticated
+  access matrix verifies each defined allow/deny boundary, including
+  cross-workspace cases for every role, cross-owner records,
   parent-child rows, self-approval, role escalation and ownership reassignment.
   No unspecified permission is granted.
 - **SYS-06.4:** Email/password sign-up accepts only Customer or Café owner;
-  client metadata cannot create an Admin. Admin accounts originate from seed
-  data, and email confirmation configuration is off in both dev and prod.
+  client metadata cannot create an Admin in any workspace. The maintenance job
+  seeds the main Admin, each demo kit has its own kit-scoped Admin, and sign-up
+  never creates an Admin. Email confirmation configuration is off in both dev
+  and prod.
 
 ### SYS-07 — Environment and configuration isolation
 
@@ -503,6 +521,96 @@ availability target is introduced.
   clipping, overlap or page-level horizontal scrolling under the
   [responsive decision](#responsive-core-flows). Tests do not impose an invented
   numeric performance target.
+
+### SYS-12 — Workspaces and demo kits
+
+- **SYS-12.1:** Local migrations provide a Workspaces entity with one main
+  workspace and one workspace per demo kit. Only Profiles and Cafés store a
+  workspace reference; menu items, opening hours, orders, order items and
+  reviews inherit it through their café. Constraints prevent cross-workspace
+  parent/child and actor/café relationships.
+- **SYS-12.2:** Server authorization and RLS restrict every role's reads and
+  writes to its own workspace, including Admin operations, AI source reads and
+  AI caches. Main-to-kit, kit-to-main and kit-to-kit access is denied without
+  relaxing any existing role/ownership boundary.
+- **SYS-12.3:** Normal sign-ups always join the main workspace. Caller-supplied
+  metadata/references cannot select or reassign a workspace or escalate a role;
+  sign-up never creates an Admin in any workspace.
+- **SYS-12.4:** The sign-in page offers **Create demo kit** without requiring a
+  session. Successful `POST /api/demo-kits` creates a new isolated workspace
+  and returns exactly three published sign-in accounts: Customer, Café owner
+  and Admin. Emails are `customer-<code>@example.com`,
+  `owner-<code>@example.com` and `admin-<code>@example.com`, with the same random
+  code for the three accounts. All sign in through the normal sign-in screen.
+- **SYS-12.5:** Each published account receives its own cryptographically
+  secure random password of at least 16 characters. Passwords persist only as
+  Supabase Auth stores them; they appear only in the creation response, shown
+  once, never in logs, audit rows or later responses.
+- **SYS-12.6:** Kit creation is all-or-nothing: failures leave no partial kit,
+  workspace, seeded domain data or accounts, including the unpublished owner.
+- **SYS-12.7:** Creation obeys both globally shared server-only configured caps:
+  5 kits per fixed 10-minute window and 30 per Singapore calendar day. The same
+  durable Postgres atomic counter/window mechanism as AI usage control enforces
+  both across callers and app instances. Exhaustion returns 429 `RATE_LIMITED`
+  with `Retry-After` and a clear message saying when to try again. Unavailable
+  counters fail creation closed.
+- **SYS-12.8:** Kit creation makes no LLM call. Kits never expire and are never
+  deleted automatically.
+- **SYS-12.9:** Inside each kit, the Customer has several collected orders still
+  eligible for review and at least one order in another state. The published
+  Café owner owns one approved, non-suspended café with a menu including a
+  sold-out item, opening hours, pickup rules and about four weeks of sales
+  history dated relative to kit creation, sufficient for non-trivial sales
+  dashboard and Prep Advisor results. Seeded states and review eligibility use
+  the owning CUS-03–CUS-05 and OWN-01–OWN-05 story contracts.
+- **SYS-12.10:** Each kit also contains a second café with a pending application
+  for Admin approval or rejection, owned by a separate seeded owner account
+  with no published credentials. Its states follow OWN-01–OWN-05 and
+  ADM-01–ADM-03.
+- **SYS-12.11:** The approved café has pending reviews, including clearly
+  synthetic spam, abusive and prompt-injection examples for moderation and
+  Moderation Assistant. Their state names follow CUS-03–CUS-05,
+  OWN-01–OWN-05 and ADM-01–ADM-03; seeded review text remains untrusted.
+- **SYS-12.12:** A kit Admin has exactly the product's Admin operations within
+  its kit, cannot create Admins or change roles, and retains all existing audit,
+  reason, no-review-text-editing and reversible-action limits. AI per-user
+  limits apply separately to each kit account; global AI caps are shared by
+  main-workspace and kit accounts.
+
+### SYS-13 — Daily maintenance
+
+- **SYS-13.1:** The main workspace has at most one Admin, created only by
+  maintenance. If a main-workspace Admin already exists, the step does nothing,
+  even if `MAIN_ADMIN_EMAIL` changed. If none exists and no account uses
+  `MAIN_ADMIN_EMAIL`, it creates the main Admin from server-only
+  `MAIN_ADMIN_EMAIL` and `MAIN_ADMIN_PASSWORD`. If none exists but an account
+  with that email exists in any role or workspace, it creates and changes
+  nothing and reports a `conflict` outcome. It never updates, promotes, resets
+  or deletes any account, preserving password changes made after first sign-in.
+- **SYS-13.2:** Maintenance ensures one approved showcase café in the main
+  workspace, with a menu and opening hours, owned by a seeded owner account
+  whose random password is never shown. Normal sign-ups see a nonempty
+  catalogue. Main-workspace applications may remain pending indefinitely;
+  product documentation identifies demo kits as the end-to-end testing path.
+- **SYS-13.3:** Server-only `GET /api/internal/maintenance` requires
+  `Authorization: Bearer <CRON_SECRET>`. Missing/wrong secrets receive 401
+  `UNAUTHENTICATED` and perform no work. The environment-specific server-only
+  secret is compared in constant time.
+- **SYS-13.4:** Production Vercel Cron invokes maintenance daily at about
+  03:00 Singapore time using UTC cron `0 19 * * *`. The production deploy
+  workflow invokes the same endpoint once after each successful deploy.
+- **SYS-13.5:** Maintenance is idempotent: two successive runs have the same
+  effect as one. It runs AI retention cleanup, ensure-main-Admin and
+  ensure-showcase-café steps in that order; failure of any step does not stop
+  later steps.
+- **SYS-13.6:** Success follows the integration response
+  `{requestId, steps: [{step, outcome, count}]}` with per-step outcome counts
+  only, never secrets, emails or record contents.
+- **SYS-13.7:** Missing `MAIN_ADMIN_EMAIL` or `MAIN_ADMIN_PASSWORD` reports a
+  failure outcome for the main-Admin step; cleanup and showcase steps still run.
+- **SYS-13.8:** Maintenance never touches demo kits, deletes user or domain
+  data, resets passwords or calls the LLM. AI retention cleanup follows
+  AI-SECURITY-SPEC and preserves active enforcement state.
 
 The requirements describe future acceptance evidence. Existing starter
 verification does not establish that unimplemented architecture, integrations,

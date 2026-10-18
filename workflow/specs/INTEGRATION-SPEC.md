@@ -77,12 +77,13 @@ Provider HTTP errors are translated; their bodies and headers are not forwarded.
 | HTTP | Code | Meaning |
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | Malformed JSON, schema-invalid input or invalid source selection. |
-| 401 | `UNAUTHENTICATED` | No valid authenticated session. |
+| 401 | `UNAUTHENTICATED` | No valid authenticated session, or a missing/wrong maintenance bearer secret. |
 | 403 | `FORBIDDEN` | Wrong role or failed same-origin protection. |
 | 404 | `NOT_FOUND` | Requested record absent or outside the caller's authorized record scope. |
 | 405 | `METHOD_NOT_ALLOWED` | Unsupported HTTP method; `Allow` advertises the supported method. |
 | 413 | `PAYLOAD_TOO_LARGE` | Application request body exceeds the limit below. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | A JSON endpoint receives another content type. |
+| 429 | `RATE_LIMITED` | Demo-kit creation limit reached; `Retry-After` and a clear safe message say when to try again. |
 | 500 | `INTERNAL_ERROR` | Unexpected application failure; no protected data or exception detail. |
 | 503 | `SOURCE_UNAVAILABLE` | Authorized source/fallback cannot be safely obtained. |
 
@@ -93,6 +94,27 @@ an HTTP client cannot mistake provider throttling for an authentication error.
 A source failure does not produce a fabricated successful empty fallback.
 Domain mutation conflict and duplicate-submission semantics are excluded until
 the owning story defines them.
+
+### Demo access and maintenance routes
+
+These are the only additional shared routes. Workspace, creation and maintenance
+behavior is authoritative in [SYS-12 and SYS-13](TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits);
+security controls are in [SEC-10](AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+
+| Method and route | Authorization and transport | Successful response |
+| --- | --- | --- |
+| `POST /api/demo-kits` | No session required. Shared JSON conventions and the same exact trusted-origin check used for cookie-authenticated POSTs apply even to anonymous creation. | `{requestId, kit: {accounts: [{role, email, password}]}}` with exactly the Customer, Café owner and Admin accounts; `Cache-Control: private, no-store`. |
+| `GET /api/internal/maintenance` | `Authorization: Bearer <CRON_SECRET>` using the environment-specific server-only secret and constant-time comparison. A missing/wrong secret returns 401 `UNAUTHENTICATED` and performs no work. | `{requestId, steps: [{step, outcome, count}]}` with per-step outcome counts only, never secrets, emails or record contents. |
+
+Kit emails/passwords follow SYS-12; credentials are returned only on successful
+creation and never in later responses. A kit-cap refusal uses the shared error
+shape with 429 `RATE_LIMITED`, a `Retry-After` header and a clear safe message
+saying when to try again. This code does not change AI usage-limit fallback
+responses, which remain HTTP 200. Maintenance returns outcomes for the ordered
+cleanup, main-Admin and showcase-café steps; a step failure does not prevent
+later steps. Both routes use the shared private no-store JSON response
+conventions; the maintenance GET authenticates with the bearer rather than a
+cookie session.
 
 ### AI routes and result envelope
 
