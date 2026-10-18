@@ -145,7 +145,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Contract-derived positive/negative tests and synthetic artifact scans record expected failures.
   - [ ] `bun run verify` result is recorded.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#34](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/34)
 
 ### T-04: Implement runtime, configuration and import isolation
 
@@ -160,7 +160,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Configuration/import/artifact tests pass with synthetic credentials.
   - [ ] `bun run verify` passes; no secrets enter client/error/audit output.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#35](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/35)
 
 ### T-05: Test core schema, local migrations and RLS catalogue
 
@@ -175,7 +175,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#36](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/36)
 
 ### T-06: Implement core schema, local migrations and RLS catalogue
 
@@ -190,7 +190,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Local replay, integrity tests and catalogue CI checks pass.
   - [ ] `bun run verify` passes without hosted access.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#37](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/37)
 
 ### T-07: Test role matrix and local demonstration seeds
 
@@ -205,7 +205,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Every fixed allow/deny boundary and local seed requirement has recorded tests.
   - [ ] No unspecified permission or story lifecycle is inferred.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#38](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/38)
 
 ### T-08: Implement role matrix and local demonstration seeds
 
@@ -220,7 +220,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Full local matrix/account/seed checks and catalogue checks pass.
   - [ ] `bun run verify` passes; known passwords never ship to hosted projects.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#39](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/39)
 
 ### T-09: Test proxy refresh and streaming role gates
 
@@ -235,7 +235,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Session, gate, shell and exception cases have recorded tests/evidence.
   - [ ] No SYS-01–SYS-03 screen contract is introduced.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#40](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/40)
 
 ### T-10: Implement proxy refresh and streaming role gates
 
@@ -250,7 +250,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Local gate/refresh/direct-access tests pass; exception route/reasons are recorded for human PR review.
   - [ ] `bun run verify` passes; no app-wide rendering opt-out.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#41](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/41)
 
 ### T-11: Test durable admission, windows and quota telemetry
 
@@ -265,7 +265,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Concurrency, persistence, boundary, telemetry and fake-429 cases record deterministic results.
   - [ ] No cleanup reset or fabricated monetary cost is assumed.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#42](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/42)
 
 ### T-12: Implement durable admission, windows and quota telemetry
 
@@ -280,7 +280,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Atomicity/window/telemetry/fallback tests and catalogue checks pass.
   - [ ] `bun run verify` passes without live calls.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#43](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/43)
 
 ### T-13: Test validated LLM operations and fallbacks
 
@@ -295,7 +295,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Each malformed boundary rejects before effects/results; all three operations/fallbacks have deterministic tests.
   - [ ] Evidence traces exact cases to approved contracts; no live SoCLaaS call.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#44](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/44)
 
 ### T-14: Implement validated LLM operations and fallbacks
 
@@ -310,7 +310,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Shared boundary/provider/operation/fallback tests pass with fake transports.
   - [ ] `bun run verify` passes; no live verification call or story screen is added.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#45](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/45)
 
 ### T-15: Test AI caches, catalogue eligibility, accounting and audit
 
@@ -325,7 +325,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Cache/eligibility/accounting/audit cases trace to contracts with controlled local evidence.
   - [ ] Reusable repository tests need no completed LLM feature implementation.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#46](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/46)
 
 ### T-16: Implement AI caches, catalogue eligibility, accounting and audit
 
@@ -340,7 +340,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Repository/eligibility/accounting/audit tests and catalogue checks pass locally.
   - [ ] `bun run verify` passes; ordinary clients cannot forge infrastructure rows.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#47](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/47)
 
 ### T-17: Test delivery workflow configuration
 
@@ -355,7 +355,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Static mappings/approval/credential-boundary tests record results.
   - [ ] Hosted verification is explicitly recorded as unavailable to agents.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#48](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/48)
 
 ### T-18: Implement delivery workflow configuration
 
@@ -370,7 +370,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Static workflow tests and `bun run verify` pass.
   - [ ] Human execution/hosted verification remains required before claiming deployed acceptance.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#49](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/49)
 
 ### T-19: Test accessibility and responsive core flows
 
@@ -385,7 +385,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Every technical core flow has accessibility and viewport completion evidence.
   - [ ] Tests create no missing screens or new product requirements.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#50](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/50)
 
 ### T-20: Implement accessibility and responsive corrections
 
@@ -400,7 +400,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Core automated accessibility checks have no unresolved violations; viewport flow checks pass.
   - [ ] `bun run verify` passes with local data/fake AI.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#51](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/51)
 
 ### T-21: Test application AI authorization, rendering and human confirmation
 
@@ -415,7 +415,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Each owned SEC criterion has deterministic local/fake negative and positive evidence, including browser rendering and stale confirmation cases.
   - [ ] Failing-first results and `bun run verify`/`bun run test:e2e` results are recorded without live provider or hosted access.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#52](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/52)
 
 ### T-22: Integrate application AI authorization, rendering and human confirmation
 
@@ -430,7 +430,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
   - [ ] `bun run verify` and `bun run test:e2e` pass with local Supabase/fake AI; no live verification or deployment.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#53](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/53)
 
 ### T-23: Specify peer-tester demo access and daily maintenance
 
@@ -458,7 +458,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#54](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/54)
 
 ### T-25: Implement demo kits
 
@@ -473,7 +473,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#55](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/55)
 
 ### T-26: Test daily maintenance
 
@@ -488,7 +488,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
   - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#56](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/56)
 
 ### T-27: Implement daily maintenance
 
@@ -503,7 +503,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#57](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/57)
 
 ## Customer
 
@@ -541,7 +541,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] Café audit persistence and later T-31 display assertions preserve the criterion ownership above; unresolved contract/surface prerequisites are recorded.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded with local Supabase only; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#58](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/58)
 
 ### T-29: Implement café applications and suspension
 
@@ -557,7 +557,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or unrelated order/menu permission is added.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual evidence and remaining external surfaces.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#59](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/59)
 
 ### T-30: Test moderation queue and Admin audit log
 
@@ -573,7 +573,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] Common audit-screen tests cover every action without taking café criterion ownership; no tests infer review field limits or rating formulas.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results and the issue-scoped [handoff](templates/handoff.md) are recorded with local data only.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#60](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/60)
 
 ### T-31: Implement moderation queue and Admin audit log
 
@@ -589,7 +589,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] T-28's café audit-display cases can consume this screen without duplicated screen or criterion ownership; T-32/T-33 can reuse ordinary per-review confirmation.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual checks without hosted execution.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#61](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/61)
 
 ### T-32: Test Moderation Assistant
 
@@ -605,7 +605,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded using local Supabase/fake AI in the issue-scoped [handoff](templates/handoff.md).
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#62](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/62)
 
 ### T-33: Implement Moderation Assistant
 
@@ -621,4 +621,4 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI; the issue-scoped [handoff](templates/handoff.md) reports checks and evaluation limits without live calls or deployment.
 - **Status:** blocked
-- **Issue:** unassigned
+- **Issue:** [#63](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/63)
