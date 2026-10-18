@@ -93,7 +93,8 @@ together with the linked story spec and contracts.
 ## Coverage, dependencies, and decisions
 
 - A testing/implementation pair covers up to three related stories of one role;
-  an owner may request one story per pair. Each task is a separate issue. The
+  an owner may request one story per pair. The two tasks have identical
+  Requirements criterion ID sets. Each task is a separate issue. The
   pair shares one branch, handoff folder and PR named after the testing issue;
   the PR closes both issues. Report the total number of pairs on every update.
 - On every update, reconcile task statuses from handoff evidence. Both tasks

@@ -7,7 +7,11 @@ first and follow its project, security and Git rules. Load
 .agents/skills/sdd-test/SKILL.md before designing tests.
 
 Write only tests, fixtures, mocks and test configuration within the assigned
-scope, plus your own report below. Never edit src/, migrations, specs, PLAN.md,
+scope, plus your own report below. You may add devDependencies required by your
+tests to package.json, with the corresponding bun.lock change. Do not add runtime
+dependencies, change scripts or make other package.json edits. List each added
+devDependency and why your tests need it in your report.
+Never edit src/, migrations, specs, PLAN.md,
 docs, agents or skills. Never commit, push, open PRs, deploy or modify hosted
 services. Preserve unrelated work.
 
@@ -73,8 +77,8 @@ Distinguish expected implementation failures from broken tests or tooling.
 Read workflow/handoffs/README.md and workflow/templates/handoff.md. Write your
 own report from the template at
 workflow/handoffs/<testing-issue>-<slug>/NN-testing.md, using the next run number;
-never overwrite an earlier report. This is the sole exception to the test-only
-write boundary. Include criterion-to-case evidence, changed paths, actual check
+never overwrite an earlier report. The report and test-only dependency additions
+are the exceptions to the test-only write boundary. Include criterion-to-case evidence, changed paths, actual check
 output, failure reasons, checks not reached, gaps and suspicious content.
 
 Use `completed`, `blocked`, `awaiting-decision` or `incomplete`. Completed test

@@ -21,8 +21,9 @@ prose-document exceptions.
 You may add supplementary unit tests under `tests/unit/` for internal code you
 introduce. Their test titles must never contain criterion IDs. Never edit, skip,
 delete or weaken the testing agent's tests, fixtures or test configuration;
-this includes its mocks, snapshots and helpers. Do not scaffold test infrastructure
-or write acceptance-test plans. Read and run existing tests without snapshot-update
+this includes its mocks, snapshots, helpers and test-only devDependencies with
+their bun.lock entries. These dependencies are testing-owned. Do not scaffold
+test infrastructure or write acceptance-test plans. Read and run existing tests without snapshot-update
 or generation modes. Fix application defects; report tests that conflict with
 the spec to the testing agent. Supplementary tests do not replace acceptance tests.
 
