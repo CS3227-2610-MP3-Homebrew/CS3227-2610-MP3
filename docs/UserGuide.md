@@ -2,11 +2,13 @@
 
 ## Table of contents
 
-<!-- Add links to the sections below as they are populated. -->
+- [1. Getting started](#1-getting-started)
+- [9. Known limitations](#9-known-limitations)
 
 ## 1. Getting started
 
-<!-- Add verified first-use steps when the app is available. -->
+The current home page displays the Next.js starter screen. Product instructions
+will be added here as usable features become available.
 
 ### 1.1 What you need
 
@@ -72,7 +74,9 @@ happens when it is unavailable. -->
 
 ## 9. Known limitations
 
-<!-- Record verified limitations of the built product. -->
+The current build has no sign-up, sign-in, customer, café owner, admin or AI
+screens. Database setup does not provide demo accounts or a demo-kit creation
+screen.
 
 ## 10. Troubleshooting
 

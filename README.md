@@ -1,8 +1,10 @@
 # Homebrew
 
-Homebrew is a web app for home cafés: small coffee setups run from someone's kitchen or garage. Customers find a café and pre-order for pickup. Café owners manage their menu, opening hours and order queue. Admins approve cafés and keep reviews honest. Each role also has an AI feature powered by SoCLaaS.
+Homebrew is being built for home cafés: small coffee setups run from someone's kitchen or garage. The intended product supports pickup pre-orders, café management, review moderation and one SoCLaaS feature per role. The current build provides the core relational schema, workspace integrity, baseline database access controls and local Supabase checks; customer, owner, admin and AI screens are still to come. See the [Developer Guide](docs/DeveloperGuide.md#data-model-and-database-schema) for the implemented foundation.
 
 ## User roles
+
+Planned product roles:
 
 | Role | What they do |
 | --- | --- |
