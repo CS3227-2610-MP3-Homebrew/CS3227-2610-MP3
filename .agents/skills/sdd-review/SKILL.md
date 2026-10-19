@@ -55,8 +55,7 @@ Return a full report using `workflow/templates/handoff.md`, with these additions
 
 - Header: `Implementation report`, `Review round`, `Reviewed HEAD`, `Model` and
   `Reasoning`, using the launcher's supplied values.
-- Summary: task, scope, spec approval evidence and `**Overall:** pass` or `fail`
-  with one sentence explaining the verdict.
+- Summary: task, scope, spec approval evidence and a verdict line exactly `**Overall:** pass` or `**Overall:** fail` on its own line, with one sentence explaining the verdict on the next line.
 - Acceptance criteria: one row per spec criterion, using the template's statuses
   and exact code/test references. Mark unmet or unverified criteria incomplete,
   blocked or awaiting-decision as appropriate.
