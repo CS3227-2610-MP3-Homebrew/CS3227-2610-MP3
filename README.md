@@ -20,3 +20,5 @@ bun run dev
 ```
 
 Then open <http://localhost:3000>.
+
+Delivery workflows and human setup are documented in the [Developer Guide](docs/DeveloperGuide.md#deployment-and-environments).

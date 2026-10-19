@@ -362,7 +362,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Static mappings/approval/credential-boundary tests record results.
   - [ ] Hosted verification is explicitly recorded as unavailable to agents.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#48](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/48)
 
 ### T-18: Implement delivery workflow configuration
@@ -377,7 +377,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Static workflow tests and `bun run verify` pass.
   - [ ] Human execution/hosted verification remains required before claiming deployed acceptance.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#49](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/49)
 
 ### T-19: Test accessibility and responsive core flows
