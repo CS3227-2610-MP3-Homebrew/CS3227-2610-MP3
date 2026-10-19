@@ -291,8 +291,16 @@ outside master's ancestry fails this check. Both workflows then follow this orde
 2. Run `bun install --frozen-lockfile`, then `vercel pull --yes` for the job's
    target (`--environment=preview` or `--environment=production`).
 3. Run `vercel build`, then `vercel deploy --prebuilt`; production adds `--prod`
-   to both commands. Development captures the deployment URL and passes it as a
-   quoted argument to `vercel alias set` for the dev alias.
+   to both commands. Development captures the prebuilt deployment URL, removes
+   its `https://` prefix and POSTs to
+   `https://api.vercel.com/v2/deployments/<host>/aliases?teamId=<VERCEL_ORG_ID>`.
+   The request uses the selected `VERCEL_ORG_ID` and a fixed JSON body,
+   `{"alias":"homebrew-cs3227-dev.vercel.app"}`. It uses
+   `curl -sS --fail-with-body` so HTTP error responses fail the step. Shell
+   `builtin printf` supplies the Authorization header through `curl --config -`
+   stdin, keeping the token out of external process arguments. The captured
+   deployment host stays inside one quoted endpoint argument; the JSON body
+   contains no captured text.
 
 Migration and deployment share one environment-bound job, so the configured
 production approval covers both. There is no manual-dispatch trigger; humans
@@ -304,7 +312,7 @@ Credentials are supplied as follows; no values belong in documentation or source
 
 | Name | Human-configured location | Workflow scope |
 | --- | --- | --- |
-| `VERCEL_TOKEN` | Secret in each GitHub environment | Step env on pull and deploy; the dev deploy step also sets the alias. Authentication uses env, never a token argument. |
+| `VERCEL_TOKEN` | Project-scoped secret in each GitHub environment | Step env on pull and deploy; the dev deploy step also sets the alias through the REST API using a header from stdin. The token is never an external process argument. |
 | `SUPABASE_DB_URL` | Secret in each GitHub environment, for its selected database | Migration step only; passed through a quoted shell variable. |
 | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Variables in each GitHub environment | Job env; both environments must identify the same Vercel project. |
 
@@ -372,10 +380,22 @@ and workflow/PLAN.md rather than copying requirements here. -->
 Delivery validation is local and static. It cannot prove hosted environment
 protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
 migration/deployment outcomes. Exact pinned delivery CLIs were not executed by
-agents. The token-free Vercel build from pulled settings remains unverified on
-hosted runners; if the first human-run workflow establishes that authentication
-is required, the human can add the token to that build step alone. Step-level
-env limits direct token inheritance but does not isolate steps from compromised
-tools on the same runner; CLI global installation is outside the application
-lockfile. See the [security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
-for the inspected fixes and remaining verification limits.
+agents, and static tests cannot reproduce the hosted-only alias failure.
+
+The human reported that hosted run 39224174089 completed its prebuilt deployment
+before `vercel alias set` failed with `Error: User not found.` The supplied CLI
+source diagnosis is that aliasing first calls `GET /v2/user`, which the
+project-scoped `VERCEL_TOKEN` cannot read. Neither `--token` nor `--scope` avoids
+that account lookup. The development workflow therefore uses the alias REST API
+to retain the project-scoped token. The human verified a direct REST alias
+request with that token; successful execution of the revised workflow and
+public alias reachability still require human hosted verification. These
+observations are human-supplied evidence, not results of agent-run static tests.
+The build step retains its token-free configuration.
+
+Step-level env limits direct token inheritance but does not isolate steps from
+compromised tools on the same runner; CLI global installation is outside the
+application lockfile. See the
+[alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md)
+for the inspected token, logging and captured-URL boundaries and remaining
+verification limits.
