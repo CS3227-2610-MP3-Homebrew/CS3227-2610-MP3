@@ -4,7 +4,10 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 
 ## Contents
 
-<!-- Add links to the sections below as they are populated. -->
+- [Acknowledgements](#acknowledgements)
+- [Development workflow](#development-workflow)
+- [Deployment and environments](#deployment-and-environments)
+- [Known limitations](#known-limitations)
 
 ## Acknowledgements
 
@@ -184,7 +187,7 @@ loads its workflow instructions.
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
 | `.github/workflows/ci.yml` | Runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
-| `.github/workflows/deploy-prod.yml` | Checks v* tag ancestry before migrations and a Vercel Production build/deployment in the production environment. |
+| `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
 
 <!-- Add every new workflow file to this table. -->
@@ -258,8 +261,98 @@ checks once set up. -->
 
 ## Deployment and environments
 
-<!-- Document verified local, dev and production setup, version tags and teammate
-approval gates once configured. List environment variable names, never values. -->
+The repository contains static delivery configuration for
+[SYS-07.1](../workflow/specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
+The [environment and delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery)
+defines the required hosted setup. The workflows and local checks do not establish
+that hosted settings are configured or that a deployment has succeeded.
+
+| Trigger | Environment-bound job | Application target | Required database mapping |
+| --- | --- | --- | --- |
+| Push to `master` | `development`, in `deploy-dev.yml` | Vercel Preview, followed by alias `homebrew-cs3227-dev.vercel.app` | `homebrew-dev`, Singapore |
+| Push of a `v*` tag | `production`, in `deploy-prod.yml` | Vercel Production | `homebrew-prod`, Singapore |
+
+Each job sets up Supabase CLI 2.121.0 before Node 24 and repository Bun. Bun is
+selected from `package.json`'s `packageManager` (currently `bun@1.4.3`); an
+immediate version comparison fails the job on mismatch. Vercel CLI 64.5.0 is
+installed globally. Actions are SHA-pinned, checkout does not persist credentials,
+and repository permissions are `contents: read`. Distinct concurrency groups
+`deploy-development` and `deploy-production` never cancel an in-progress run.
+
+Production checks out full history, fetches `origin/master` and runs
+`git merge-base --is-ancestor HEAD origin/master` before migrations. A tag
+outside master's ancestry fails this check. Both workflows then follow this order:
+
+1. Apply SQL migrations using the selected environment's `SUPABASE_DB_URL` with
+   `supabase db push --db-url "$SUPABASE_DB_URL" --yes`. If `supabase/migrations`
+   has no `.sql` files, log `No SQL migrations found; skipping migrations.` and
+   continue. A migration failure stops deployment. No seed, reset or demo/local
+   credentials are included.
+2. Run `bun install --frozen-lockfile`, then `vercel pull --yes` for the job's
+   target (`--environment=preview` or `--environment=production`).
+3. Run `vercel build`, then `vercel deploy --prebuilt`; production adds `--prod`
+   to both commands. Development captures the deployment URL and passes it as a
+   quoted argument to `vercel alias set` for the dev alias.
+
+Migration and deployment share one environment-bound job, so the configured
+production approval covers both. There is no manual-dispatch trigger; humans
+can re-run an existing run for a redeploy. `ci.yml` only verifies/tests and has
+no delivery credentials or deploy commands. `vercel.json` sets `regions: ["sin1"]`
+and `git.deploymentEnabled: false`, disabling automatic Vercel Git deployments.
+
+Credentials are supplied as follows; no values belong in documentation or source:
+
+| Name | Human-configured location | Workflow scope |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | Secret in each GitHub environment | Step env on pull and deploy; the dev deploy step also sets the alias. Authentication uses env, never a token argument. |
+| `SUPABASE_DB_URL` | Secret in each GitHub environment, for its selected database | Migration step only; passed through a quoted shell variable. |
+| `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Variables in each GitHub environment | Job env; both environments must identify the same Vercel project. |
+
+Checkout, tool setup, global installation, ancestry checking, migrations,
+`bun install` and `vercel build` have no `VERCEL_TOKEN` mapping. Build uses the
+pulled settings without a token; see [Known limitations](#known-limitations).
+
+Before the first delivery, a human must configure and verify the following
+requirements from the delivery contract:
+
+1. Create GitHub `development` and `production` environments. Allow only the
+   `master` branch for development and only `v*` tags, no branches, for production.
+   Require a teammate's production approval, prevent self-review and disable
+   administrator bypass. YAML environment binding alone does not configure these
+   protections.
+2. Store the table's secrets and variables in their respective environments;
+   keep no repository- or organization-level deploy-secret copies. Select the
+   appropriate database for each `SUPABASE_DB_URL`: Supavisor shared-pooler
+   session mode, port 5432, user `postgres.<project-ref>`, percent-encoded
+   password. Do not use the direct database host or transaction mode/port 6543.
+3. Use one Vercel Hobby project for Preview and Production, with `sin1` and Git
+   deployments disabled as declared in `vercel.json`. Configure the production
+   domain `homebrew-cs3227-prod.vercel.app`. Turn Deployment Protection off so
+   the development alias is public; verify both domains and target mappings.
+4. Use separate Singapore Supabase projects `homebrew-dev` and `homebrew-prod`.
+   Set Vercel application values per target: dev in Preview, prod in Production,
+   including separate SoC keys. Application secrets do not go in workflows.
+   Use Secret type only for `SUPABASE_SECRET_KEY`, `SOCLAAS_API_KEY`,
+   `CRON_SECRET` and `MAIN_ADMIN_PASSWORD`; other application values use Config
+   type. Configure every target's values using the
+   [configuration names](../workflow/specs/TECHNICAL-SPEC.md#configuration-names)
+   and [AI policy table](../workflow/specs/AI-SECURITY-SPEC.md#limits-and-configuration).
+   The delivery contract requires application secrets at request time, never
+   build time; this configuration pair does not verify runtime consumers.
+5. For maintenance, the contract reserves a production GitHub environment
+   `CRON_SECRET` equal to Vercel Production's value. These workflows do not
+   reference it or invoke maintenance; T-27 owns that extension.
+6. A human merges reviewed changes to `master` for dev delivery, then creates
+   and pushes a `v*` tag at a commit reachable from `master` for production.
+   A teammate approves the production environment job. Humans verify approval
+   enforcement, the migration result, application target/database/region and
+   domain reachability from the resulting run before claiming deployed acceptance.
+
+Agents never execute deployment workflows, Vercel commands or hosted migrations,
+connect to either hosted database, or make live LLM probes. Hosted setup,
+approval, execution and verification remain human-only. Local static delivery
+tests live in `tests/unit/delivery/`; `bun run verify` runs them without executing
+workflow commands or contacting hosted targets.
 
 ## Planned enhancements
 
@@ -276,4 +369,13 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 
-<!-- Record verified implementation and workflow limitations. -->
+Delivery validation is local and static. It cannot prove hosted environment
+protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
+migration/deployment outcomes. Exact pinned delivery CLIs were not executed by
+agents. The token-free Vercel build from pulled settings remains unverified on
+hosted runners; if the first human-run workflow establishes that authentication
+is required, the human can add the token to that build step alone. Step-level
+env limits direct token inheritance but does not isolate steps from compromised
+tools on the same runner; CLI global installation is outside the application
+lockfile. See the [security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
+for the inspected fixes and remaining verification limits.
