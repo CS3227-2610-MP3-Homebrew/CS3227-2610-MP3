@@ -335,8 +335,10 @@ requirements from the delivery contract:
    password. Do not use the direct database host or transaction mode/port 6543.
 3. Use one Vercel Hobby project for Preview and Production, with `sin1` and Git
    deployments disabled as declared in `vercel.json`. Configure the production
-   domain `homebrew-cs3227-prod.vercel.app`. Turn Deployment Protection off so
-   the development alias is public; verify both domains and target mappings.
+   domain `homebrew-cs3227-prod.vercel.app`. Keep Standard Deployment
+   Protection and add `homebrew-cs3227-dev.vercel.app` as a Deployment
+   Protection Exception so the development alias is public; verify both
+   domains and target mappings.
 4. Use separate Singapore Supabase projects `homebrew-dev` and `homebrew-prod`.
    Set Vercel application values per target: dev in Preview, prod in Production,
    including separate SoC keys. Application secrets do not go in workflows.
@@ -377,25 +379,6 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 
-Delivery validation is local and static. It cannot prove hosted environment
-protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
-migration/deployment outcomes. Exact pinned delivery CLIs were not executed by
-agents, and static tests cannot reproduce the hosted-only alias failure.
-
-The human reported that hosted run 39224174089 completed its prebuilt deployment
-before `vercel alias set` failed with `Error: User not found.` The supplied CLI
-source diagnosis is that aliasing first calls `GET /v2/user`, which the
-project-scoped `VERCEL_TOKEN` cannot read. Neither `--token` nor `--scope` avoids
-that account lookup. The development workflow therefore uses the alias REST API
-to retain the project-scoped token. The human verified a direct REST alias
-request with that token; successful execution of the revised workflow and
-public alias reachability still require human hosted verification. These
-observations are human-supplied evidence, not results of agent-run static tests.
-The build step retains its token-free configuration.
-
-Step-level env limits direct token inheritance but does not isolate steps from
-compromised tools on the same runner; CLI global installation is outside the
-application lockfile. See the
-[alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md)
-for the inspected token, logging and captured-URL boundaries and remaining
-verification limits.
+- Delivery validation in the repository is static. It cannot prove hosted environment protections, secret storage, Vercel or Supabase settings, or migration and deployment outcomes; humans check those on each delivery run.
+- `VERCEL_TOKEN` is project-scoped. Vercel CLI commands that first look up the token's account, such as `vercel alias` and `vercel promote`, fail with "User not found", so the development alias is set through Vercel's REST API. Future delivery changes should use the REST API for those operations.
+- Step-level `env` limits which steps receive the token but does not isolate steps from a compromised tool on the same runner, and the globally installed Vercel CLI is outside the application lockfile. See the [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
