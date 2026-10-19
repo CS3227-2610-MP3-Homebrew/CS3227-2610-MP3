@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { expect, test } from "vitest";
 import { existingIssueNumbers, needsIssue, pairedTasks, planIssue, setPlanIssue } from "../../workflow/scripts/lib/issues";
 import { parsePlan, taskStatus, taskStatuses } from "../../workflow/scripts/lib/plan";

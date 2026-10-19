@@ -182,7 +182,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Core relational cases and negative unexposed-table catalogue fixture record expected failures.
   - [ ] Local-only replay and verification results are recorded.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#36](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/36)
 
 ### T-06: Implement core schema, local migrations and RLS catalogue
@@ -197,7 +197,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Local replay, integrity tests and catalogue CI checks pass.
   - [ ] `bun run verify` passes without hosted access.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#37](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/37)
 
 ### T-07: Test role matrix and local demonstration seeds

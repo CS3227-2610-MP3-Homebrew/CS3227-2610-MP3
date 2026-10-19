@@ -5,7 +5,12 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 ## Contents
 
 - [Acknowledgements](#acknowledgements)
+- [Setting up, getting started](#setting-up-getting-started)
 - [Development workflow](#development-workflow)
+- [Data model and database schema](#data-model-and-database-schema)
+- [Authentication and authorization](#authentication-and-authorization)
+- [Security](#security)
+- [How to test](#how-to-test)
 - [Deployment and environments](#deployment-and-environments)
 - [Known limitations](#known-limitations)
 
@@ -35,8 +40,41 @@ Five files are reused: two Adapted, two Rewritten and one As is.
 
 ## Setting up, getting started
 
-<!-- Add prerequisites, environment variable names (never values), local Supabase
-setup, and commands for running the app and checks once verified. -->
+Use Node.js 24, Bun 1.4.3 and a running Docker engine with the `docker` command
+available. Install pinned dependencies from the repository root:
+
+```bash
+bun install --frozen-lockfile
+bun run db:start
+bun run db:reset
+bun run db:check
+```
+
+The repository pins Supabase CLI 2.121.0 as a development dependency.
+`scripts/database.ts` runs the installed CLI from the repository root and accepts
+only these three actions, without extra arguments or target URLs:
+
+| Command | Effect |
+| --- | --- |
+| `bun run db:start` | Starts the Docker-backed local Supabase project `homebrew`; succeeds when it is already running. |
+| `bun run db:reset` | Recreates the local database and replays migrations with `--local --no-seed`. This discards local data. |
+| `bun run db:check` | Inspects the local PostgreSQL catalogue and exits nonzero if any application table lacks RLS, listing the schema/table names. |
+
+`supabase/config.toml` selects PostgreSQL 17, API port 54321 and database port
+54322. The Data API is enabled for `public`, with automatic exposure of new
+tables disabled. Auth is enabled locally; Studio, storage, realtime, local SMTP,
+edge runtime, analytics and the pooler are disabled. Separate seed files are
+disabled; the migration itself creates the main workspace. Account provisioning
+and demonstration data are not supplied by these commands.
+
+The wrapper captures CLI status output and omits generated credentials on success.
+Failures show a bounded, filtered subset of diagnostics; this filter is heuristic.
+The catalogue command uses `docker exec` against `supabase_db_homebrew`, with no
+connection URL or credential lookup. These commands require local Docker access
+and have no hosted target option.
+
+For the existing starter page, run `bun run dev` and open
+<http://localhost:3000>. The database foundation adds no application screens.
 
 ## Development workflow
 
@@ -116,7 +154,7 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Tests are written from the spec before implementation. | Tests check the spec's intent rather than what was built, and give implementation a clear target. |
 | Testing may add devDependencies required by its tests and the corresponding bun.lock changes, listing each dependency and its purpose in its report. Stage 2 checks that package.json changes only devDependencies; runtime dependencies, scripts and other manifest edits are excluded. These additions are testing-owned alongside fixtures and test configuration. | Tests can use required database clients or parsers while preserving the testing and implementation write boundaries. |
 | Test layout: use `tests/{unit,integration,e2e}/<area>/`, browser specs only under `tests/e2e/`, and `// @vitest-environment node` for database and route tests because Vitest defaults to jsdom. | Playwright reads only `tests/e2e/` and Vitest collects everything else, so one convention lives in the skills that generate plans and tests. |
-| Local Supabase: agents use `bun run db:start` and `bun run db:reset` locally once the core-schema task adds them; reset and delete bans apply to hosted databases; fixtures are testing-owned. | Migration replay needs a local reset. Residual risk: prefix allow rules accept extra arguments, so the real protection for hosted projects is that the Supabase CLI is not logged in on development machines and database credentials exist only in GitHub environment secrets. |
+| Local Supabase: agents use the fixed-target `bun run db:start`, `bun run db:reset` and `bun run db:check` wrappers; reset and delete bans apply to hosted databases; fixtures are testing-owned. | Migration replay needs a local reset. The wrapper rejects extra arguments and fixes reset to `--local --no-seed`. Prefix allow rules still match command prefixes, so humans review package scripts and configuration before approving them. |
 | `verify` includes unit/integration tests and traceability; e2e runs separately in CI. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
@@ -185,7 +223,7 @@ loads its workflow instructions.
 | `.agents/skills/sdd-docs/agents/openai.yaml` | UI metadata and default prompt for the docs skill. |
 | `.agents/skills/sdd-orchestrate/SKILL.md` | For the human's coordinating session: per-stage entry and exit gates with the commands that check them, copy-ready agent prompts, review-round and security-finding routing, and the spec change flow. Foundation stage 0 checks cross-cutting requirements on the selected review base and permitted assumptions, stage 1 requires approval outside the sandbox for the issue script, and stage 3 permits task-scoped workflow/configuration files and workflow-table row additions. |
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
-| `.github/workflows/ci.yml` | Runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
+| `.github/workflows/ci.yml` | Starts and resets local Supabase, checks all application tables for RLS, then runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
 | `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
@@ -231,13 +269,52 @@ accessibility and responsive behaviour once implemented. -->
 
 ## Data model and database schema
 
-<!-- Describe entities, relationships, constraints, migrations and row-level
-security policies. Include an ER diagram and domain or class diagrams where useful. -->
+The core migrations implement the structural portion of
+[SYS-06](../workflow/specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls)
+and [SYS-12.1](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
+The [data ownership contract](../workflow/specs/TECHNICAL-SPEC.md#data-model-and-ownership)
+also describes later product fields and permissions; the schema currently stores
+identities and relationships:
+
+| Table | Implemented relationships and constraints |
+| --- | --- |
+| `workspaces` | UUID identity and `is_main`; a partial unique index allows at most one main workspace. Migration replay inserts exactly one. |
+| `profiles` | UUID identity references `auth.users`; required workspace and protected role enum (`customer`, `owner`, `admin`). |
+| `cafes` | UUID identity, workspace and owner profile; a composite foreign key requires the owner to share the café's workspace. |
+| `menu_items`, `opening_hours` | UUID identities and required café references. |
+| `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. |
+| `order_items` | UUID identity; composite foreign keys require the parent order and menu item to belong to the same café. |
+| `reviews` | UUID identity and customer reference; a composite foreign key ties the customer to the order. A unique order reference prevents a second review for that order. The café is derived through the order. |
+
+Only profiles and cafés store workspace references. Menu items, opening hours,
+orders, order items and reviews inherit their workspace through the café.
+Profile and café workspace membership is immutable: changes raise
+`Workspace membership cannot be reassigned`. The final additive migration replaces
+reverse-edge queries with that rule so an older transaction snapshot cannot
+permit a parent workspace move.
+
+Migrations are replayed in filename order:
+
+1. `supabase/migrations/20261019000000_core_schema.sql` creates the eight core
+   tables, identities, constraints, supporting indexes, main workspace and RLS/grants.
+2. `supabase/migrations/20261019000001_default_privileges.sql` removes global
+   default function/table/sequence grants for objects created by `postgres`.
+3. `supabase/migrations/20261019000002_immutable_workspace_identity.sql` makes
+   profile/café workspace membership immutable.
+
+Demo-kit creation, domain fields and lifecycle states, AI counters/admissions,
+caches and audit tables remain later work.
 
 ## Authentication and authorization
 
-<!-- Describe implemented authentication, role assignment and server-side
-authorization, with sequence diagrams for relevant flows. -->
+The baseline database policy grants `authenticated` SELECT on `profiles`, filtered
+to `id = (select auth.uid())`, so an existing authenticated profile can read its
+own stored role. All other product access remains denied by the current grants
+and policies. No profile writes or role assignment are available to browser
+roles. This foundation supplies no signup/profile-provisioning flow, session
+handling or complete customer/owner/admin policy matrix; those require their
+own implementation and tests under the
+[RLS contract](../workflow/specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
 
 ## AI features and the shared LLM module
 
@@ -247,7 +324,20 @@ Include sequence diagrams showing requests through the shared module. -->
 
 ## Security
 
-<!-- Describe implemented controls and their tests, linked to AI-SECURITY-SPEC.md. -->
+All eight application tables explicitly enable RLS. Migrations revoke schema,
+table, sequence and function privileges before granting the narrow own-profile
+read. Private trigger functions use an empty search path and qualified application
+relations; ordinary roles cannot invoke them directly. An event trigger enables
+RLS on new non-extension tables in `public`; tables in other application schemas
+still require explicit RLS.
+
+`db:check` inspects ordinary and partitioned tables across application schemas,
+including unexposed schemas. It excludes PostgreSQL system schemas, named
+Supabase-managed schemas and extension-owned tables. A query/tooling failure also
+exits nonzero. This checks RLS coverage; policy correctness and future role access
+still need separate tests. See the
+[security specification](../workflow/specs/AI-SECURITY-SPEC.md) for later application
+and AI requirements; this pair adds no AI execution surface.
 
 <!-- The allow rule runs package.json scripts and config files outside the
 sandbox, so changes to package.json, next.config.ts, eslint.config.mjs and .codex/
@@ -256,8 +346,39 @@ rather than a complete block. -->
 
 ## How to test
 
-<!-- Document acceptance tests, test commands, verification evidence and manual
-checks once set up. -->
+Start local Supabase before running tests or full verification:
+
+```bash
+bun run db:start
+bun run check:specs
+bun run verify
+```
+
+`verify` runs lint, type generation/TypeScript, Vitest, traceability, specification
+checks and the production build with source/client-artifact isolation checks.
+Vitest includes database integration tests, so it requires Docker access and
+resets local data twice during migration replay. Playwright remains a separate
+`bun run test:e2e` command for browser acceptance.
+
+The 28 cases in `tests/integration/schema/schema.test.ts` cover migration replay,
+one main workspace, a valid core graph, Auth and orphan foreign keys, duplicate
+reviews, cross-café order items and cross-workspace actor relationships. They also
+inspect RLS/explicit grants and prove that the actual checker rejects a new
+unexposed table without RLS, names it, then passes after RLS is enabled. Synthetic
+graph fixtures run in rolled-back transactions; the catalogue fixture cleans up
+its temporary schema. The local adapter uses Docker/psql without a hosted URL.
+
+CI installs locked dependencies, starts and resets local Supabase, runs
+`db:check`, then executes `verify` and Chromium Playwright. Local verification
+passes all 219 tests across nine files and the production build; remote CI
+execution remains unobserved. The implementation handoff records a manual
+two-session workspace concurrency check; that scenario is not a committed
+automated regression.
+
+If `db:check` reports `Local database catalogue unavailable. Check Docker and run
+bun run db:start first.`, check that Docker is running and start the local stack.
+`Application tables without RLS:` identifies tables requiring explicit RLS in
+their migrations; disabling Data API exposure does not satisfy this check.
 
 ## Deployment and environments
 
@@ -379,6 +500,24 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 
+The database currently contains structural relationships and baseline own-profile
+reads. It does not yet provide role-specific domain access, signup provisioning,
+demonstration accounts/kits, story fields or lifecycle guards, or AI infrastructure.
+Local Auth configuration alone does not establish hosted signup behavior. The
+catalogue check proves RLS is enabled, not that future policies implement the
+full access matrix. The concurrency repair has manual two-session evidence and
+single-transaction acceptance coverage; no concurrent regression is committed.
+
+Delivery validation is local and static. It cannot prove hosted environment
+protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
+migration/deployment outcomes. Exact pinned delivery CLIs were not executed by
+agents. The token-free Vercel build from pulled settings remains unverified on
+hosted runners; if the first human-run workflow establishes that authentication
+is required, the human can add the token to that build step alone. Step-level
+env limits direct token inheritance but does not isolate steps from compromised
+tools on the same runner; CLI global installation is outside the application
+lockfile. See the [security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
+for the inspected fixes and remaining verification limits.
 - Delivery validation in the repository is static. It cannot prove hosted environment protections, secret storage, Vercel or Supabase settings, or migration and deployment outcomes; humans check those on each delivery run.
 - `VERCEL_TOKEN` is project-scoped. Vercel CLI commands that first look up the token's account, such as `vercel alias` and `vercel promote`, fail with "User not found", so the development alias is set through Vercel's REST API. Future delivery changes should use the REST API for those operations.
 - Step-level `env` limits which steps receive the token but does not isolate steps from a compromised tool on the same runner, and the globally installed Vercel CLI is outside the application lockfile. See the [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
