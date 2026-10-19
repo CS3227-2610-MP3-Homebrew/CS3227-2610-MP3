@@ -94,25 +94,39 @@ codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" \
     --disable apps --disable plugins --disable memories \
     -o "$temp_dir/review.md" "$prompt"
 review="$temp_dir/review.md"
-[[ -s "$review" ]] || { echo "Empty review; no report saved." >&2; exit 1; }
-grep -Eq '^- \*\*Status:\*\* (completed|blocked|awaiting-decision|incomplete)$' "$review"
-grep -Eq '^\*\*Overall:\*\* (pass|fail)([[:space:]]|$)' "$review"
-[[ $(grep -c '^- \*\*Status:\*\*' "$review") == 1 && $(grep -c '^\*\*Overall:\*\*' "$review") == 1 ]] || exit 1
-grep -Fxq -- "- **Implementation report:** $report" "$review"
-grep -Fxq -- "- **Review round:** $round" "$review"
+reject_review() {
+    echo "$1" >&2
+    if [[ -f "$review" ]]; then cat "$review" >&2 || true; fi
+    exit 1
+}
+[[ -s "$review" ]] || reject_review "Empty review; no report saved."
+grep -Eq '^- \*\*Status:\*\* (completed|blocked|awaiting-decision|incomplete)$' "$review" ||
+    reject_review "Malformed review: missing valid **Status:** line; no report saved."
+grep -Eq '^\*\*Overall:\*\* (pass|fail)([^[:alnum:]_]|$)' "$review" ||
+    reject_review "Malformed review: missing **Overall:** pass|fail line; no report saved."
+[[ $(grep -c '^- \*\*Status:\*\*' "$review") == 1 ]] ||
+    reject_review "Malformed review: expected exactly one **Status:** line; no report saved."
+[[ $(grep -c '^\*\*Overall:\*\*' "$review") == 1 ]] ||
+    reject_review "Malformed review: expected exactly one **Overall:** line; no report saved."
+grep -Fxq -- "- **Implementation report:** $report" "$review" ||
+    reject_review "Malformed review: missing matching **Implementation report:** line; no report saved."
+grep -Fxq -- "- **Review round:** $round" "$review" ||
+    reject_review "Malformed review: missing matching **Review round:** line; no report saved."
 for section in '## Summary' '## Acceptance criteria' '## Files changed' '## Checks run' '## Findings' '### Blocking' '### Non-blocking' '## Open issues for the next step' '## Suspicious content found' '## Human corrections' '## Notes for reflection'; do
-    grep -Fxq "$section" "$review"
+    grep -Fxq "$section" "$review" ||
+        reject_review "Malformed review: missing section $section; no report saved."
 done
-if grep -Eq '^\*\*Overall:\*\* pass' "$review" && ! grep -Fxq -- '- **Status:** completed' "$review"; then
-    echo "Passing review has unresolved status; no report saved." >&2; exit 1
+if grep -Eq '^\*\*Overall:\*\* pass([^[:alnum:]_]|$)' "$review" && ! grep -Fxq -- '- **Status:** completed' "$review"; then
+    reject_review "Passing review has unresolved status; no report saved."
 fi
-if [[ "$verify_exit" -ne 0 ]] && grep -Eq '^(\*\*Overall:\*\* pass|- \*\*Status:\*\* completed)' "$review"; then
-    echo "Review contradicts failed verification; no report saved." >&2; exit 1
+if [[ "$verify_exit" -ne 0 ]] && grep -Eq '^(\*\*Overall:\*\* pass([^[:alnum:]_]|$)|- \*\*Status:\*\* completed)' "$review"; then
+    reject_review "Review contradicts failed verification; no report saved."
 fi
 snapshot | git hash-object --stdin > "$temp_dir/after"
 cmp -s "$temp_dir/before" "$temp_dir/after" || {
-    echo "Inputs changed during review; no report saved." >&2; exit 1;
+    reject_review "Inputs changed during review; no report saved."
 }
 # Noclobber protects an existing report even if another run chose the same number.
-(set -o noclobber; cat "$review" > "$output")
+(set -o noclobber; cat "$review" > "$output") ||
+    reject_review "Could not save review to $output; no report saved."
 printf 'Saved review round %s to %s. Inspect its status and verdict.\n' "$round" "$output"
