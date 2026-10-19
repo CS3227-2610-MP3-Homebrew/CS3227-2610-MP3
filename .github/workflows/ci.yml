@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
+      - run: bun run db:start
+      - run: bun run db:reset
+      - run: bun run db:check
       - run: bun run verify
       - run: bunx --no-install playwright install --with-deps chromium
       - run: bun run test:e2e

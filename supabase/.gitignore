@@ -1,0 +1,3 @@
+# Local CLI runtime state; migrations and config remain tracked.
+.branches/
+.temp/
