@@ -150,9 +150,9 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **File scope:** Proposed `tests/{unit,integration,e2e}/config/` and synthetic configuration/import fixtures.
 - **Prerequisite:** Existing test tooling; no live keys or hosted checks.
 - **Acceptance criteria:**
-  - [ ] Contract-derived positive/negative tests and synthetic artifact scans record expected failures.
-  - [ ] `bun run verify` result is recorded.
-- **Status:** todo
+  - [x] Contract-derived positive/negative tests and synthetic artifact scans record expected failures.
+  - [x] `bun run verify` result is recorded.
+- **Status:** done
 - **Issue:** [#34](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/34)
 
 ### T-04: Implement runtime, configuration and import isolation
@@ -165,9 +165,9 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **File scope:** Existing manifest/lockfile, TypeScript/Next/ESLint configuration and CI; proposed `src/server/` config and `scripts/` boundary checks.
 - **Prerequisite:** T-03 evidence; shared-file serialization applies.
 - **Acceptance criteria:**
-  - [ ] Configuration/import/artifact tests pass with synthetic credentials.
-  - [ ] `bun run verify` passes; no secrets enter client/error/audit output.
-- **Status:** todo
+  - [x] Configuration/import/artifact tests pass with synthetic credentials.
+  - [x] `bun run verify` passes; no secrets enter client/error/audit output.
+- **Status:** done
 - **Issue:** [#35](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/35)
 
 ### T-05: Test core schema, local migrations and RLS catalogue
