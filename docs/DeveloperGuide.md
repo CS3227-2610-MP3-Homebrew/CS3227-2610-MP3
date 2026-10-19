@@ -183,6 +183,8 @@ loads its workflow instructions.
 | `.agents/skills/sdd-orchestrate/SKILL.md` | For the human's coordinating session: per-stage entry and exit gates with the commands that check them, copy-ready agent prompts, review-round and security-finding routing, and the spec change flow. Foundation stage 0 checks cross-cutting requirements on the selected review base and permitted assumptions, stage 1 requires approval outside the sandbox for the issue script, and stage 3 permits task-scoped workflow/configuration files and workflow-table row additions. |
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
 | `.github/workflows/ci.yml` | Runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
+| `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
+| `.github/workflows/deploy-prod.yml` | Checks v* tag ancestry before migrations and a Vercel Production build/deployment in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
 
 <!-- Add every new workflow file to this table. -->
