@@ -8,7 +8,14 @@ Admin story sources: [ADM-01](specs/stories/ADM-01-cafe-applications.md),
 [ADM-02](specs/stories/ADM-02-cafe-suspension.md),
 [ADM-03](specs/stories/ADM-03-review-moderation.md) and
 [ADM-04](specs/stories/ADM-04-moderation-assistant.md).
-Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs, plus three spec tasks.
+Customer story sources: [CUS-01](specs/stories/CUS-01-browse-cafes.md),
+[CUS-02](specs/stories/CUS-02-cafe-page.md),
+[CUS-03](specs/stories/CUS-03-pre-order.md),
+[CUS-04](specs/stories/CUS-04-my-orders.md),
+[CUS-05](specs/stories/CUS-05-review-order.md),
+[CUS-06](specs/stories/CUS-06-brew-finder.md) and
+[CUS-07](specs/stories/CUS-07-favourite-cafes.md).
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Customer adds five pairs and Admin three, with nine specification tasks across the plan.
 Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
@@ -25,12 +32,13 @@ Changed criteria and new tasks require their governing specs on master before ex
   testing records expected failing-first evidence. Database/accessibility tooling
   needed by a task remains part of that task's separate testing file scope.
 - Test paths use `tests/{unit,integration,e2e}/<area>/`; browser cases go under
-  `tests/e2e/<area>/`.
+  `tests/e2e/<area>/`. Database and route test files start with
+  `// @vitest-environment node`; component tests can use the configured jsdom environment.
 - Follow [AGENTS.md](../AGENTS.md), [spec rules](specs/README.md),
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- ADM-01–ADM-04 story specs exist; other role/account story contracts remain
+- CUS-01–CUS-07 and ADM-01–ADM-04 story specs exist; owner/account story contracts and the named customer field/API decisions remain
   prerequisites where named. New file scopes below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
@@ -505,9 +513,264 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Status:** blocked
 - **Issue:** [#57](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/57)
 
+### T-34: Specify shared account and role-navigation contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** SYS-01, SYS-02, SYS-03 — [Shared source stories](specs/PRODUCT-SPEC.md#shared); specification prerequisite only, no criterion ownership.
+- **Description:** Define the shared account inputs, session outcomes and role navigation needed by customer screens, preserving the technical role/workspace boundaries.
+- **Work:** Specify account fields/validation, sign-in/sign-out and redirect/session failure contracts in one story file per Shared story; preserve Customer/owner sign-up only, main-workspace assignment, kit sign-in and seed-only Admins. Link existing SYS-05/SYS-06 contracts instead of redefining them. Identify the separate future test/implementation owners for these Shared stories without assigning their criteria to a Customer pair.
+- **File scope:** Proposed story files `workflow/specs/stories/SYS-01-sign-up.md`, `SYS-02-sign-in-out.md`, `SYS-03-role-navigation.md`; relevant shared account contract sections in `workflow/specs/INTEGRATION-SPEC.md`; own handoff only.
+- **Prerequisite:** Source stories and technical role/session boundaries exist; account field/redirect/session-error decisions and their human approval are required.
+- **Acceptance criteria:**
+  - [ ] All three source IDs have authoritative story/HTTP/navigation contracts with no invented account lifecycle or permission.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** unassigned
+
 ## Customer
 
-Story tasks are added as story specs merge.
+Customer pairs cover catalogue browsing/details, pickup orders, collected-order
+reviews, Brew Finder and stretch favourites. Each pair owns only its listed CUS
+criteria; foundation SYS/SEC owners remain unchanged. Specification prerequisites
+define missing contracts rather than selecting product behaviour in this plan.
+T-29 owns the suspension mutation and its automatic order cancellation; the
+Customer order pair owns the retained My orders display and customer actions.
+The catalogue and manual Admin review fixtures can be prepared independently
+once their respective contracts exist. T-29 uses order fixtures under the
+order contract without depending on Customer order creation/screens; T-43 can
+then consume its suspension effect without a dependency cycle.
+
+### T-35: Finalize customer catalogue and café-page contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** CUS-01, CUS-02 — [browse](specs/stories/CUS-01-browse-cafes.md), [café page](specs/stories/CUS-02-cafe-page.md); specification prerequisite only, no criterion ownership.
+- **Description:** Complete deterministic browse, rating and café-detail contracts while retaining the specified unfiltered closed-café and closing-soon behaviour.
+- **Work:** Resolve strict filter fields/values/normalization/combination/reset, Singapore date/time and opening-interval boundaries/overnight rules, and sold-out-only drink matches with the owning hours/menu contracts. Define one authoritative rating formula, unrated handling, ties, display precision and catalogue/review ordering/pagination. Specify customer-visible profile/menu/review fields, reviewer disclosure, money representation, customer page paths and read schemas. Retain CUS-01.9/CUS-01.10 labels, greyed but clickable closed cards and exactly-30-minute closing-soon inclusion; resolve absent next-opening schedules and opening-time text formatting without inventing a time. Amend integration/cache source inputs only from those decisions.
+- **File scope:** Existing CUS-01/CUS-02 story files; customer catalogue/detail sections in `workflow/specs/INTEGRATION-SPEC.md` and relevant `TECHNICAL-SPEC.md` data-model references; own handoff. OWN-02/OWN-03 hours/menu definitions are required owning-role inputs, not application work in this task.
+- **Prerequisite:** Customer filter/rating/display/public-contract decisions and the relevant OWN-02/OWN-03 hours/menu contracts are required; Shared account/navigation contracts are T-34.
+- **Acceptance criteria:**
+  - [ ] Catalogue filters, card states, next-opening failure cases, ratings and café-page responses are testable and have one authoritative owner.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** [#66](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/66)
+
+### T-36: Finalize pickup, order and suspension-cancellation contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** CUS-03, CUS-04, ADM-02 — [pre-order](specs/stories/CUS-03-pre-order.md), [own orders](specs/stories/CUS-04-my-orders.md), [suspension](specs/stories/ADM-02-cafe-suspension.md); specification prerequisite only, no criterion ownership.
+- **Description:** Complete the shared order lifecycle needed by Customer ordering and Admin suspension without weakening the confirmed all-uncollected cancellation rule.
+- **Work:** Resolve pickup representations/intervals/horizon/past and boundary rules, quantities, sold-out eligibility, price snapshots/totals, duplicate submissions, customer order paths/read/write schemas and display ordering. Reconcile authoritative order state names/transitions with OWN-04/OWN-05 and later menu/hour changes with OWN-02/OWN-03. Define acceptance/cancellation and collection/suspension races, already terminal-order treatment and transactional failure responses. Preserve automatic suspension cancellation of every outstanding uncollected order including accepted/ready, fixed customer reason, unchanged collected purchases and no revival on un-suspension; separate this fixed reason from the private Admin reason. Keep suspension mutation/transaction ownership with T-28/T-29 and Customer display/actions with T-42/T-43.
+- **File scope:** Existing CUS-03/CUS-04 and only the related ADM-02 suspension clauses; corresponding order/API/data-model sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff. Missing OWN-02–OWN-05 source contracts remain explicit owning-role inputs.
+- **Prerequisite:** Owning menu/hour/pickup/queue contracts and the remaining order/race/public-schema decisions are required; the fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9.
+- **Acceptance criteria:**
+  - [ ] Order/pickup schemas, complete state/race/error matrix and suspension rollback/visibility responsibilities agree across the owning specs.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** [#67](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/67)
+
+### T-37: Finalize customer review submission contracts
+
+- **Depends on:** T-36
+- **Owner role:** spec
+- **Requirements:** CUS-05 — [review story](specs/stories/CUS-05-review-order.md); specification prerequisite only, no criterion ownership.
+- **Description:** Define a valid review payload and public submission/read contract, retaining own-collected-once-only and ADM-03 immutability/post-moderation.
+- **Work:** Resolve rating scale/type, text requiredness/length/normalization, duplicate submission outcomes, input feedback and customer review paths/schemas. Clarify review creation after café suspension while preserving collected purchases. Keep pending/kept/hidden visibility and immutable text/rating owned by ADM-03; integration Label/Reason bounds are not customer input limits. Make the canonical field contract sufficient for contract-derived local moderation fixtures without requiring a Customer review screen first.
+- **File scope:** Existing `workflow/specs/stories/CUS-05-review-order.md`; corresponding review sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff only.
+- **Prerequisite:** Human review field/duplicate/suspension decisions are required; collection-state names derive from T-36 and OWN-05.
+- **Acceptance criteria:**
+  - [ ] Valid/invalid review payloads, source eligibility and duplicate outcomes are explicit and do not conflict with ADM-03.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** [#68](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/68)
+
+### T-38: Finalize Brew Finder selection and empty-result contracts
+
+- **Depends on:** T-35
+- **Owner role:** spec
+- **Requirements:** CUS-06 — [Brew Finder](specs/stories/CUS-06-brew-finder.md); specification prerequisite only, no criterion ownership.
+- **Description:** Resolve the remaining feature-specific source/result decisions while preserving the fixed integration prompt, one-call sequence and security controls.
+- **Work:** Define candidate selection/size/order, item availability rules, recommendation count, and customer/envelope treatment of an empty model suggestions array from a nonempty source. Confirm or replace CUS-06 ASM-02 explicit-submit/loading interaction. Reconcile CatalogueFilters, rating fallback and source fingerprint inputs with T-35 and update only affected canonical integration/cache contracts; never invent a fallback reason or infer model quality from schema validity.
+- **File scope:** Existing CUS-06 story; Brew Finder and matching cache-source sections of `workflow/specs/INTEGRATION-SPEC.md`; own handoff only.
+- **Prerequisite:** T-35 supplies exact filters/rating order; human selection/count/empty-result and ASM-02 decisions are required.
+- **Acceptance criteria:**
+  - [ ] Candidate/result/empty-source versus empty-model cases and UI triggers are independently testable with unchanged security limits.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** [#69](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/69)
+
+### T-39: Finalize stretch favourite contracts
+
+- **Depends on:** T-35
+- **Owner role:** spec
+- **Requirements:** CUS-07 — [favourites](specs/stories/CUS-07-favourite-cafes.md); specification prerequisite only, no criterion ownership.
+- **Description:** Define optional favourite saving and return access without adding an MVP entity or granting broader catalogue access.
+- **Work:** Resolve personal storage/RLS, strict save/read schemas and endpoint paths, repeat-save outcomes, persistence and ineligible/re-eligible café handling. Confirm or replace CUS-07 ASM-02 placement in existing customer contexts; decide whether removal is within product scope through the source-story change process rather than silently adding it. Keep favourite reads personal and current café eligibility independently enforced.
+- **File scope:** Existing CUS-07 story and matching stretch data/API sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`; PRODUCT-SPEC only if a human-approved scope amendment is needed; own handoff.
+- **Prerequisite:** Human stretch persistence/repeat-save/ineligible-reference/API and ASM-02 placement decisions are required; T-35 supplies customer catalogue references.
+- **Acceptance criteria:**
+  - [ ] The optional favourite schema, ownership and return behaviour are testable without inventing removal/sharing/payment behaviour.
+  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** awaiting-decision
+- **Issue:** [#70](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/70)
+
+### T-40: Test customer catalogue and café pages
+
+- **Depends on:** T-34, T-35, T-08, T-10, T-16
+- **Owner role:** testing
+- **Requirements:** CUS-01.1, CUS-01.2, CUS-01.3, CUS-01.4, CUS-01.5, CUS-01.6, CUS-01.7, CUS-01.8, CUS-01.9, CUS-01.10, CUS-01.11 — [CUS-01 criteria](specs/stories/CUS-01-browse-cafes.md#acceptance-criteria); CUS-02.1, CUS-02.2, CUS-02.3, CUS-02.4, CUS-02.5, CUS-02.6, CUS-02.7, CUS-02.8, CUS-02.9 — [CUS-02 criteria](specs/stories/CUS-02-cafe-page.md#acceptance-criteria).
+- **Description:** Derive failing-first tests from [browse criteria](specs/stories/CUS-01-browse-cafes.md#acceptance-criteria) and [café-page criteria](specs/stories/CUS-02-cafe-page.md#acceptance-criteria).
+- **Work:** Cover all eligible cafés in the unfiltered view, including closed cafés; greyed cards remain clickable and show next-opening text. Control the Singapore clock for closed/open and just above/at/below 30 minutes before closing, closing-soon text and transitions to closed. Cover time/drink/area filters and filter removal, source failure versus empty data, menu/prices/sold-out display, opening hours, pending/kept reviews and hidden exclusion, moderation visibility changes, inert content, main/kit isolation, stale eligibility and anonymous/wrong-role protected shells. Use only the finalized T-35 filter/rating/field/API definitions, and local fixtures for moderation state changes rather than requiring Admin screens.
+- **File scope:** Proposed `tests/unit/catalogue/`, `tests/integration/catalogue/`, `tests/e2e/catalogue/` and testing-owned synthetic café/menu/hour/review/clock fixtures. Route/database files use the node environment directive; component tests may use jsdom.
+- **Prerequisite:** T-34/T-35 contracts and governing specs on master; T-08/T-10 role/session/RLS gates and T-16 catalogue eligibility. No live AI or hosted source is needed.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
+  - [ ] The card/text/time-boundary and main/kit assertions are deterministic and criterion-owned; no invented filter/rating behaviours.
+  - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
+- **Status:** blocked
+- **Issue:** [#71](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/71)
+
+### T-41: Implement customer catalogue and café pages
+
+- **Depends on:** T-40, T-34, T-35, T-08, T-10, T-16
+- **Owner role:** implementation
+- **Requirements:** CUS-01.1, CUS-01.2, CUS-01.3, CUS-01.4, CUS-01.5, CUS-01.6, CUS-01.7, CUS-01.8, CUS-01.9, CUS-01.10, CUS-01.11 — [CUS-01 criteria](specs/stories/CUS-01-browse-cafes.md#acceptance-criteria); CUS-02.1, CUS-02.2, CUS-02.3, CUS-02.4, CUS-02.5, CUS-02.6, CUS-02.7, CUS-02.8, CUS-02.9 — [CUS-02 criteria](specs/stories/CUS-02-cafe-page.md#acceptance-criteria).
+- **Description:** Implement [customer browse/screens](specs/stories/CUS-01-browse-cafes.md#screens) and [café details](specs/stories/CUS-02-cafe-page.md#screens) with current session-bound RLS reads.
+- **Work:** Build the customer catalogue/detail surfaces and strict read/filter contracts supplied by T-35. Show all eligible cafés unfiltered, grey out closed cards without disabling links, render next-opening and final-30-minute labels, and apply the specified Singapore-time filters. Read menus/prices/sold-out state, hours and visible reviews under current eligibility. Supply the one canonical rating-sorted filtered catalogue for later Brew fallback without a separate algorithm. Reuse streaming role gates and accessible components; do not add catalogue caching or AI calls.
+- **File scope:** Proposed customer catalogue/detail pages within `src/app/` at the T-35 contract paths, `src/server/catalogue/`, reusable customer components and necessary additive catalogue policies/fields. Serialize shared migrations with existing owners. No acceptance tests/fixtures/mocks or unrelated role screens.
+- **Prerequisite:** T-40 failing-first evidence and T-34/T-35 finalized contracts on master; T-08/T-10/T-16 foundations.
+- **Acceptance criteria:**
+  - [ ] All T-40 criteria pass, including clickable closed cards, exact labels, current eligibility and review confidentiality.
+  - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
+- **Status:** blocked
+- **Issue:** [#72](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/72)
+
+### T-42: Test customer pickup orders and cancellation display
+
+- **Depends on:** T-34, T-36, T-41, T-08, T-10, T-16
+- **Owner role:** testing
+- **Requirements:** CUS-03.1, CUS-03.2, CUS-03.3, CUS-03.4, CUS-03.5, CUS-03.6, CUS-03.7, CUS-03.8 — [CUS-03 criteria](specs/stories/CUS-03-pre-order.md#acceptance-criteria); CUS-04.1, CUS-04.2, CUS-04.3, CUS-04.4, CUS-04.5, CUS-04.6, CUS-04.7, CUS-04.8 — [CUS-04 criteria](specs/stories/CUS-04-my-orders.md#acceptance-criteria).
+- **Description:** Derive failing-first tests for [pickup orders](specs/stories/CUS-03-pre-order.md#acceptance-criteria) and [own-order management](specs/stories/CUS-04-my-orders.md#acceptance-criteria).
+- **Work:** Cover own single-café order creation, exact finalized pickup validity/availability/price/submission cases, payment at pickup without payment processing, wrong actor/item/café/workspace denials and stale café suspension. Cover own-order reads, pre-acceptance customer cancellation, denial after acceptance and strict HTTP failures. For CUS-04.5, exercise T-29's authorized suspension effect with unaccepted/accepted/ready/collected local fixtures and verify retained own orders, fixed cancellation reason, unchanged collected purchases, no revival on un-suspension and no private Admin-reason disclosure. Keep cancellation transaction/rollback assertions owned by the ADM pair; Customer cases own visibility/actions. Record unavailable integration surfaces separately from failing-first domain tests.
+- **File scope:** Proposed `tests/unit/orders/`, `tests/integration/orders/`, `tests/e2e/orders/` and testing-owned local order/item/pickup/clock/suspension fixtures. Route/database cases use the node environment directive.
+- **Prerequisite:** T-34/T-36 and owning menu/hour/pickup/queue contracts on master; T-41 catalogue and T-08/T-10/T-16 foundations. Actual suspension-integration assertions use T-29 when available; test authoring may record expected absence before it exists.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
+  - [ ] No test grants Customer acceptance/collection or generic Admin order-write permission; CUS-04.5 uses the fixed public cancellation reason.
+  - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
+- **Status:** blocked
+- **Issue:** [#73](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/73)
+
+### T-43: Implement customer pickup orders and My orders
+
+- **Depends on:** T-42, T-29, T-34, T-36, T-41, T-08, T-10, T-16
+- **Owner role:** implementation
+- **Requirements:** CUS-03.1, CUS-03.2, CUS-03.3, CUS-03.4, CUS-03.5, CUS-03.6, CUS-03.7, CUS-03.8 — [CUS-03 criteria](specs/stories/CUS-03-pre-order.md#acceptance-criteria); CUS-04.1, CUS-04.2, CUS-04.3, CUS-04.4, CUS-04.5, CUS-04.6, CUS-04.7, CUS-04.8 — [CUS-04 criteria](specs/stories/CUS-04-my-orders.md#acceptance-criteria).
+- **Description:** Implement [Pre-order](specs/stories/CUS-03-pre-order.md#screens) and [My orders](specs/stories/CUS-04-my-orders.md#screens), consuming the authoritative suspension operation.
+- **Work:** Create/read own orders and order items through finalized schemas, server-derived Customer/workspace, current café/item/pickup validation and the agreed duplicate/race handling. Provide payment-at-pickup information and customer cancellation only in permitted pre-acceptance states. Render retained automatically cancelled orders with the fixed suspension reason while leaving the private Admin reason inaccessible. Consume T-29's suspension cancellation instead of implementing a second suspension writer; Customer mutation permissions do not expand to accepted/ready orders. Preserve collected purchases and no revival semantics.
+- **File scope:** Proposed Pre-order/My orders pages and order route handlers within `src/app/` at T-36 paths, `src/server/orders/`, customer components and additive order policies/fields beyond T-29's suspension-cancellation storage. Serialize order migrations with T-29; no acceptance tests/fixtures/mocks or Admin/owner queue screens.
+- **Prerequisite:** T-42 failing-first evidence; T-34/T-36 contracts on master; T-29 suspension mutation and T-41 catalogue surfaces. T-29 may use local contract-derived order fixtures and does not depend on this task.
+- **Acceptance criteria:**
+  - [ ] T-42's full suite passes, including actual suspension cancellation display, ownership and unchanged collected purchases.
+  - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
+- **Status:** blocked
+- **Issue:** [#74](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/74)
+
+### T-44: Test collected-order reviews
+
+- **Depends on:** T-34, T-36, T-37, T-43, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** CUS-05.1, CUS-05.2, CUS-05.3, CUS-05.4, CUS-05.5, CUS-05.6, CUS-05.7, CUS-05.8, CUS-05.9, CUS-05.10 — [CUS-05 criteria](specs/stories/CUS-05-review-order.md#acceptance-criteria).
+- **Description:** Derive failing-first tests from the [collected-order review criteria](specs/stories/CUS-05-review-order.md#acceptance-criteria).
+- **Work:** Cover finalized rating/text bounds and exact submission responses, own collected-order eligibility, uncollected/foreign/workspace/missing orders, server-derived relationships, unique order constraint and concurrent duplicate submission. Assert pending initial moderation, denied state injection/edit/delete, immutable text/rating, inert malicious text and unchanged one-review eligibility after hide/restore. Exercise all main/kit/auth/origin/strict-input failures with contract-derived fixtures; this pair does not own moderation or rating formulas.
+- **File scope:** Proposed `tests/unit/reviews/`, `tests/integration/reviews/`, `tests/e2e/reviews/` and testing-owned review/order/provider-free adversarial fixtures; route/database cases use the node environment directive.
+- **Prerequisite:** T-34/T-36/T-37 reviewed contracts on master, T-43 own-order surface and T-08/T-10 foundations. ADM-03 provides existing pending/immutability definitions; manual moderation UI is not required for fixture-based cases.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
+  - [ ] Concurrent submissions cannot produce a second review; testing uses approved domain bounds rather than LLM text limits.
+  - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
+- **Status:** blocked
+- **Issue:** [#75](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/75)
+
+### T-45: Implement collected-order review submission
+
+- **Depends on:** T-44, T-34, T-36, T-37, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** CUS-05.1, CUS-05.2, CUS-05.3, CUS-05.4, CUS-05.5, CUS-05.6, CUS-05.7, CUS-05.8, CUS-05.9, CUS-05.10 — [CUS-05 criteria](specs/stories/CUS-05-review-order.md#acceptance-criteria).
+- **Description:** Implement the [Customer Review form](specs/stories/CUS-05-review-order.md#screens) and authorized create/read operations without adding customer moderation or edit/delete.
+- **Work:** Use T-37's finalized fields/routes/schemas, current own-collected-order checks and server-derived author/order/café relationships. Persist one review per order under the existing unique constraint, preserve exact approved text/rating handling and initialize moderation under ADM-03. Expose only own-review reads and the existing visible café reviews; deny edit/delete/state manipulation. Reuse order/session/RLS and plain-text rendering, leaving manual moderation/AI to their existing owners.
+- **File scope:** Proposed Review form and review route handlers under `src/app/` at T-37 paths, `src/server/reviews/`, customer components and necessary additive review migrations/policies. Serialize with T-31's moderation fields/policies and T-43 order storage; no acceptance tests/fixtures/mocks or Admin UI.
+- **Prerequisite:** T-44 failing-first evidence, T-37 contract on master and T-43 own orders with canonical collection states. Review creation is independent of manual moderation screen implementation.
+- **Acceptance criteria:**
+  - [ ] T-44's full suite passes for creation, concurrent uniqueness, session/workspace/ownership and immutable post-submission data.
+  - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
+- **Status:** blocked
+- **Issue:** [#76](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/76)
+
+### T-46: Test Brew Finder search and fallbacks
+
+- **Depends on:** T-34, T-35, T-38, T-41, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** testing
+- **Requirements:** CUS-06.1, CUS-06.2, CUS-06.3, CUS-06.4, CUS-06.5, CUS-06.6, CUS-06.7, CUS-06.8, CUS-06.9, CUS-06.10, CUS-06.11, CUS-06.12, CUS-06.13, CUS-06.14, CUS-06.15, CUS-06.16 — [CUS-06 criteria](specs/stories/CUS-06-brew-finder.md#acceptance-criteria).
+- **Description:** Derive failing-first route/browser/evaluation cases from [Brew Finder criteria](specs/stories/CUS-06-brew-finder.md#acceptance-criteria), [guardrails](specs/stories/CUS-06-brew-finder.md#guardrails) and its canonical integration/security contracts.
+- **Work:** Cover finalized submit/loading interaction, query/filter boundaries, candidate/item/count and empty-model decisions, exact AI/fallback envelopes and the ordinary rating-sorted catalogue. Capture the exact fixed prompt/data boundary with fake providers; test ranking references/reasons/inert rendering, whole-result rejection, same-actor exact-input/source/version cache validity and 10-minute expiry, disable before cache/delivery, usage caps, one-call/no-retry failures and source-unavailable versus empty source. Exercise main/kit/role/origin/stale eligibility and separate café/order authorization, content-free accounting and CUS-06-E01–E13 injection/quality cases. Existing foundation pairs retain SYS/SEC ownership; human quality evaluation uses examples without a live call or invented score.
+- **File scope:** Proposed `tests/unit/brew-finder/`, `tests/integration/brew-finder/`, `tests/e2e/brew-finder/` and testing-owned fake provider/source/cache/clock/limit/adversarial fixtures and evaluation records. Route/database cases use the node environment directive.
+- **Prerequisite:** T-34/T-35/T-38 contracts on master; T-41 catalogue/fallback and T-08/T-10/T-12/T-14/T-16 controls. Actual separate order-authorization acceptance uses T-43; test cases can be authored before that integration is available.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
+  - [ ] All 13 evaluation cases have explicit evidence; no cache/provider/result can grant record access or an order write.
+  - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
+- **Status:** blocked
+- **Issue:** [#77](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/77)
+
+### T-47: Implement Brew Finder search integration
+
+- **Depends on:** T-46, T-34, T-35, T-38, T-41, T-43, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** implementation
+- **Requirements:** CUS-06.1, CUS-06.2, CUS-06.3, CUS-06.4, CUS-06.5, CUS-06.6, CUS-06.7, CUS-06.8, CUS-06.9, CUS-06.10, CUS-06.11, CUS-06.12, CUS-06.13, CUS-06.14, CUS-06.15, CUS-06.16 — [CUS-06 criteria](specs/stories/CUS-06-brew-finder.md#acceptance-criteria).
+- **Description:** Integrate [Brew Finder](specs/stories/CUS-06-brew-finder.md#user-experience) into Browse cafés using the existing [AI route/envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope).
+- **Work:** Add the existing specified `POST /api/ai/brew-finder` boundary with strict query/filter/session/role/origin validation and authorized deterministic catalogue selection. Call only T-14's server-only fixed Brew operation, T-12 admission and T-16 cache/audit services. Implement T-38's finalized UI/selection/empty-result choices, safe ranked plain-text advice and typed catalogue fallback messages; reuse T-41's canonical rating/filter logic rather than duplicating it. Preserve same-actor 10-minute cache validity, current eligibility and disable precedence, one admitted provider call/no retries and content-free accounting. Opening/pre-ordering independently uses T-41/T-43 authorization.
+- **File scope:** Proposed `src/app/api/ai/brew-finder/route.ts`, Browse cafés interaction components in T-41's customer area, authorized source adapter under `src/server/catalogue/`, and necessary integration of existing `src/server/llm/` operations. Serialize shared catalogue edits with T-41; no new prompts/provider transport/quota policy or acceptance tests/fixtures/mocks.
+- **Prerequisite:** T-46 failing-first evidence; T-34/T-35/T-38 contracts on master; T-41 catalogue and T-43 separate order authorization, plus foundation controls. No hosted LLM access is required.
+- **Acceptance criteria:**
+  - [ ] T-46's full criterion/evaluation suite passes with fake/disabled AI and independent catalogue/order authorization.
+  - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
+- **Status:** blocked
+- **Issue:** [#78](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/78)
+
+### T-48: Test stretch favourite saving
+
+- **Depends on:** T-34, T-35, T-39, T-41, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** CUS-07.1, CUS-07.2, CUS-07.3, CUS-07.4, CUS-07.5 — [CUS-07 criteria](specs/stories/CUS-07-favourite-cafes.md#acceptance-criteria).
+- **Description:** Derive failing-first tests for [personal favourite saving and return access](specs/stories/CUS-07-favourite-cafes.md#acceptance-criteria), outside MVP.
+- **Work:** Cover finalized save/read/persistence/repeat-save and ineligible/re-eligible behaviour, approved placement, personal Customer associations, unchanged café data, forged actor/workspace and session/role/strict-origin denials. Verify a saved reference cannot disclose a suspended/ineligible/other-workspace café and does not reveal the Admin reason or another Customer's saved associations. Do not infer removal, sharing or a new screen.
+- **File scope:** Proposed `tests/unit/favourites/`, `tests/integration/favourites/`, `tests/e2e/favourites/` and testing-owned Customer/café/saved-association fixtures; route/database cases use the node environment directive.
+- **Prerequisite:** T-34/T-35/T-39 stretch contracts on master, T-41 customer catalogue and T-08/T-10 foundations; optional scope does not block MVP pairs.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
+  - [ ] Favourite tests use the approved stretch schema and never expand catalogue permissions or add unapproved removal/sharing.
+  - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
+- **Status:** blocked
+- **Issue:** [#79](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/79)
+
+### T-49: Implement stretch favourite saving
+
+- **Depends on:** T-48, T-34, T-35, T-39, T-41, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** CUS-07.1, CUS-07.2, CUS-07.3, CUS-07.4, CUS-07.5 — [CUS-07 criteria](specs/stories/CUS-07-favourite-cafes.md#acceptance-criteria).
+- **Description:** Implement the optional [CUS-07 save/return experience](specs/stories/CUS-07-favourite-cafes.md#screens) from its finalized personal-data contract.
+- **Work:** Add only T-39's approved favourite storage/RLS/API/UI placement and repeat-save/persistence handling. Derive actor/workspace from the session, retain personal association scope and recheck café eligibility for return navigation. Reuse T-41's current café reads; never treat a favourite as an access grant or modify café/rating/boost data. No removal or separate screen is added unless the governing source/story contract explicitly authorizes it.
+- **File scope:** Proposed customer components and favourite routes under `src/app/` at T-39 paths, `src/server/favourites/`, and additive favourite schema/RLS migrations. Serialize shared catalogue/UI edits with T-41; no acceptance tests/fixtures/mocks or owner/Admin features.
+- **Prerequisite:** T-48 failing-first evidence, finalized T-39 stretch contract on master and T-41 catalogue/current-eligibility reads.
+- **Acceptance criteria:**
+  - [ ] T-48's full suite passes with personal/workspace isolation and no saved-reference eligibility bypass.
+  - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
+- **Status:** blocked
+- **Issue:** [#80](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/80)
+
 
 ## Café owner
 
@@ -529,13 +792,13 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-28: Test café applications and suspension
 
-- **Depends on:** T-08, T-10, T-16
+- **Depends on:** T-08, T-10, T-16, T-36
 - **Owner role:** testing
 - **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
 - **Description:** Derive failing-first coverage for the [applications](specs/stories/ADM-01-cafe-applications.md#screens) and [approved-cafés](specs/stories/ADM-02-cafe-suspension.md#screens) screens, domain transitions and accountable workspace-scoped mutations.
-- **Work:** Test both queues' ordering, ties, 20-row URL pagination, empty/conflict states, reason controls and private-data-free role gates. Cover approve/reject and suspend/un-suspend exact HTTP success bodies, strict shared HTTP/Ref validation, exact reason preservation/escaped display, session/role/workspace denials and indistinguishable missing/foreign targets. Exercise one-way decisions, owner resubmission, invalid/current-state and concurrent decisions/transitions, exactly-one atomic audit and rollback on audit failure, append-only retention and owner/Admin-only latest reasons. Assert customer RLS eligibility changes, unchanged application state on suspension, preserved menus/hours/orders/reviews and owner/existing-order access using the owning contracts. Keep café audit-entry assertions here; T-30/T-31 own the common audit screen, not these criterion IDs. Use local main/kit fixtures and shared foundation session/RLS/audit harnesses.
+- **Work:** Test both queues' ordering, ties, 20-row URL pagination, empty/conflict states, reason controls and private-data-free role gates. Cover approve/reject and suspend/un-suspend exact HTTP success bodies, strict shared HTTP/Ref validation, exact reason preservation/escaped display, session/role/workspace denials and indistinguishable missing/foreign targets. Exercise one-way decisions, owner resubmission, invalid/current-state and concurrent decisions/transitions, exactly-one atomic audit and rollback on audit failure, append-only retention and owner/Admin-only latest reasons. Assert customer RLS eligibility changes, unchanged application state, menus/hours/reviews and retained order records on suspension. Test automatic cancellation of every outstanding uncollected order, including accepted/ready, with the fixed CUS-04.5 reason; unchanged collected orders, no revival after un-suspension, private Admin-reason isolation and owner management access. The suspension/cancellation/audit transaction rolls back together on failure; this pair owns that mutation and its transaction assertions, while T-42/T-43 own Customer display/actions. Keep café audit-entry assertions here; T-30/T-31 own the common audit screen, not these criterion IDs. Use local main/kit fixtures and shared foundation session/RLS/audit harnesses.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/cafe-eligibility/` unit and local database/route cases, browser cases under `tests/e2e/cafe-eligibility/`, and synthetic café/application/order/audit fixtures; extend existing testing infrastructure without duplicating its owners. Tests may exercise `/admin/audit` after T-31 supplies it; testing owns all fixtures/mocks.
-- **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; CUS-03/CUS-04/OWN-05 must define new-order refusal and preserved existing-order lifecycles. Their approved contracts and relevant surfaces are required before the affected integration evidence can run. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility/audit repositories. Café audit-display cases additionally await T-31; no missing owner/customer behavior is inferred.
+- **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; T-36 and OWN-05 must finalize order states, new-order refusal, suspension/collection races and terminal-state behaviour while retaining CUS-04.5. Approved order contracts permit local order fixtures without requiring T-43 Customer order creation/screens; no dependency on T-43 is introduced. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility/audit repositories. Café audit-display cases additionally await T-31; no missing owner/customer behavior is inferred.
 - **Acceptance criteria:**
   - [ ] Every listed ADM criterion has named deterministic tests and recorded failing-first evidence, including races, rollback, main/kit isolation and customer eligibility.
   - [ ] Café audit persistence and later T-31 display assertions preserve the criterion ownership above; unresolved contract/surface prerequisites are recorded.
@@ -549,25 +812,25 @@ Missing story contracts below block execution, not criterion allocation.
 - **Owner role:** implementation
 - **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
 - **Description:** Implement workspace-scoped [application decisions](specs/stories/ADM-01-cafe-applications.md#requirements) and [reversible suspension](specs/stories/ADM-02-cafe-suspension.md#requirements), reusing the [shared HTTP boundary](specs/INTEGRATION-SPEC.md#authorization-and-transport) and [RLS contracts](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
-- **Work:** Add `/admin/applications` and `/admin/cafes` with specified ordering, pagination, reason/confirmation, empty/conflict feedback and Suspense-wrapped role gates. Add `POST /api/admin/cafes/{cafeId}/decision` and `/suspension` with server-side Zod, session/role/workspace/current-state and exact-origin checks, strict bodies and exact responses. Apply one-way approval/rejection and independent approved-café suspension atomically with one T-16 Admin-action entry, rolling back both on failure. Preserve submitted reasons, restrict latest-reason reads, update customer RLS eligibility and retain all unrelated records and owner/existing-order access. Consume owner submission/resubmission and management contracts; do not author their screens or customer order lifecycles. T-31 owns audit display; this pair supplies its café entries and integration evidence without duplicating the screen.
-- **File scope:** Proposed `src/app/admin/applications/`, `src/app/admin/cafes/`, `src/app/api/admin/cafes/[cafeId]/decision/route.ts`, `src/app/api/admin/cafes/[cafeId]/suspension/route.ts`, server-only café operations under `src/server/` and additive migrations/policies. Reuse foundation gates/repositories; serialize shared Admin layout and migration edits with T-31. No tests/fixtures/mocks or owner/customer screen authoring.
-- **Prerequisite:** BLOCKED on the OWN-01/OWN-02/CUS-03/CUS-04/OWN-05 contracts and relevant surfaces named in T-28, plus T-28 failing-first evidence. T-16 supplies audit/eligibility storage; T-31 supplies the audit screen needed for café audit-display acceptance. Missing contracts are not implementation choices.
+- **Work:** Add `/admin/applications` and `/admin/cafes` with specified ordering, pagination, reason/confirmation, empty/conflict feedback and Suspense-wrapped role gates. Add `POST /api/admin/cafes/{cafeId}/decision` and `/suspension` with server-side Zod, session/role/workspace/current-state and exact-origin checks, strict bodies and exact responses. Apply one-way approval/rejection and independent approved-café suspension atomically with one T-16 Admin-action entry, rolling back both on failure. Preserve submitted reasons, restrict latest-reason reads, update customer RLS eligibility and retain order records, collected purchases and owner management access. This task owns the suspension-triggered cancellation writer/storage: automatically cancel every outstanding uncollected order under CUS-04.5, including accepted/ready, and persist the fixed public reason separately from the private Admin reason. Commit suspension, cancellations and one audit entry together; un-suspension never revives cancellations. T-43 consumes these effects rather than adding another suspension writer. Consume owner submission/resubmission and management contracts; do not author their screens or customer order lifecycles. T-31 owns audit display; this pair supplies its café entries and integration evidence without duplicating the screen.
+- **File scope:** Proposed `src/app/admin/applications/`, `src/app/admin/cafes/`, `src/app/api/admin/cafes/[cafeId]/decision/route.ts`, `src/app/api/admin/cafes/[cafeId]/suspension/route.ts`, server-only café operations under `src/server/` and additive migrations/policies, including suspension cancellation state/reason storage consumed by T-43. Serialize order schema edits with T-43; do not implement Customer order screens. Reuse foundation gates/repositories; serialize shared Admin layout and migration edits with T-31. No tests/fixtures/mocks or owner/customer screen authoring.
+- **Prerequisite:** BLOCKED on the OWN-01/OWN-02/OWN-05 and T-36 order contracts named in T-28, plus T-28 failing-first evidence. T-16 supplies audit/eligibility storage; T-31 supplies the audit screen needed for café audit-display acceptance. Canonical order fixtures permit suspension evidence before T-43; T-29 does not depend on Customer order creation/screens. Missing contracts are not implementation choices.
 - **Acceptance criteria:**
   - [ ] T-28's owned state, HTTP, reason, access, concurrency, rollback and preservation cases pass; audit-display acceptance is evidenced when T-31 is available.
-  - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or unrelated order/menu permission is added.
+  - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or generic order/menu-edit permission is added; suspension cancellation is only the defined system consequence.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual evidence and remaining external surfaces.
 - **Status:** blocked
 - **Issue:** [#59](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/59)
 
 ### T-30: Test moderation queue and Admin audit log
 
-- **Depends on:** T-08, T-10, T-16
+- **Depends on:** T-08, T-10, T-16, T-37
 - **Owner role:** testing
 - **Requirements:** ADM-03.1, ADM-03.2, ADM-03.3, ADM-03.4, ADM-03.5, ADM-03.6, ADM-03.7, ADM-03.8, ADM-03.9, ADM-03.10, ADM-03.11, ADM-03.12, ADM-03.13, ADM-03.14, ADM-03.15, ADM-03.16, ADM-03.17, ADM-03.18 — [ADM-03 criteria](specs/stories/ADM-03-review-moderation.md#acceptance-criteria).
 - **Description:** Derive failing-first tests for [manual moderation and audit screens](specs/stories/ADM-03-review-moderation.md#screens), [permissions](specs/stories/ADM-03-review-moderation.md#permissions) and the ordinary moderation route, independently of AI triage.
 - **Work:** Test initial pending/kept customer RLS visibility and hidden exclusion without inventing rating formulas. Cover Pending/Kept/Hidden tabs, security-configured page size, URL state, ordering/ties, suspended-café reviews, Singapore timestamps, row fields, escaped content and the fixed quick-pick reasons linked from [ADM-04](specs/stories/ADM-04-moderation-assistant.md#user-experience). Test the full Keep/Hide/Restore transition matrix and exact responses, reason bounds/preservation, strict HTTP/origin/Ref/action-only bodies, session/role/workspace denials, stale/concurrent actions and audit rollback. Assert immutable text/rating, denied customer edit/delete and unchanged reviews on failures. Test workspace audit order, 50-row URL pagination/action filters, seven action types, exact columns/target labels, scoped Admin-email access, excluded review text/AI events, append-only history and retention. Use contract-derived local café-action audit fixtures without requiring café mutations to be implemented or claiming their ADM criteria.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/moderation/` and `tests/{unit,integration,e2e}/audit/` unit and local database/route cases, with browser cases under `tests/e2e/moderation/` and `tests/e2e/audit/`; testing-owned synthetic review/café/Admin audit and retention fixtures. Extend shared foundation harnesses.
-- **Prerequisite:** BLOCKED: CUS-05 must define review creation/field constraints while preserving ADM-03's initial pending state and immutability; actual review integration requires its surface. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
+- **Prerequisite:** BLOCKED: T-37 must finalize CUS-05 review creation/field constraints while preserving ADM-03's initial pending state and immutability. Contract-derived local review fixtures suffice for this pair; T-45 Customer review creation/screens are not a prerequisite. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
 - **Acceptance criteria:**
   - [ ] All 18 ADM-03 criteria have deterministic named failing-first cases, including transition races, atomic audit, workspace isolation, customer immutability and retention.
   - [ ] Common audit-screen tests cover every action without taking café criterion ownership; no tests infer review field limits or rating formulas.
@@ -583,7 +846,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Description:** Implement [manual moderation](specs/stories/ADM-03-review-moderation.md#requirements) and the shared read-only [Admin audit screen](specs/stories/ADM-03-review-moderation.md#screens) using foundation guards and audit persistence.
 - **Work:** Add `/admin/moderation` and `/admin/audit` with the specified tabs/filters, ordering/ties, URL pagination, Singapore display, escaped row fields, empty/conflict states and streaming role gates. Implement `POST /api/admin/reviews/{reviewId}/moderation` with strict action/reason-only validation, same-origin/session/workspace/current-state checks and exact shared errors/success bodies. Apply only pending→kept, pending/kept→hidden and hidden→kept, atomically with one append-only T-16 Admin-action entry; failure changes neither. Provide per-review reason controls with the fixed ADM-04 app-text quick picks, not model-authored reasons. Enforce immutable review text/rating, denied customer edit/delete and customer RLS visibility. Render all seven Admin action types, including T-29's café entries when available, with scoped acting-Admin email and no review text or AI-use events. Keep audit history outside AI cleanup; author no review creation, rating formulas or AI triage.
 - **File scope:** Proposed `src/app/admin/moderation/`, `src/app/admin/audit/`, `src/app/api/admin/reviews/[reviewId]/moderation/route.ts`, server-only review/audit queries and transactional operations under `src/server/`, additive review/policy migrations. Extend T-16's audit repository rather than recreate it; serialize shared layout/migrations with T-29. No tests/fixtures/mocks.
-- **Prerequisite:** BLOCKED on T-30's CUS-05 review contract/surface prerequisite and T-30 failing-first evidence. T-08/T-10/T-16 provide shared access, streaming and audit infrastructure. T-29 café operations may be integrated later; the common audit display is independently implementable from the ADM-01/ADM-02 audit contracts and local fixtures.
+- **Prerequisite:** BLOCKED on T-30's T-37/CUS-05 review contract prerequisite and T-30 failing-first evidence. T-08/T-10/T-16 provide shared access, streaming and audit infrastructure. Local review fixtures allow this task before T-45, avoiding a cycle through T-29/T-43. T-29 café operations may be integrated later; the common audit display is independently implementable from the ADM-01/ADM-02 audit contracts and local fixtures.
 - **Acceptance criteria:**
   - [ ] T-30's 18-criterion suite passes, including immutable reviews, exact transitions/errors, one atomic audit, role/workspace denial and all audit display/retention cases.
   - [ ] T-28's café audit-display cases can consume this screen without duplicated screen or criterion ownership; T-32/T-33 can reuse ordinary per-review confirmation.
@@ -599,7 +862,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Description:** Derive failing-first route/browser tests and evaluation evidence for the advisory [Moderation Assistant experience](specs/stories/ADM-04-moderation-assistant.md#user-experience), consuming the [fixed prompt/schema](specs/INTEGRATION-SPEC.md#moderation-assistant--adm-04) and [security evaluations](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
 - **Work:** Cover the Pending-only button, empty disablement/loading, exactly one current-page request, configured batch/action/run/call bounds and no automatic pagination/splitting/retry. Test complete five-label results, inert AI-suggestion rendering/highlights without selection/mutation, fixed editable app-text reasons and no copying of model reasons. Exercise ordinary per-review confirmation, invalid reasons, forged-label fields, stale-state conflict/removal and remaining-suggestion lifetime through one action/reload/page change. Cover main/kit session/role/workspace/origin/strict-body/source denials before admission; empty/duplicate/oversized/no-longer-pending selection is invalid, never no_source_data. Use fake captures/results for minimal encoded review-only context, injection containment, whole-result rejection, no cache/persistence, disabled/usage_limited/unavailable fallbacks, source-unavailable 503, bounded failures and content-free internal AI audit distinct from Admin audit. Reuse shared limit/provider/audit tests without claiming their SYS/SEC criteria. Record ADM-04's human-labelled evaluation cases and quality assessment without a live call or invented accuracy target.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/moderation-assistant/` route cases and browser cases under `tests/e2e/moderation-assistant/`, synthetic adversarial review/provider responses, controlled limit/clock/storage-fault fixtures and human-labelled evaluation records owned by testing. Extend T-30's manual-flow fixtures; do not read implementation tasks as a test-design source.
-- **Prerequisite:** BLOCKED on CUS-05's review field/source contract and review surface, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite.
+- **Prerequisite:** BLOCKED on T-37/CUS-05's finalized review field/source contract with local review fixtures, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite.
 - **Acceptance criteria:**
   - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
   - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
@@ -615,7 +878,7 @@ Missing story contracts below block execution, not criterion allocation.
 - **Description:** Integrate advisory [review triage](specs/stories/ADM-04-moderation-assistant.md#requirements) into T-31's manual queue through the existing [AI HTTP envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope), shared LLM operation and [guardrails](specs/stories/ADM-04-moderation-assistant.md#guardrails).
 - **Work:** Add `POST /api/ai/moderation` with strict JSON/Ref/session/role/origin/workspace and currently pending selection checks before admission. Read authoritative review references/text under RLS and call only T-14's server-only moderation operation with T-12 admission and T-16 content-free accounting. Reuse the exact prompt/schema and unchanged envelopes; reject the whole invalid result, honor disable/limit/failure precedence and never cache suggestions. Add the Pending-only current-page button/loading, escaped AI labels/reasons and advisory highlights, typed safe fallback explanations and queue-changed/reload handling. Keep suggestions transient with specified action/page lifetime. Reuse T-31's fixed editable quick picks and ordinary action/reason-only confirmation; never copy model reasons, preselect/submit actions or provide apply-all. Preserve immutable text/rating and independent stale/forged confirmation checks and separate Admin audit. No new provider transport, prompts, quotas, runtime AI settings or automatic moderation.
 - **File scope:** Proposed `src/app/api/ai/moderation/route.ts` and server-only authorized moderation-source adapter under `src/server/`; extend existing T-31 `src/app/admin/moderation/` with a browser interaction boundary. Reuse T-14 `src/server/llm/` operation and T-12/T-16 repositories; serialize shared queue/repository edits. No tests/fixtures/mocks or audit-screen reimplementation.
-- **Prerequisite:** BLOCKED on the same CUS-05 source contract/surface and T-30/T-31 queue/confirmation prerequisites as T-32, plus T-32 failing-first evidence and the shared T-08/T-10/T-12/T-14/T-16 controls. No dependence on T-21/T-22's later cross-feature security integration; those tasks retain their separate SEC ownership.
+- **Prerequisite:** BLOCKED on the same T-37/CUS-05 source contract and T-30/T-31 queue/confirmation prerequisites as T-32, plus T-32 failing-first evidence and the shared T-08/T-10/T-12/T-14/T-16 controls. No dependence on T-21/T-22's later cross-feature security integration; those tasks retain their separate SEC ownership.
 - **Acceptance criteria:**
   - [ ] T-32's full ADM-04 suite passes, including main/kit boundaries, transient complete results, injection/forged/stale advice, exact fallback/error behavior and explicit per-review control.
   - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
