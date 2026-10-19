@@ -188,8 +188,58 @@ not evidence that a migration is safe.
 | Prod | Same Vercel project, Production target in `sin1`; Supabase `homebrew-prod`, Singapore. | Separate prod-only SoC LLM key. GitHub `production` environment deploys from `v*` tags with a teammate's approval. |
 
 Application deployments occur only in GitHub Actions via the Vercel CLI.
-Hosted migrations occur only in GitHub Actions via
-`supabase db push --db-url`, with the selected environment's database URL.
+
+- **GitHub environments and triggers:** `development` permits only the `master`
+  branch and deploys on pushes to `master`. `production` permits only tags matching
+  `v*`, no branches, and deploys on pushes of those tags; it refuses a tag whose
+  commit is not reachable from `master`. Production requires a teammate's
+  approval, prevents self-review and has administrator bypass off.
+- **Credentials:** Each GitHub environment holds secrets `VERCEL_TOKEN` and
+  `SUPABASE_DB_URL`, and variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
+  Production also holds secret `CRON_SECRET`, equal to Vercel Production's value,
+  used only for SYS-13's single post-deploy maintenance call. SYS-13 defines that call.
+  There are no repository- or organization-level deploy secrets; only jobs
+  bound to the selected environment read its credentials.
+- **Database connection:** `SUPABASE_DB_URL` is the selected environment's
+  Supavisor shared-pooler session-mode connection string: port 5432, user
+  `postgres.<project-ref>` and a percent-encoded password. GitHub-hosted runners
+  are IPv4-only; the direct `db.<project-ref>.supabase.co` host is IPv6 without
+  the paid IPv4 add-on. Delivery never uses that direct host or transaction mode
+  (port 6543).
+- **Migration and deploy job:** Each environment has one job. Hosted migrations
+  run first, only in Actions, using `supabase db push --db-url` with that
+  environment's secret; a failed migration stops application deployment. With
+  no migrations, the step applies nothing and deployment continues. The single
+  production job gives one approval for both migration and deploy. Delivery
+  paths never use `--include-seed`, seed files, `db reset` or demo/local
+  credentials.
+- **Application build:** The Vercel CLI is pinned to an exact version. Actions
+  builds the application with CI's toolchain: Bun from `package.json`'s
+  `packageManager` and Node 24. The sequence is
+  `vercel pull --environment=<preview|production>`, `vercel build`, then
+  `vercel deploy --prebuilt`; production alone adds `--prod` to both build and
+  deploy. The build reads no Secret-type value: `vercel pull` cannot return
+  Secret values, so application credentials are read at request time, never
+  at build time.
+- **Vercel project:** Dev is a Preview deployment aliased to
+  `homebrew-cs3227-dev.vercel.app`; prod is a `--prod` deployment served at
+  `homebrew-cs3227-prod.vercel.app`. `vercel.json` declares
+  `"regions": ["sin1"]` and disables Vercel Git deployments. Deployment
+  Protection is off, making the dev alias publicly reachable; Standard
+  Protection puts every non-production domain behind a Vercel login.
+- **Application configuration:** Vercel project settings, rather than workflows,
+  set application environment variables per target: Preview holds dev values
+  and Production holds prod values. Only `SUPABASE_SECRET_KEY`, `SOCLAAS_API_KEY`,
+  `CRON_SECRET` and `MAIN_ADMIN_PASSWORD` are Secret type. All other values are
+  Config type: `NEXT_PUBLIC_` values, `APP_ENV`, `AI_PROVIDER`, `SOCLAAS_BASE_URL`,
+  `SOCLAAS_MODEL`, `SOCLAAS_REASONING_EFFORT`, usage-limit keys, `DEMO_KITS_*` and
+  `MAIN_ADMIN_EMAIL`. Both targets set every AI policy key in
+  [AI-SECURITY-SPEC's limits table](AI-SECURITY-SPEC.md#limits-and-configuration),
+  because missing policy configuration disables AI.
+- **Workflow hygiene:** Workflows use `permissions: contents: read`, pin
+  third-party actions to commit SHAs, and have one concurrency group per
+  environment that never cancels an in-progress deploy.
+
 Agents never connect to either hosted database, run deployment commands or
 perform a live LLM probe. All tests and agent verification use local Supabase;
 neither a Preview deployment nor a tag grants an agent permission to access it.
@@ -222,14 +272,15 @@ deployment configuration, not inferred from an API key's contents.
 | `DEMO_KITS_PER_10_MINUTES` | Server-only global kit-creation cap: 5 kits per fixed 10-minute window, using durable Postgres counters and the database clock. |
 | `DEMO_KITS_PER_DAY` | Server-only global kit-creation cap: 30 kits per Singapore calendar day, using the same durable Postgres counter/window mechanism as AI usage control. |
 | Timezone | `Asia/Singapore` for daily resets and opening-hours/business-date calculations. |
-| Deployment credentials | Environment-specific Supabase migration database URL and Vercel deployment credentials held only in GitHub environment secrets for Actions. Never part of public application configuration. |
+| Deployment credentials | Each GitHub environment holds secrets `VERCEL_TOKEN` and `SUPABASE_DB_URL` and variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`; production also holds `CRON_SECRET` for SYS-13's single post-deploy maintenance call. Only jobs bound to that environment read them; no repository- or organization-level deploy secrets. See [delivery rules](#environments-and-delivery). Never part of public application configuration. |
 
 ### Configuration names
 
 Application configuration uses `APP_ENV` (`local | ci | dev | prod`),
 `SOCLAAS_MODEL` and `SOCLAAS_REASONING_EFFORT`. Limit configuration keys are
-defined in [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration); exact
-deployment credential names belong to delivery configuration.
+defined in [AI-SECURITY-SPEC](AI-SECURITY-SPEC.md#limits-and-configuration); deployment
+credential names and their GitHub secret/variable scopes are defined in the
+[delivery rules](#environments-and-delivery).
 
 Supabase's projects use the publishable/secret key pair, Data API/RLS settings
 above, and email confirmation off in both dev and prod. No custom SMTP or
@@ -434,7 +485,8 @@ availability target is introduced.
   Preview and `homebrew-dev`, and approved `v*`/`production` to Vercel Production
   and `homebrew-prod`; the single Vercel Hobby project uses `sin1` and Supabase
   projects use Singapore. App deploy and hosted migration paths exist only in
-  GitHub Actions, with production teammate approval.
+  GitHub Actions, with production teammate approval, following the
+  [environment and delivery rules](#environments-and-delivery).
 - **SYS-07.2:** Configuration validation rejects invalid environment/provider
   combinations and refuses fake in prod. In `soclaas` mode, a missing live key
   disables live AI and the feature fallbacks remain available. Local/CI fake
