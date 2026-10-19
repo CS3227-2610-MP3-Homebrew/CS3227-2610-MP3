@@ -72,6 +72,50 @@ function ancestryIsEnforced(command: string): boolean {
 }
 const invokes = (command: string, operation: string) => new RegExp(`\\bvercel(?:@\\d+\\.\\d+\\.\\d+)?\\s+${operation}\\b`).test(command);
 
+const devAlias = "homebrew-cs3227-dev.vercel.app";
+const aliasApi = /https:\/\/api\.vercel\.com\/v2\/deployments\/[^\s"']+\/aliases\b/;
+
+// Deliberately static: recognize the supported curl forms without executing shell,
+// contacting Vercel or claiming to model all shell control flow.
+function developmentAliasApi(job: Mapping): string[] {
+  const errors: string[] = [];
+  const steps = stepsOf(job);
+  const apiSteps = steps.filter(step => aliasApi.test(String(step.run ?? "")));
+  for (const step of apiSteps) {
+    const source = String(step.run).replace(/\\\r?\n\s*/g, " ");
+    const curl = source.match(/\bcurl\s+[^\n]+/)?.[0] ?? "";
+    const capture = source.match(/\b([A-Za-z_]\w*)=\$\(vercel\s+deploy\s+--prebuilt\s*\)/)?.[1];
+    const hostVariables = capture ? [...source.matchAll(new RegExp(`\\b([A-Za-z_]\\w*)=["']?\\$\\{${capture}#https://\\}["']?`, "g"))].map(match => match[1]) : [];
+    const orgBinding = { ...object(job.env), ...object(step.env) }.VERCEL_ORG_ID;
+    const endpoint = curl.match(/https:\/\/api\.vercel\.com\/v2\/deployments\/([^/\s"']+)\/aliases\?teamId=(\$\{?VERCEL_ORG_ID\}?)(?=[\s"']|$)/);
+    add(errors, variableReference("VERCEL_ORG_ID").test(String(orgBinding ?? "")) && endpoint && hostVariables.some(name => endpoint[1] === `$${name}` || endpoint[1] === `\${${name}}`), "development: alias API uses captured deployment host and teamId from VERCEL_ORG_ID");
+    add(errors, /(?:^|\s)(?:-X\s*|--request(?:=|\s+))["']?POST\b/.test(curl), "development: alias API POST");
+    const body = curl.match(/(?:--data(?:-raw|-binary)?|--json|-d)(?:=|\s+)(['"])(.*?)\1(?=\s|$)/)?.[2];
+    let alias: unknown;
+    try { alias = object(JSON.parse(body ?? "")).alias; } catch { /* Invalid or interpolated JSON is not a fixed alias body. */ }
+    add(errors, alias === devAlias, "development: alias API JSON body has development alias");
+    add(errors, /(?:^|\s)--fail(?:-with-body)?(?=\s|$)/.test(curl) && !/\|\|\s*(?:true|:|echo)\b|set\s+\+e/.test(source) && step["continue-on-error"] !== true, "development: alias API fails on HTTP error");
+    const withoutEnv = { ...step, env: undefined };
+    const jobWithoutSteps = { ...job, steps: undefined };
+    add(errors, secretReference("VERCEL_TOKEN").test(String(object(step.env).VERCEL_TOKEN ?? "")) && !secretReference("VERCEL_TOKEN").test(stringify(withoutEnv)) && !stringify(jobWithoutSteps).includes("VERCEL_TOKEN"), "development: alias API token secret only in step env");
+    // Only header data and the shell printf builtin may expand the token. It
+    // must not appear in curl, Vercel, node or another external process's argv.
+    const token = /\$\{?VERCEL_TOKEN\}?/;
+    const tokenLines = source.split("\n").filter(line => token.test(line));
+    const builtinPrintf = /^\s*(?:builtin\s+)?printf\s+/;
+    const headerData = /^\s*(?:header\s*=\s*)?["']?Authorization:\s*Bearer\s+\$\{?VERCEL_TOKEN\}?["']?\s*$/;
+    add(errors, !token.test(curl) && tokenLines.every(line => builtinPrintf.test(line) || headerData.test(line)), "development: alias API token absent from process arguments");
+    const stdinConfig = /(?:--config(?:=|\s+)|-K\s*)["']?-["']?(?=\s|$)/.test(curl);
+    const stdinHeader = /(?:--header(?:=|\s+)|-H\s*)["']?@-["']?(?=\s|$)/.test(curl);
+    const inputFile = curl.match(/(?:--config(?:=|\s+)|-K\s*|--header(?:=|\s+)@|-H\s*@)["']?([\w./-]+)["']?(?=\s|$)/)?.[1];
+    const header = /Authorization:\s*Bearer\s+\$\{?VERCEL_TOKEN\}?/.test(source) || source.split("\n").some(line => builtinPrintf.test(line) && /Authorization:\s*Bearer\s+%s/.test(line) && token.test(line));
+    const stdin = (stdinConfig || stdinHeader) && (/\|\s*curl\b/.test(source) || /<<-?\s*\w+(?=\s|$)/.test(curl));
+    const file = inputFile && inputFile !== "-" && source.includes(`> ${inputFile}`);
+    add(errors, header && (stdin || file), "development: alias API authorization header from stdin or file");
+  }
+  return errors;
+}
+
 export function deployment(workflows: Workflow[], target: Target): string[] {
   const matches = discover(workflows, target);
   if (matches.length !== 1) return [`${target}: expected exactly one environment-bound migration/deploy job; found ${matches.length}`];
@@ -123,10 +167,11 @@ export function deployment(workflows: Workflow[], target: Target): string[] {
       add(errors, ancestryIsEnforced(command), `${target}: ancestry result is enforced in the tag-to-master direction`);
       add(errors, runs[ancestry].step["continue-on-error"] !== true && !/\|\|\s*(?:true|:|echo)\b/.test(command), `${target}: ancestry failure stops migrations`);
     }
-    add(errors, !allText.includes("homebrew-cs3227-dev.vercel.app") && !commands.some(command => invokes(command, "alias")), `${target}: no development alias`);
+    add(errors, !allText.includes("homebrew-cs3227-dev.vercel.app") && !commands.some(command => invokes(command, "alias")) && !stepsOf(job).some(step => aliasApi.test(String(step.run ?? ""))), `${target}: no development alias`);
   } else {
     add(errors, !/--prod\b/.test(allText), `${target}: no --prod`);
-    add(errors, commands.some(command => invokes(command, "alias(?:\\s+set)?") && command.includes("homebrew-cs3227-dev.vercel.app")), `${target}: development alias`);
+    add(errors, commands.some(command => invokes(command, "alias(?:\\s+set)?") && command.includes(devAlias)) || stepsOf(job).some(step => aliasApi.test(String(step.run ?? ""))), `${target}: development alias`);
+    errors.push(...developmentAliasApi(job));
   }
   add(errors, /\bvercel@\d+\.\d+\.\d+(?:\s|["\\]|$)/.test(allText) && !/vercel@(?:latest|[~^*><])/.test(allText), `${target}: exact Vercel CLI version pin`);
   const steps = stepsOf(job);

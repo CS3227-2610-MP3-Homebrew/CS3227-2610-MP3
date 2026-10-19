@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { parseWorkflow, type Target, type Workflow } from "./workflow-contract";
+import { object, parseWorkflow, type Target, type Workflow } from "./workflow-contract";
 
 // Synthetic, non-runnable examples. Commit SHAs and CLI version are fixture data,
 // not a prescribed implementation dependency/version.
@@ -46,3 +46,28 @@ export function goodPair(): Workflow[] {
   return [goodWorkflow("development"), goodWorkflow("production")];
 }
 export const goodVercel = { regions: ["sin1"], git: { deploymentEnabled: false } };
+
+
+// Fixed synthetic API request; no token values or hosted commands are executed.
+export const apiAliasCommand = String.raw`url=$(vercel deploy --prebuilt)
+host=${"${url#https://}"}
+curl -sS --fail-with-body --request POST \
+  --config - \
+  --header 'Content-Type: application/json' \
+  --data '{"alias":"homebrew-cs3227-dev.vercel.app"}' \
+  "https://api.vercel.com/v2/deployments/$host/aliases?teamId=$VERCEL_ORG_ID" <<CURL_CONFIG
+header = "Authorization: Bearer $VERCEL_TOKEN"
+CURL_CONFIG`;
+
+export function goodApiWorkflow(): Workflow {
+  const workflow = goodWorkflow("development");
+  const job = object(object(workflow.document.jobs).deliver);
+  const steps = job.steps as Record<string, unknown>[];
+  delete object(job.env).VERCEL_TOKEN;
+  const deploy = steps.findIndex(step => String(step.run).includes("vercel deploy"));
+  steps.splice(deploy, 2, {
+    env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" },
+    run: apiAliasCommand,
+  });
+  return workflow;
+}

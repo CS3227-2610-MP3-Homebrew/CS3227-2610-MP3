@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { deployment, discover, hygiene, object, parseWorkflow, vercelConfiguration, type Mapping, type Target, type Workflow } from "./workflow-contract";
-import { goodPair, goodVercel, goodWorkflow } from "./workflow-fixtures";
+import { apiAliasCommand, goodApiWorkflow, goodPair, goodVercel, goodWorkflow } from "./workflow-fixtures";
 
 const root = resolve(import.meta.dirname, "../../..");
 const workflows = readdirSync(resolve(root, ".github/workflows"))
@@ -144,5 +144,79 @@ describe("SYS-07.1: synthetic validator fixtures", () => {
     {},
   ])("SYS-07.1: rejects invalid region/Git-deployment fixture %#", value => {
     expect(vercelConfiguration(value).length).toBeGreaterThan(0);
+  });
+});
+
+
+describe("SYS-07.1: development alias REST fixtures", () => {
+  it("SYS-07.1: accepts the API alias with a captured host, org query, fixed JSON and stdin authorization", () => {
+    const pair = [goodApiWorkflow(), goodWorkflow("production")];
+    expect(hygiene(pair)).toEqual([]);
+    expect(deployment(pair, "development")).toEqual([]);
+    expect(deployment(pair, "production")).toEqual([]);
+  });
+  it("SYS-07.1: accepts an authorization header file as curl stdin", () => {
+    const workflow = goodApiWorkflow();
+    editCommand(workflow, '--config -', '--header @-');
+    editCommand(workflow, 'header = "Authorization: Bearer $VERCEL_TOKEN"', 'Authorization: Bearer $VERCEL_TOKEN');
+    expect(deployment([workflow], "development")).toEqual([]);
+  });
+  it("SYS-07.1: accepts builtin printf piping authorization to curl config stdin", () => {
+    const workflow = goodApiWorkflow();
+    editCommand(workflow, 'curl -sS', `printf 'header = "Authorization: Bearer %s"\\n' "$VERCEL_TOKEN" | curl -sS`);
+    editCommand(workflow, ' <<CURL_CONFIG\nheader = "Authorization: Bearer $VERCEL_TOKEN"\nCURL_CONFIG', '');
+    expect(deployment([workflow], "development")).toEqual([]);
+  });
+  it("SYS-07.1: accepts authorization from a fixed curl config file", () => {
+    const workflow = goodApiWorkflow();
+    editCommand(workflow, 'curl -sS', `printf 'header = "Authorization: Bearer %s"\\n' "$VERCEL_TOKEN" > headers.conf\ncurl -sS`);
+    editCommand(workflow, '--config -', '--config headers.conf');
+    editCommand(workflow, ' <<CURL_CONFIG\nheader = "Authorization: Bearer $VERCEL_TOKEN"\nCURL_CONFIG', '');
+    expect(deployment([workflow], "development")).toEqual([]);
+  });
+  const invalidCases = [
+    { name: "token passed in curl argv", from: '--config -', to: '-H "Authorization: Bearer $VERCEL_TOKEN"', error: "absent from process arguments" },
+    { name: "token passed in deployment argv", from: 'vercel deploy --prebuilt', to: 'vercel deploy --prebuilt --token "$VERCEL_TOKEN"', error: "absent from process arguments" },
+    { name: "token passed to an external header writer", from: 'url=$(vercel deploy --prebuilt)', to: 'node header-writer.js "$VERCEL_TOKEN"\nurl=$(vercel deploy --prebuilt)', error: "absent from process arguments" },
+    { name: "missing HTTP failure flag", from: '--fail-with-body', to: '', error: "fails on HTTP error" },
+    { name: "swallowed HTTP failure", from: '<<CURL_CONFIG', to: '<<CURL_CONFIG || true', error: "fails on HTTP error" },
+    { name: "missing teamId", from: '?teamId=$VERCEL_ORG_ID', to: '', error: "captured deployment host and teamId" },
+    { name: "unrelated teamId", from: '?teamId=$VERCEL_ORG_ID', to: '?teamId=$OTHER_ORG_ID', error: "captured deployment host and teamId" },
+    { name: "wrong alias domain", from: 'homebrew-cs3227-dev.vercel.app', to: 'other.vercel.app', error: "JSON body has development alias" },
+    { name: "quoted non-expanding header heredoc", from: '<<CURL_CONFIG', to: "<<'CURL_CONFIG'", error: "header from stdin or file" },
+    { name: "missing POST", from: '--request POST', to: '--request GET', error: "API POST" },
+    { name: "uncaptured deployment host", from: '/$host/aliases', to: '/unrelated.vercel.app/aliases', error: "captured deployment host and teamId" },
+    { name: "wrong authorization input", from: '--config -', to: '--config unrelated.conf', error: "header from stdin or file" },
+    { name: "direct secret expression in request", from: '$VERCEL_TOKEN', to: '${{ secrets.VERCEL_TOKEN }}', error: "token secret only in step env" },
+  ];
+  it.each(invalidCases)("SYS-07.1: rejects API $name fixture", ({ from, to, error }) => {
+    const workflow = goodApiWorkflow();
+    editCommand(workflow, from, to);
+    expect(deployment([workflow], "development").some(message => message.includes(error)), `expected ${error}`).toBe(true);
+  });
+  it("SYS-07.1: rejects an API token secret at job scope", () => {
+    const workflow = goodApiWorkflow();
+    object(job(workflow).env).VERCEL_TOKEN = "${{ secrets.VERCEL_TOKEN }}";
+    expect(deployment([workflow], "development")).toContain("development: alias API token secret only in step env");
+  });
+  it("SYS-07.1: rejects an API step overriding the selected org variable", () => {
+    const workflow = goodApiWorkflow();
+    object(steps(workflow).find(step => String(step.run).includes("api.vercel.com"))!.env).VERCEL_ORG_ID = "unrelated-team";
+    expect(deployment([workflow], "development")).toContain("development: alias API uses captured deployment host and teamId from VERCEL_ORG_ID");
+  });
+  it("SYS-07.1: rejects an API step without its token env binding", () => {
+    const workflow = goodApiWorkflow();
+    delete steps(workflow).find(step => String(step.run).includes("api.vercel.com"))!.env;
+    expect(deployment([workflow], "development")).toContain("development: alias API token secret only in step env");
+  });
+  it("SYS-07.1: rejects an API alias call in production", () => {
+    const workflow = goodWorkflow("production");
+    steps(workflow).push({ env: { VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}" }, run: apiAliasCommand });
+    expect(deployment([workflow], "production")).toContain("production: no development alias");
+  });
+  it("SYS-07.1: rejects a production API alias even when its body hides the dev domain", () => {
+    const workflow = goodWorkflow("production");
+    steps(workflow).push({ run: apiAliasCommand.replace('homebrew-cs3227-dev.vercel.app', '$ALIAS') });
+    expect(deployment([workflow], "production")).toContain("production: no development alias");
   });
 });
