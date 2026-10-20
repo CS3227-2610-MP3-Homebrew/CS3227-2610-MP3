@@ -13,10 +13,21 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
+  webServer: [{
     command: "bun run build && bun run start --hostname 127.0.0.1 --port 3100",
+    env: {
+      APP_ENV: "local",
+      AI_PROVIDER: "disabled",
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "synthetic-public-local-auth-fixture",
+    },
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
     timeout: 120_000,
-  },
+  }, {
+    command: "bun node_modules/next/dist/bin/next build tests/e2e/auth/harness --webpack && bun node_modules/next/dist/bin/next start tests/e2e/auth/harness --hostname 127.0.0.1 --port 3101",
+    url: "http://127.0.0.1:3101",
+    reuseExistingServer: false,
+    timeout: 120_000,
+  }],
 });

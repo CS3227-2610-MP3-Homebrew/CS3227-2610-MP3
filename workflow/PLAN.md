@@ -242,7 +242,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Session, gate, shell and exception cases have recorded tests/evidence.
   - [ ] No SYS-01–SYS-03 screen contract is introduced.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#40](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/40)
 
 ### T-10: Implement proxy refresh and streaming role gates
@@ -257,7 +257,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Local gate/refresh/direct-access tests pass; exception route/reasons are recorded for human PR review.
   - [ ] `bun run verify` passes; no app-wide rendering opt-out.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#41](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/41)
 
 ### T-11: Test durable admission, windows and quota telemetry
