@@ -550,7 +550,7 @@ existing owners; Shared supplies account forms and role shells/entry points.
   - [ ] Tests preserve foundation SYS/SEC and role-domain criterion ownership, use local Supabase/synthetic faults only and distinguish shell evidence from later demo-control/domain integration evidence.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#99](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/99)
 
 ### T-51: Implement Shared sign-up, sessions and role navigation
 
@@ -566,7 +566,7 @@ existing owners; Shared supplies account forms and role shells/entry points.
   - [ ] Existing role/workspace/RLS/session protections and domain ownership remain intact; no unapproved role/workspace assignment, caller-selected redirect, secret response/log data, automatic retry or fabricated domain data is introduced.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase only; the issue-scoped [handoff](templates/handoff.md) records actual checks and integration evidence.
 - **Status:** todo
-- **Issue:** unassigned
+- **Issue:** [#100](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/100)
 
 ## Customer
 
