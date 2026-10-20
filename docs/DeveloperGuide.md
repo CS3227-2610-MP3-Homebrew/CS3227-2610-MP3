@@ -10,6 +10,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
 - [Authentication and authorization](#authentication-and-authorization)
+- [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
 - [Security](#security)
 - [How to test](#how-to-test)
 - [Deployment and environments](#deployment-and-environments)
@@ -340,9 +341,18 @@ Migrations are replayed in filename order:
    profile/café workspace membership immutable.
 4. `supabase/migrations/20261020000000_role_matrix.sql` adds shared permission
    fields, scoped read/owner-update policies and protected Auth provisioning.
+5. `supabase/migrations/20261020000001_usage_admission.sql` adds private AI usage
+   counters, operation/admission identities and the restricted public admission RPC.
 
-Demo-kit creation, remaining story fields and lifecycle transitions, AI
-counters/admissions, caches and audit tables remain later work.
+`private.ai_usage_counters` keys counts by environment, scope kind/identity,
+feature, event and both window boundaries. `private.ai_usage_operations` binds
+each operation to an actor, feature and optional café and retains its attempt
+count. `private.ai_usage_admissions` retains successful single-use admission
+identities and timestamps, referencing their operation. All three tables enable
+RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
+
+Demo-kit creation, remaining story fields and lifecycle transitions, feature
+caches, AI audit persistence and retention cleanup remain later work.
 
 ## Authentication and authorization
 
@@ -430,13 +440,69 @@ remain later work.
 
 ## AI features and the shared LLM module
 
-<!-- Describe implemented AI features and the shared server-only LLM module,
-including input/output contracts, validation, failures and usage control.
-Include sequence diagrams showing requests through the shared module. -->
+The server-only usage foundation implements
+[durable admission](../workflow/specs/TECHNICAL-SPEC.md#admission-and-windows)
+and the assigned [usage controls](../workflow/specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
+It supplies an internal reservation and dispatch seam; there is no feature
+endpoint, provider transport or AI screen consuming it yet.
+
+`src/server/llm/usage-client.ts` uses the installed `@supabase/supabase-js`
+2.118.0 client with `NEXT_PUBLIC_SUPABASE_URL` and server-only
+`SUPABASE_SECRET_KEY`. It calls only `public.reserve_ai_usage` through
+`.rpc(fn, args)`, with Data API retries and session persistence/refresh/URL
+detection disabled. It is separate from the publishable-key, request-bound
+session client. Application admission needs no direct PostgreSQL credential.
+The RPC uses security-definer execution, an empty search path and qualified
+application relations; only service_role receives its EXECUTE grant. Ordinary
+clients cannot call it or access its private tables.
+
+`createConfiguredUsageAdmission()` reads all 13 explicit
+[AI policy keys](../workflow/specs/AI-SECURITY-SPEC.md#limits-and-configuration)
+from the server environment. `parseUsageLimits()` accepts nonnegative safe
+integers or digit strings, including zero, and rejects missing/invalid values.
+It rejects per-operation maxima above two Brew attempts or one Prep/Moderation
+attempt, and a moderation review maximum above 20. These are validation ceilings,
+not configured dev/prod defaults. Moderation batch input enforcement remains a
+feature-boundary responsibility. Zero denies the corresponding work; invalid
+policy, request, environment or RPC result and database/transport errors deny
+admission without returning raw database errors.
+
+The admission object's `reserve()` operation accepts verified actor identity,
+an authorized café when applicable, server-generated operation/admission UUIDs, a feature and an
+action/refresh/run/provider-attempt event. Callers must establish session,
+role/workspace/source permissions and action/refresh/run admission before
+provider dispatch. SQL independently checks current actor role and, for Prep,
+café ownership, workspace, approval and suspension. Provider-attempt admission
+alone does not establish those caller responsibilities.
+
+A transaction advisory lock serializes the complete decision per environment
+across instances. The RPC checks every applicable bound before changing any
+counter, operation or admission; denial changes none. Actions share actor
+minute/day allowances, with additional café refresh/Admin run daily bounds.
+Provider attempts reserve global minute/day and feature-minute capacity and
+obey the operation bound. Duplicate successful admission identities are denied;
+operation identities cannot move between actor, feature or café. Persisted
+state survives instance reconstruction and module reload.
+
+The database clock selects fixed half-open UTC minutes and Singapore calendar
+days, each stored with explicit start/end boundaries. New windows preserve old
+records. `databaseClock` is a trusted construction-time test option, never
+accepted request input; production construction omits it, and SQL permits a
+controlled timestamp only for local/CI. Namespaces are local, CI, dev and prod.
+
+`dispatchWithAdmission()` reserves immediately before one provider callback;
+denial/unavailability or a thrown callback returns an internal `fallback`
+outcome. Admitted failures remain charged, with no retry/refund. An
+already-authorized cached value returns without a reservation or callback;
+this seam supplies no cache storage or eligibility check. Successful callbacks
+preserve returned partial token counts, including zero; absent counts remain
+unknown and cost is null. Counts do not measure monetary consumption or confirm
+provider entitlement. The seam does not parse model output or render the
+feature's non-AI fallback.
 
 ## Security
 
-All eight application tables explicitly enable RLS. Migrations revoke default
+The eight core tables and three private usage tables explicitly enable RLS. Migrations revoke default
 schema, table, sequence and function privileges, then grant the specific reads
 and two owner-update columns described above. Private trigger functions use an
 empty search path and qualified application relations; ordinary roles cannot
@@ -453,7 +519,8 @@ Supabase-managed schemas and extension-owned tables. A query/tooling failure als
 exits nonzero. This checks RLS coverage; the separate role matrix tests check
 current policy correctness. Future tables and consumers need their own tests. See the
 [security specification](../workflow/specs/AI-SECURITY-SPEC.md) for later application
-and AI requirements; this pair adds no AI execution surface.
+and AI requirements. The usage RPC described above is the deliberately exposed
+AI infrastructure operation; no AI feature HTTP endpoint is implemented.
 
 <!-- The allow rule runs package.json scripts and config files outside the
 sandbox, so changes to package.json, next.config.ts, eslint.config.mjs and .codex/
@@ -515,10 +582,24 @@ are fixtures. Actual Supabase Auth is covered separately by integration tests;
 this is not one browser-to-Auth session test. Run `bun run test:e2e` after
 verification, without concurrent builds or database resets.
 
+The 69 cases in `tests/integration/usage/`, `tests/unit/usage/` and
+`tests/unit/usage-internals.test.ts` cover durable admission, role grants,
+concurrency, all-or-none denial, operation bounds, minute/day rollover,
+configuration validation, no-dispatch failures and partial/unknown telemetry.
+The local fixture executes named `public` RPC calls as actual service_role,
+anon or authenticated; service_role success is a positive control and fixture
+setup grants no privileges. Domain setup and controlled-clock queries remain
+local Docker/psql operations. Separate installed-SDK tests use fake HTTP to
+check the public RPC path, secret-key header, request body and safe errors.
+Synthetic 429/timeout/transport/invalid-output exceptions prove one callback,
+fallback and retained capacity; they do not exercise a provider response parser.
+No live LLM, hosted database or real-credential Data API gateway call is tested.
+
 CI installs locked dependencies, starts and resets local Supabase, runs
 `db:check`, then executes `verify` and Chromium Playwright. Local verification
-passes all 397 tests across 19 files and the production build; all 14 browser
-cases pass locally. Remote CI execution remains unobserved. The implementation
+passes all 466 tests across 22 files and the production build. The prior session
+foundation verification passed all 14 browser cases locally; the usage change
+adds no browser surface. Remote CI execution remains unobserved. The implementation
 handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
 automated regression.
@@ -653,7 +734,12 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Account/domain/AI screens and account HTTP flows, demo-kit creation, maintenance provisioning,
-remaining story fields/transitions and AI infrastructure are not yet available.
+remaining story fields/transitions, provider transport, feature cache/audit
+services and retention cleanup are not yet available. Durable usage admission
+is implemented internally, without an AI feature endpoint or UI. Its
+per-environment transaction lock serializes admissions; no production load test
+has been run. Usage records remain retained without cleanup/reset, and no
+monetary quota guarantee is supplied.
 The workspace helper requires trusted actor context and supplies only a scope
 prerequisite; no actual AI source/cache/route consumer is implemented here.
 Hosted confirmation-off evidence is the recorded human check, not automated
