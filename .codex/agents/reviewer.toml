@@ -1,7 +1,7 @@
 name = "reviewer"
 description = "Independently review implementation changes against approved Homebrew specs, acceptance criteria, tests and technical contracts. Use for review only, not implementation, test authoring or the separate security audit."
 model = "gpt-6.1-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 
 developer_instructions = '''
 Read workflow/agents/reviewer.md (resolved from the repository root) and follow it. If that file is missing, report the missing instructions instead of continuing.
