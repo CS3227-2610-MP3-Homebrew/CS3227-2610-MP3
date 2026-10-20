@@ -52,3 +52,24 @@ prefix_rule(
         "bun run test:e2e-all",
     ],
 )
+
+prefix_rule(
+    pattern = ["bun", "run", ["test", "db:check"]],
+    decision = "allow",
+    justification = "Subsets of the already-allowed `bun run verify`; database tests and the RLS catalogue check need the local Supabase Docker stack outside the sandbox.",
+    match = ["bun run test", "bun run test tests/integration/usage", "bun run db:check"],
+    not_match = [
+        "bun run test:e2e-all",
+        "bun run dev",
+        "bun install",
+        "bun run db:push",
+    ],
+)
+
+prefix_rule(
+    pattern = ["bun", "install", "--frozen-lockfile"],
+    decision = "allow",
+    justification = "Installs exactly the committed lockfile and needs network access. Adding or changing dependencies (`bun add`, plain `bun install`) still prompts.",
+    match = ["bun install --frozen-lockfile"],
+    not_match = ["bun install", "bun add zod", "bun add -d yaml"],
+)
