@@ -549,11 +549,11 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Complete deterministic browse, rating and café-detail contracts while retaining the specified unfiltered closed-café and closing-soon behaviour.
 - **Work:** Resolve strict filter fields/values/normalization/combination/reset, Singapore date/time and opening-interval boundaries/overnight rules, and sold-out-only drink matches with the owning hours/menu contracts. Define one authoritative rating formula, unrated handling, ties, display precision and catalogue/review ordering/pagination. Specify customer-visible profile/menu/review fields, reviewer disclosure, money representation, customer page paths and read schemas. Retain CUS-01.9/CUS-01.10 labels, greyed but clickable closed cards and exactly-30-minute closing-soon inclusion; resolve absent next-opening schedules and opening-time text formatting without inventing a time. Amend integration/cache source inputs only from those decisions.
 - **File scope:** Existing CUS-01/CUS-02 story files; customer catalogue/detail sections in `workflow/specs/INTEGRATION-SPEC.md` and relevant `TECHNICAL-SPEC.md` data-model references; own handoff. OWN-02/OWN-03 hours/menu definitions are required owning-role inputs, not application work in this task.
-- **Prerequisite:** Customer filter/rating/display/public-contract decisions and the relevant OWN-02/OWN-03 hours/menu contracts are required; Shared account/navigation contracts are T-34.
+- **Prerequisite:** Relevant OWN-02/OWN-03 hours/menu contracts and T-34 Shared account/navigation contracts, consistent with the [Customer catalogue boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
 - **Acceptance criteria:**
   - [ ] Catalogue filters, card states, next-opening failure cases, ratings and café-page responses are testable and have one authoritative owner.
-  - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
+- **Status:** blocked
 - **Issue:** [#66](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/66)
 
 ### T-36: Finalize pickup, order and suspension-cancellation contracts
@@ -564,11 +564,11 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Complete the shared order lifecycle needed by Customer ordering and Admin suspension without weakening the confirmed all-uncollected cancellation rule.
 - **Work:** Resolve pickup representations/intervals/horizon/past and boundary rules, quantities, sold-out eligibility, price snapshots/totals, duplicate submissions, customer order paths/read/write schemas and display ordering. Reconcile authoritative order state names/transitions with OWN-04/OWN-05 and later menu/hour changes with OWN-02/OWN-03. Define acceptance/cancellation and collection/suspension races, already terminal-order treatment and transactional failure responses. Preserve automatic suspension cancellation of every outstanding uncollected order including accepted/ready, fixed customer reason, unchanged collected purchases and no revival on un-suspension; separate this fixed reason from the private Admin reason. Keep suspension mutation/transaction ownership with T-28/T-29 and Customer display/actions with T-42/T-43.
 - **File scope:** Existing CUS-03/CUS-04 and only the related ADM-02 suspension clauses; corresponding order/API/data-model sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff. Missing OWN-02–OWN-05 source contracts remain explicit owning-role inputs.
-- **Prerequisite:** Owning menu/hour/pickup/queue contracts and the remaining order/race/public-schema decisions are required; the fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9.
+- **Prerequisite:** Owning OWN-02–OWN-05 menu/hour/pickup/queue contracts, consistent with the [Customer order boundary and race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary); fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9.
 - **Acceptance criteria:**
   - [ ] Order/pickup schemas, complete state/race/error matrix and suspension rollback/visibility responsibilities agree across the owning specs.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#67](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/67)
 
 ### T-37: Finalize customer review submission contracts
@@ -579,11 +579,11 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Define a valid review payload and public submission/read contract, retaining own-collected-once-only and ADM-03 immutability/post-moderation.
 - **Work:** Resolve rating scale/type, text requiredness/length/normalization, duplicate submission outcomes, input feedback and customer review paths/schemas. Clarify review creation after café suspension while preserving collected purchases. Keep pending/kept/hidden visibility and immutable text/rating owned by ADM-03; integration Label/Reason bounds are not customer input limits. Make the canonical field contract sufficient for contract-derived local moderation fixtures without requiring a Customer review screen first.
 - **File scope:** Existing `workflow/specs/stories/CUS-05-review-order.md`; corresponding review sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff only.
-- **Prerequisite:** Human review field/duplicate/suspension decisions are required; collection-state names derive from T-36 and OWN-05.
+- **Prerequisite:** T-36 and OWN-05 collection-state ownership, consistent with the [Customer review field/submission boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary).
 - **Acceptance criteria:**
   - [ ] Valid/invalid review payloads, source eligibility and duplicate outcomes are explicit and do not conflict with ADM-03.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#68](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/68)
 
 ### T-38: Finalize Brew Finder selection and empty-result contracts
@@ -592,13 +592,13 @@ then consume its suspension effect without a dependency cycle.
 - **Owner role:** spec
 - **Requirements:** CUS-06 — [Brew Finder](specs/stories/CUS-06-brew-finder.md); specification prerequisite only, no criterion ownership.
 - **Description:** Resolve the remaining feature-specific source/result decisions while preserving the fixed integration prompt, one-call sequence and security controls.
-- **Work:** Define candidate selection/size/order, item availability rules, recommendation count, and customer/envelope treatment of an empty model suggestions array from a nonempty source. Confirm or replace CUS-06 ASM-02 explicit-submit/loading interaction. Reconcile CatalogueFilters, rating fallback and source fingerprint inputs with T-35 and update only affected canonical integration/cache contracts; never invent a fallback reason or infer model quality from schema validity.
+- **Work:** Define candidate selection/size/order, item availability rules, recommendation count, and customer/envelope treatment of an empty model suggestions array from a nonempty source. Preserve CUS-06's explicit-submit/loading interaction. Reconcile CatalogueFilters, rating fallback and source fingerprint inputs with T-35 and update only affected canonical integration/cache contracts; never invent a fallback reason or infer model quality from schema validity.
 - **File scope:** Existing CUS-06 story; Brew Finder and matching cache-source sections of `workflow/specs/INTEGRATION-SPEC.md`; own handoff only.
-- **Prerequisite:** T-35 supplies exact filters/rating order; human selection/count/empty-result and ASM-02 decisions are required.
+- **Prerequisite:** T-35 catalogue/hour/menu contract ownership, consistent with the [Brew Finder selection/count/empty-result boundary](specs/INTEGRATION-SPEC.md#brew-finder--cus-06) and CUS-06's explicit-submit/loading interaction.
 - **Acceptance criteria:**
   - [ ] Candidate/result/empty-source versus empty-model cases and UI triggers are independently testable with unchanged security limits.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#69](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/69)
 
 ### T-39: Finalize stretch favourite contracts
@@ -607,13 +607,13 @@ then consume its suspension effect without a dependency cycle.
 - **Owner role:** spec
 - **Requirements:** CUS-07 — [favourites](specs/stories/CUS-07-favourite-cafes.md); specification prerequisite only, no criterion ownership.
 - **Description:** Define optional favourite saving and return access without adding an MVP entity or granting broader catalogue access.
-- **Work:** Resolve personal storage/RLS, strict save/read schemas and endpoint paths, repeat-save outcomes, persistence and ineligible/re-eligible café handling. Confirm or replace CUS-07 ASM-02 placement in existing customer contexts; decide whether removal is within product scope through the source-story change process rather than silently adding it. Keep favourite reads personal and current café eligibility independently enforced.
+- **Work:** Resolve personal storage/RLS, strict save/read schemas and endpoint paths, repeat-save outcomes, persistence and ineligible/re-eligible café handling. Preserve CUS-07 placement in existing customer contexts and exclusion of removal; any removal scope amendment follows the source-story change process. Keep favourite reads personal and current café eligibility independently enforced.
 - **File scope:** Existing CUS-07 story and matching stretch data/API sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`; PRODUCT-SPEC only if a human-approved scope amendment is needed; own handoff.
-- **Prerequisite:** Human stretch persistence/repeat-save/ineligible-reference/API and ASM-02 placement decisions are required; T-35 supplies customer catalogue references.
+- **Prerequisite:** T-35 customer catalogue contract ownership, consistent with the [optional favourite boundary](specs/INTEGRATION-SPEC.md#stretch-favourite-boundary) and CUS-07's Browse/Café page placement.
 - **Acceptance criteria:**
   - [ ] The optional favourite schema, ownership and return behaviour are testable without inventing removal/sharing/payment behaviour.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#70](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/70)
 
 ### T-40: Test customer catalogue and café pages
