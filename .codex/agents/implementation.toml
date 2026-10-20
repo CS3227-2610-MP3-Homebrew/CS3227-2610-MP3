@@ -1,7 +1,7 @@
 name = "implementation"
 description = "Implement feature specifications in an SDD workflow for Homebrew with TypeScript, Next.js, Tailwind/shadcn, Supabase, Zod, and SoC LLM. Use for implementation and fixes, not specification authoring, acceptance-test authoring, documentation, deployment, or repository administration."
 model = "gpt-6.1-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 
 developer_instructions = '''
 Read workflow/agents/implementation.md (resolved from the repository root) and follow it. If that file is missing, report the missing instructions instead of continuing.

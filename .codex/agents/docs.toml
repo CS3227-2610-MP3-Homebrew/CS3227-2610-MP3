@@ -1,7 +1,7 @@
 name = "docs"
 description = "Update Homebrew's User Guide, Developer Guide and README for one reviewed issue, documenting only behaviour the code implements, with claim-to-evidence reporting. Documentation only; no code, tests, specs or reflections."
 model = "gpt-6.1-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 
 developer_instructions = '''
 Read workflow/agents/docs.md (resolved from the repository root) and follow it. If that file is missing, report the missing instructions instead of continuing.
