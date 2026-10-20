@@ -75,8 +75,8 @@ happens when it is unavailable. -->
 ## 9. Known limitations
 
 The current build has no sign-up, sign-in, customer, café owner, admin or AI
-screens. Database setup does not provide demo accounts or a demo-kit creation
-screen.
+screens. Local demonstration accounts require separate developer setup; there
+is no demo-kit creation screen.
 
 ## 10. Troubleshooting
 

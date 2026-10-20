@@ -212,7 +212,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Every fixed allow/deny boundary and local seed requirement has recorded tests.
   - [ ] No unspecified permission or story lifecycle is inferred.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#38](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/38)
 
 ### T-08: Implement role matrix and local demonstration seeds
@@ -227,7 +227,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Full local matrix/account/seed checks and catalogue checks pass.
   - [ ] `bun run verify` passes; known passwords never ship to hosted projects.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#39](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/39)
 
 ### T-09: Test proxy refresh and streaming role gates

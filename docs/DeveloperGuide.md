@@ -6,6 +6,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 
 - [Acknowledgements](#acknowledgements)
 - [Setting up, getting started](#setting-up-getting-started)
+  - [Local demonstration data](#local-demonstration-data)
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
 - [Authentication and authorization](#authentication-and-authorization)
@@ -63,9 +64,9 @@ only these three actions, without extra arguments or target URLs:
 `supabase/config.toml` selects PostgreSQL 17, API port 54321 and database port
 54322. The Data API is enabled for `public`, with automatic exposure of new
 tables disabled. Auth is enabled locally; Studio, storage, realtime, local SMTP,
-edge runtime, analytics and the pooler are disabled. Separate seed files are
-disabled; the migration itself creates the main workspace. Account provisioning
-and demonstration data are not supplied by these commands.
+edge runtime, analytics and the pooler are disabled. Automatic seed execution is
+disabled; migrations create the main workspace and install the Auth provisioning
+trigger. These commands do not create demonstration accounts or domain data.
 
 The wrapper captures CLI status output and omits generated credentials on success.
 Failures show a bounded, filtered subset of diagnostics; this filter is heuristic.
@@ -75,6 +76,36 @@ and have no hosted target option.
 
 For the existing starter page, run `bun run dev` and open
 <http://localhost:3000>. The database foundation adds no application screens.
+
+### Local demonstration data
+
+After local startup and migration replay, explicitly populate the demonstration
+dataset from the repository root:
+
+```bash
+bun --conditions=react-server -e 'const { seedLocalDemonstration } = await import("./src/server/seeds/local.ts"); const result = await seedLocalDemonstration({ environment: "local", supabaseUrl: "http://127.0.0.1:54321", provider: "disabled" }); console.log(result.createdAccounts.length);'
+```
+
+This prints only the number of newly created accounts. The server-only entry
+uses Docker/psql against the configured local container; it never follows a
+linked project, supplied database URL or HTTP target. It accepts only local/CI,
+fake/disabled AI and a plain loopback HTTP URL on the configured API port.
+Hosted environments and other targets fail before database execution.
+
+`supabase/local-demonstration.sql` is separate from migrations. One transaction
+with an advisory lock creates five main-workspace accounts (two Customers, two
+owners and one Admin), two approved, non-suspended cafés with menus/hours, and
+two past orders with purchased items. Stable domain identities and timestamps
+make replay reproducible. Inserts preserve existing data; mismatched account
+identities cause failure. Passwords are random on first creation. The return
+value contains credentials only for newly created accounts; replay neither
+retrieves nor rotates existing passwords. Keep that return value out of logs,
+guides and artifacts. The example intentionally omits credentials.
+
+`db:reset` removes local data; re-run this explicit seed afterward if needed.
+The demonstration dataset supplies no demo-kit provisioning, order fulfilment
+lifecycle or sales interpretation. Hosted delivery applies migrations without
+this seed; it does not ship demonstration passwords.
 
 ## Development workflow
 
@@ -269,27 +300,27 @@ accessibility and responsive behaviour once implemented. -->
 
 ## Data model and database schema
 
-The core migrations implement the structural portion of
+The core migrations implement the structural and role-policy foundation of
 [SYS-06](../workflow/specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls)
-and [SYS-12.1](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
+and [SYS-12.1–12.3](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 The [data ownership contract](../workflow/specs/TECHNICAL-SPEC.md#data-model-and-ownership)
-also describes later product fields and permissions; the schema currently stores
-identities and relationships:
+also describes later product fields and permissions. Current tables store these
+relationships and the shared fields needed for permission checks:
 
 | Table | Implemented relationships and constraints |
 | --- | --- |
 | `workspaces` | UUID identity and `is_main`; a partial unique index allows at most one main workspace. Migration replay inserts exactly one. |
 | `profiles` | UUID identity references `auth.users`; required workspace and protected role enum (`customer`, `owner`, `admin`). |
-| `cafes` | UUID identity, workspace and owner profile; a composite foreign key requires the owner to share the café's workspace. |
-| `menu_items`, `opening_hours` | UUID identities and required café references. |
-| `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. |
+| `cafes` | UUID identity, workspace and owner profile; a composite foreign key requires the owner to share the café's workspace. `application_state` is `pending` (default), `approved` or `rejected`; independent `suspended` defaults to false. |
+| `menu_items`, `opening_hours` | UUID identities and required café references; menu `name` and opening time `opens_at` support the narrow owner updates. |
+| `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. `placed_at` stores an instant. |
 | `order_items` | UUID identity; composite foreign keys require the parent order and menu item to belong to the same café. |
-| `reviews` | UUID identity and customer reference; a composite foreign key ties the customer to the order. A unique order reference prevents a second review for that order. The café is derived through the order. |
+| `reviews` | UUID identity and customer reference; a composite foreign key ties the customer to the order. A unique order reference prevents a second review for that order. The café is derived through the order. `moderation_state` is `pending` (default), `kept` or `hidden`. |
 
 Only profiles and cafés store workspace references. Menu items, opening hours,
 orders, order items and reviews inherit their workspace through the café.
 Profile and café workspace membership is immutable: changes raise
-`Workspace membership cannot be reassigned`. The final additive migration replaces
+`Workspace membership cannot be reassigned`. The workspace-identity migration replaces
 reverse-edge queries with that rule so an older transaction snapshot cannot
 permit a parent workspace move.
 
@@ -301,20 +332,59 @@ Migrations are replayed in filename order:
    default function/table/sequence grants for objects created by `postgres`.
 3. `supabase/migrations/20261019000002_immutable_workspace_identity.sql` makes
    profile/café workspace membership immutable.
+4. `supabase/migrations/20261020000000_role_matrix.sql` adds shared permission
+   fields, scoped read/owner-update policies and protected Auth provisioning.
 
-Demo-kit creation, domain fields and lifecycle states, AI counters/admissions,
-caches and audit tables remain later work.
+Demo-kit creation, remaining story fields and lifecycle transitions, AI
+counters/admissions, caches and audit tables remain later work.
 
 ## Authentication and authorization
 
-The baseline database policy grants `authenticated` SELECT on `profiles`, filtered
-to `id = (select auth.uid())`, so an existing authenticated profile can read its
-own stored role. All other product access remains denied by the current grants
-and policies. No profile writes or role assignment are available to browser
-roles. This foundation supplies no signup/profile-provisioning flow, session
-handling or complete customer/owner/admin policy matrix; those require their
-own implementation and tests under the
-[RLS contract](../workflow/specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
+The [RLS contract](../workflow/specs/TECHNICAL-SPEC.md#rls-and-database-exposure)
+is implemented for the current domain tables. Policies resolve `auth.uid()`
+against protected profiles and check workspace, role, ownership and parent
+relationships. Every role, including Admin, is limited to its own workspace;
+unauthenticated callers receive no domain access. Profiles remain readable only
+by their own authenticated user, with no ordinary profile writes.
+
+| Domain access within the actor's workspace | Customer | Café owner | Admin |
+| --- | --- | --- | --- |
+| Cafés | Approved and non-suspended only | Own cafés, including suspended ones | All cafés |
+| Menu items and opening hours | Only for approved, non-suspended parent cafés | Own cafés only | Denied |
+| Orders and order items | Own orders and their items | Own cafés' orders and their items | Denied |
+| Reviews | Own reviews regardless of café eligibility/state; other Customers' pending/kept reviews only for eligible cafés | Denied | All reviews |
+| Ordinary updates | Denied | Own menu `name` and opening-hours `opens_at` only | Denied |
+
+The eligible cafés in the review row are approved and non-suspended. Parent
+checks do not expose another Customer's underlying order when reading a review.
+Column grants plus row `USING`/`WITH CHECK` policies constrain owner updates.
+Generic inserts/deletes, approval/suspension/moderation changes, role escalation
+and ownership/parent reassignment remain denied. Story-owned transactions are
+not implemented by these policies.
+
+`src/server/auth/signup.ts` validates selected `customer`/`owner` roles and a
+trusted main-workspace identity with Zod; other metadata contributes no protected
+authority. The database's Auth insert trigger independently accepts only those
+two selections and resolves main from `workspaces`. It rejects other selected
+roles, including Admin. An Auth insert with no selected role creates no protected
+profile. Later metadata edits cannot change the protected profile. This is
+backend provisioning; it adds no application sign-up endpoint or screen.
+
+Local email confirmation is disabled in `supabase/config.toml`. The signup module
+declares and validates confirmation-off for dev/prod, but does not configure or
+monitor hosted Auth. The human verified **Confirm email** disabled in both
+`homebrew-dev` and `homebrew-prod` under Authentication → Email provider, recorded
+in [the implementation response](../workflow/handoffs/38-role-matrix-local-demonstration-seeds/05-implementation.md#summary)
+and accepted by the [passing review](../workflow/handoffs/38-role-matrix-local-demonstration-seeds/06-reviewer.md#summary).
+That is human configuration evidence; settings can drift afterward.
+
+`src/server/auth/workspace.ts` supplies `authorizeWorkspace`, a fail-closed scope
+prerequisite for an already authenticated, protected-profile-derived
+`VerifiedActor`. Shape validation and workspace equality do not authenticate an
+actor or authorize an operation. Callers must establish identity and enforce
+role/ownership separately. Session resolution and streaming role gates (T-10),
+actual AI source/cache/route consumers, demo-kit provisioning (T-25) and
+maintenance provisioning (T-27) remain later tasks.
 
 ## AI features and the shared LLM module
 
@@ -324,18 +394,22 @@ Include sequence diagrams showing requests through the shared module. -->
 
 ## Security
 
-All eight application tables explicitly enable RLS. Migrations revoke schema,
-table, sequence and function privileges before granting the narrow own-profile
-read. Private trigger functions use an empty search path and qualified application
-relations; ordinary roles cannot invoke them directly. An event trigger enables
+All eight application tables explicitly enable RLS. Migrations revoke default
+schema, table, sequence and function privileges, then grant the specific reads
+and two owner-update columns described above. Private trigger functions use an
+empty search path and qualified application relations; ordinary roles cannot
+invoke them directly. The three security-definer permission predicates have
+explicit authenticated execution grants and return scoped booleans; their
+private schema is outside Data API exposure. They bypass parent RLS internally
+while checking the protected actor and workspace. An event trigger enables
 RLS on new non-extension tables in `public`; tables in other application schemas
 still require explicit RLS.
 
 `db:check` inspects ordinary and partitioned tables across application schemas,
 including unexposed schemas. It excludes PostgreSQL system schemas, named
 Supabase-managed schemas and extension-owned tables. A query/tooling failure also
-exits nonzero. This checks RLS coverage; policy correctness and future role access
-still need separate tests. See the
+exits nonzero. This checks RLS coverage; the separate role matrix tests check
+current policy correctness. Future tables and consumers need their own tests. See the
 [security specification](../workflow/specs/AI-SECURITY-SPEC.md) for later application
 and AI requirements; this pair adds no AI execution surface.
 
@@ -357,7 +431,9 @@ bun run verify
 `verify` runs lint, type generation/TypeScript, Vitest, traceability, specification
 checks and the production build with source/client-artifact isolation checks.
 Vitest includes database integration tests, so it requires Docker access and
-resets local data twice during migration replay. Playwright remains a separate
+resets local data twice during migration replay. `fileParallelism: false` in
+`vitest.config.mts` serializes files so role/seed fixtures cannot race those
+resets. Run database verification commands sequentially. Playwright remains a separate
 `bun run test:e2e` command for browser acceptance.
 
 The 28 cases in `tests/integration/schema/schema.test.ts` cover migration replay,
@@ -368,9 +444,21 @@ unexposed table without RLS, names it, then passes after RLS is enabled. Synthet
 graph fixtures run in rolled-back transactions; the catalogue fixture cleans up
 its temporary schema. The local adapter uses Docker/psql without a hosted URL.
 
+The 127 cases in `tests/{unit,integration}/roles-seeds/` cover the current role
+matrix, protected main-workspace signup, workspace prerequisite, seed replay and
+hosted-target/artifact exclusions. Real local Auth cases distinguish protected
+profiles from forged raw metadata. RLS fixtures use two Customers, two owners
+and an Admin in main and each of two synthetic kit workspaces, plus anonymous
+callers. Forty mutable-field cases cover main→kit, kit→main and kit→kit: each
+first proves that the actual owner can change the same menu name/opening time,
+then observes that a foreign actor cannot change the stored value. Privileged
+fixture setup/observation is separate from the attempted ordinary operation.
+These fixtures do not implement public kit creation or maintenance provisioning.
+Scope-helper tests do not establish actual AI source/cache/route isolation.
+
 CI installs locked dependencies, starts and resets local Supabase, runs
 `db:check`, then executes `verify` and Chromium Playwright. Local verification
-passes all 219 tests across nine files and the production build; remote CI
+passes all 368 tests across 15 files and the production build; remote CI
 execution remains unobserved. The implementation handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
 automated regression.
@@ -500,12 +588,17 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 
-The database currently contains structural relationships and baseline own-profile
-reads. It does not yet provide role-specific domain access, signup provisioning,
-demonstration accounts/kits, story fields or lifecycle guards, or AI infrastructure.
-Local Auth configuration alone does not establish hosted signup behavior. The
-catalogue check proves RLS is enabled, not that future policies implement the
-full access matrix. The concurrency repair has manual two-session evidence and
+The database supplies structural relationships, the current domain role matrix,
+protected Customer/owner Auth provisioning in main, and explicit local
+demonstration data. Account/domain/AI screens and account HTTP flows, session
+resolution/streaming role gates, demo-kit creation, maintenance provisioning,
+remaining story fields/transitions and AI infrastructure are not yet available.
+The workspace helper requires trusted actor context and supplies only a scope
+prerequisite; no actual AI source/cache/route consumer is implemented here.
+Hosted confirmation-off evidence is the recorded human check, not automated
+configuration or drift prevention. The catalogue check proves RLS is enabled;
+the role matrix tests cover current policies, not future consumers. The
+workspace-identity concurrency repair has manual two-session evidence and
 single-transaction acceptance coverage; no concurrent regression is committed.
 
 Delivery validation is local and static. It cannot prove hosted environment
