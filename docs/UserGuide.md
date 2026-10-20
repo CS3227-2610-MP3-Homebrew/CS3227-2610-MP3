@@ -74,9 +74,9 @@ happens when it is unavailable. -->
 
 ## 9. Known limitations
 
-The current build has no sign-up, sign-in, customer, café owner, admin or AI
-screens. Local demonstration accounts require separate developer setup; there
-is no demo-kit creation screen.
+Sign-up, sign-in, sign-out, role navigation and customer, café owner, admin or AI
+screens are not available in the current build. Local demonstration accounts
+require separate developer setup; there is no demo-kit creation screen.
 
 ## 10. Troubleshooting
 

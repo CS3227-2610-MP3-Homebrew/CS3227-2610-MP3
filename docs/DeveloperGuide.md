@@ -74,8 +74,14 @@ The catalogue command uses `docker exec` against `supabase_db_homebrew`, with no
 connection URL or credential lookup. These commands require local Docker access
 and have no hosted target option.
 
-For the existing starter page, run `bun run dev` and open
-<http://localhost:3000>. The database foundation adds no application screens.
+Before starting the app, supply `APP_ENV=local`, `AI_PROVIDER=disabled`,
+`NEXT_PUBLIC_SUPABASE_URL` for the local stack and its
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` through the development environment.
+The request proxy validates this configuration even for the starter page;
+missing or invalid values fail with `Invalid application configuration.` See
+the [configuration contract](../workflow/specs/TECHNICAL-SPEC.md#configuration-names).
+Run `bun run dev` and open <http://localhost:3000>. The current app still displays
+the starter page.
 
 ### Local demonstration data
 
@@ -382,9 +388,45 @@ That is human configuration evidence; settings can drift afterward.
 prerequisite for an already authenticated, protected-profile-derived
 `VerifiedActor`. Shape validation and workspace equality do not authenticate an
 actor or authorize an operation. Callers must establish identity and enforce
-role/ownership separately. Session resolution and streaming role gates (T-10),
-actual AI source/cache/route consumers, demo-kit provisioning (T-25) and
-maintenance provisioning (T-27) remain later tasks.
+role/ownership separately.
+
+The session foundation implements the
+[streaming authentication contract](../workflow/specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches)
+using `@supabase/ssr` 0.12.7 and `@supabase/supabase-js` 2.118.0, resolved in
+`bun.lock`:
+
+- `src/proxy.ts` invokes Auth `getUser()` to refresh sessions. It forwards
+  refreshed cookies to the downstream request and browser response, retaining
+  cookie options, unrelated cookies and the SSR adapter's response headers.
+- `src/server/supabase/session-client.ts` creates a fresh request-bound client
+  with the publishable key and request cookies, preserving RLS for ordinary
+  queries. Server Component reads leave cookie persistence to the proxy.
+- `src/server/auth/session.ts` exports `getVerifiedActor()`. Every call verifies
+  Auth with `getUser()`, then reads and Zod-validates the matching protected
+  profile's identity, workspace and role under RLS. Rejected authentication,
+  missing/invalid profiles and profile-query errors grant no actor. Cached
+  session data and user metadata supply no role or workspace authority.
+- `src/server/auth/guard.ts` exports `withAuthorizedActor()`. Each protected
+  operation independently checks the current actor, required role and a
+  caller-supplied record-permission predicate before invoking its callback.
+  Denials throw `Access denied.`; verification or predicate exceptions prevent
+  the operation from running.
+- `src/app/_components/role-gate.tsx` exports `RoleGate`, a Suspense-wrapped
+  Server Component check. Callers supply a public fallback, required role,
+  trusted unauthenticated redirect destination and protected children. Anonymous
+  visitors redirect to that destination; wrong-role sessions receive no children.
+
+Both `cacheComponents` and `partialPrefetching` remain enabled in `next.config.ts`;
+there are no `instant = false` exceptions. Future route exceptions need their
+route and reason recorded in the human's PR, as required by
+[SYS-05.4](../workflow/specs/TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access).
+Future screens must keep private data out of public fallbacks/static shells and
+perform protected reads behind the gate with independent near-data authorization.
+Callers still own record/workspace predicates, RLS-bound queries and any endpoint's
+input, origin and lifecycle rules. A prior proxy/UI check never authorizes a
+later operation. This foundation adds no public account endpoint, redirect route,
+role screen or navigation flow; AI consumers and kit/maintenance provisioning
+remain later work.
 
 ## AI features and the shared LLM module
 
@@ -456,10 +498,28 @@ fixture setup/observation is separate from the attempted ordinary operation.
 These fixtures do not implement public kit creation or maintenance provisioning.
 Scope-helper tests do not establish actual AI source/cache/route isolation.
 
+The 29 cases in `tests/{unit,integration}/auth/` cover rendering flags and the
+absence of instant exceptions, proxy cookie propagation, protected-profile
+authority, denial paths and independent read/mutation guards. A genuine local
+Auth case refreshes an expired stored session through the actual proxy/client,
+resolves its protected profile, then denies the retained cookie after deleting
+the local user/profile.
+
+The 14 production Chromium cases in `tests/e2e/auth/` exercise all three roles'
+streaming, anonymous redirects, wrong-role denial and private-data-free shells,
+expired/invalid sessions after prefetch, and direct guarded GET/POST access.
+Playwright builds the root app on loopback port 3100 and a separate test-owned
+production harness on 3101. The harness imports the real gate and guard but
+controls session resolution; its routes, destination, messages and HTTP statuses
+are fixtures. Actual Supabase Auth is covered separately by integration tests;
+this is not one browser-to-Auth session test. Run `bun run test:e2e` after
+verification, without concurrent builds or database resets.
+
 CI installs locked dependencies, starts and resets local Supabase, runs
 `db:check`, then executes `verify` and Chromium Playwright. Local verification
-passes all 368 tests across 15 files and the production build; remote CI
-execution remains unobserved. The implementation handoff records a manual
+passes all 397 tests across 19 files and the production build; all 14 browser
+cases pass locally. Remote CI execution remains unobserved. The implementation
+handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
 automated regression.
 
@@ -591,8 +651,8 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
-demonstration data. Account/domain/AI screens and account HTTP flows, session
-resolution/streaming role gates, demo-kit creation, maintenance provisioning,
+demonstration data, session refresh/resolution and reusable streaming role gates.
+Account/domain/AI screens and account HTTP flows, demo-kit creation, maintenance provisioning,
 remaining story fields/transitions and AI infrastructure are not yet available.
 The workspace helper requires trusted actor context and supplies only a scope
 prerequisite; no actual AI source/cache/route consumer is implemented here.
@@ -601,6 +661,11 @@ configuration or drift prevention. The catalogue check proves RLS is enabled;
 the role matrix tests cover current policies, not future consumers. The
 workspace-identity concurrency repair has manual two-session evidence and
 single-transaction acceptance coverage; no concurrent regression is committed.
+The authentication browser harness controls session resolution; separate actual
+local Auth coverage proves expired-cookie refresh and deletion-based revocation,
+not every logout/ban/password-change policy or its propagation time. Future
+callers must integrate the gate and independently enforce domain permissions;
+no production protected endpoint is supplied by the harness.
 
 Delivery validation is local and static. It cannot prove hosted environment
 protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
