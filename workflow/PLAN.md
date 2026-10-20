@@ -356,7 +356,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Owner role:** testing
 - **Requirements:** SYS-07.1 — [SYS-07](specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 - **Description:** Statically verify [environment/delivery mappings](specs/TECHNICAL-SPEC.md#environments-and-delivery).
-- **Work:** Check master/development → Preview/homebrew-dev, approved v*/production → Production/homebrew-prod, single Hobby project, sin1/Singapore declarations, separated environment credentials and teammate production approval. Deploy/migration paths must be Actions-only and exclude local seed passwords. Do not execute workflows or contact hosted services.
+- **Work:** Check master/development → Preview/homebrew-dev, approved v*/production → Production/homebrew-prod, single Hobby project, sin1/Singapore declarations, separated environment credentials and the production approval binding. Deploy/migration paths must be Actions-only and exclude local seed passwords. Do not execute workflows or contact hosted services.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/delivery/` and synthetic workflow fixtures.
 - **Prerequisite:** Existing test tooling; static workflow fixtures need no runtime or database foundation; actual project settings/deploy evidence are human-only.
 - **Acceptance criteria:**

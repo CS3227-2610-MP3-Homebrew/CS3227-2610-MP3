@@ -185,15 +185,15 @@ not evidence that a migration is safe.
 | Local development | Node 24 app with local Supabase in Docker. | Local fake or disabled provider for checks; no hosted database access. |
 | CI tests/build | Local Supabase in Docker when database tests run. | No live LLM key; deterministic fake/disabled provider. Lint, typecheck and build run through `bun run verify`. |
 | Dev | Single Vercel Hobby project, Preview target in `sin1`; Supabase `homebrew-dev`, Singapore. | Dev-only SoC LLM key. GitHub `development` environment deploys from `master`. |
-| Prod | Same Vercel project, Production target in `sin1`; Supabase `homebrew-prod`, Singapore. | Separate prod-only SoC LLM key. GitHub `production` environment deploys from `v*` tags with a teammate's approval. |
+| Prod | Same Vercel project, Production target in `sin1`; Supabase `homebrew-prod`, Singapore. | Separate prod-only SoC LLM key. GitHub `production` environment deploys from `v*` tags with a listed reviewer's approval. |
 
 Application deployments occur only in GitHub Actions via the Vercel CLI.
 
 - **GitHub environments and triggers:** `development` permits only the `master`
   branch and deploys on pushes to `master`. `production` permits only tags matching
   `v*`, no branches, and deploys on pushes of those tags; it refuses a tag whose
-  commit is not reachable from `master`. Production requires a teammate's
-  approval, prevents self-review and has administrator bypass off.
+  commit is not reachable from `master`. Production requires a listed
+  reviewer's approval; self-review and administrator bypass are allowed.
 - **Credentials:** Each GitHub environment holds secrets `VERCEL_TOKEN` and
   `SUPABASE_DB_URL`, and variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
   `VERCEL_TOKEN` is scoped to the Vercel project, so delivery never uses Vercel
@@ -490,7 +490,7 @@ availability target is introduced.
   Preview and `homebrew-dev`, and approved `v*`/`production` to Vercel Production
   and `homebrew-prod`; the single Vercel Hobby project uses `sin1` and Supabase
   projects use Singapore. App deploy and hosted migration paths exist only in
-  GitHub Actions, with production teammate approval, following the
+  GitHub Actions, with production reviewer approval, following the
   [environment and delivery rules](#environments-and-delivery).
 - **SYS-07.2:** Configuration validation rejects invalid environment/provider
   combinations and refuses fake in prod. In `soclaas` mode, a missing live key

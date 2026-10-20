@@ -69,7 +69,7 @@ base and rejects unresolved refs. From Codex, each run requires approval for
 escalated execution, without an allow rule.
 
 Humans approve specs, review diffs, commit, open PRs and merge. The branch ruleset
-requires `verify`; a teammate approves production deploys. Agents leave a
+requires `verify`; a listed reviewer approves production deploys. Agents leave a
 reviewable local diff.
 
 Report task status as `completed` (done with evidence), `blocked` (missing
