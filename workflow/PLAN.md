@@ -272,7 +272,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Concurrency, persistence, boundary, telemetry and fake-429 cases record deterministic results.
   - [ ] No cleanup reset or fabricated monetary cost is assumed.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#42](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/42)
 
 ### T-12: Implement durable admission, windows and quota telemetry
@@ -287,7 +287,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Atomicity/window/telemetry/fallback tests and catalogue checks pass.
   - [ ] `bun run verify` passes without live calls.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#43](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/43)
 
 ### T-13: Test validated LLM operations and fallbacks
