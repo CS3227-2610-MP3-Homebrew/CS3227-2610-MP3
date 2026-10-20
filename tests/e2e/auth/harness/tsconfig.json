@@ -1,0 +1,10 @@
+{
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../../../..",
+    "paths": { "@/*": ["./src/*"] },
+    "incremental": false
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../../../../.next/auth-harness/types/**/*.ts"],
+  "exclude": ["../../../../node_modules"]
+}

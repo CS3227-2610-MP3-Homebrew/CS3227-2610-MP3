@@ -1,0 +1,42 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { getConfiguration } from "@/server/config";
+
+/** Refresh transport only: protected operations independently authorize callers. */
+export async function proxy(request: NextRequest): Promise<NextResponse> {
+  const configuration = getConfiguration().public;
+  const updates = new Map<string, { value: string; options: CookieOptions }>();
+  const responseHeaders = new Headers();
+  const client = createServerClient(
+    configuration.NEXT_PUBLIC_SUPABASE_URL,
+    configuration.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll(cookies, headers) {
+          for (const { name, value, options } of cookies) {
+            request.cookies.set(name, value);
+            updates.set(name, { value, options });
+          }
+          for (const [name, value] of Object.entries(headers ?? {})) {
+            responseHeaders.set(name, value);
+          }
+        },
+      },
+    },
+  );
+  await client.auth.getUser();
+
+  // Forward the changed Cookie header, retaining unrelated request headers and
+  // cookies. Browser Set-Cookie alone would leave this render on the old token.
+  const response = NextResponse.next({ request: { headers: request.headers } });
+  for (const [name, { value, options }] of updates) {
+    response.cookies.set(name, value, options);
+  }
+  for (const [name, value] of responseHeaders) response.headers.set(name, value);
+  return response;
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};
