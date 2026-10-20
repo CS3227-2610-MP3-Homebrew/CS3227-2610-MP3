@@ -196,6 +196,10 @@ Application deployments occur only in GitHub Actions via the Vercel CLI.
   approval, prevents self-review and has administrator bypass off.
 - **Credentials:** Each GitHub environment holds secrets `VERCEL_TOKEN` and
   `SUPABASE_DB_URL`, and variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
+  `VERCEL_TOKEN` is scoped to the Vercel project, so delivery never uses Vercel
+  CLI commands that look up the token's account, such as `vercel alias` and
+  `vercel promote`; it uses Vercel's REST API for those operations. The token
+  is never passed as a process argument.
   Production also holds secret `CRON_SECRET`, equal to Vercel Production's value,
   used only for SYS-13's single post-deploy maintenance call. SYS-13 defines that call.
   There are no repository- or organization-level deploy secrets; only jobs
@@ -224,9 +228,10 @@ Application deployments occur only in GitHub Actions via the Vercel CLI.
 - **Vercel project:** Dev is a Preview deployment aliased to
   `homebrew-cs3227-dev.vercel.app`; prod is a `--prod` deployment served at
   `homebrew-cs3227-prod.vercel.app`. `vercel.json` declares
-  `"regions": ["sin1"]` and disables Vercel Git deployments. Deployment
-  Protection is off, making the dev alias publicly reachable; Standard
-  Protection puts every non-production domain behind a Vercel login.
+  `"regions": ["sin1"]` and disables Vercel Git deployments. Standard
+  Deployment Protection stays on, keeping other non-production domains behind
+  a Vercel login; `homebrew-cs3227-dev.vercel.app` is a Deployment Protection
+  Exception, so the dev alias is publicly reachable.
 - **Application configuration:** Vercel project settings, rather than workflows,
   set application environment variables per target: Preview holds dev values
   and Production holds prod values. Only `SUPABASE_SECRET_KEY`, `SOCLAAS_API_KEY`,
