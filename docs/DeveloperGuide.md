@@ -40,6 +40,12 @@ Five files are reused: two Adapted, two Rewritten and one As is.
 
 <!-- Add all later reuse to this table and update the totals above. -->
 
+The shared LLM implementation reuses the three literal system messages from
+[INTEGRATION-SPEC](../workflow/specs/INTEGRATION-SPEC.md#exact-feature-prompts-and-schemas)
+as is in `src/server/llm/prompts.ts`; the acceptance fixture independently copies
+the same contract into `tests/integration/llm/prompts.json`. This is internal
+contract reuse, outside the five-file MP2 totals above.
+
 ## Setting up, getting started
 
 Use Node.js 24, Bun 1.4.3 and a running Docker engine with the `docker` command
@@ -443,8 +449,63 @@ remain later work.
 The server-only usage foundation implements
 [durable admission](../workflow/specs/TECHNICAL-SPEC.md#admission-and-windows)
 and the assigned [usage controls](../workflow/specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
-It supplies an internal reservation and dispatch seam; there is no feature
-endpoint, provider transport or AI screen consuming it yet.
+It supplies an internal reservation and dispatch seam. Shared validated feature
+operations and provider transport are also implemented under `src/server/llm/`;
+there is no production feature endpoint or AI screen consuming them yet.
+
+The operations implement the shared
+[LLM boundary](../workflow/specs/TECHNICAL-SPEC.md#llm-module),
+[wire contract](../workflow/specs/INTEGRATION-SPEC.md#soclaas-transport) and
+[bounded failure policy](../workflow/specs/AI-SECURITY-SPEC.md#disable-failure-and-fallback-behavior).
+Reuse these server-only modules when adding a feature caller:
+
+| Module/API | Implemented responsibility |
+| --- | --- |
+| `operations.ts`: `readAiRequest(request, feature, {maxReviews, requestId})` | Reads POST JSON with strict feature request schemas, a 65,536-byte UTF-8 body ceiling and cancellation. Returns parsed data or sanitized private/no-store errors for invalid method, media type, body or schema. It does not authenticate or authorize a request. |
+| `operations.ts`: `runLlmOperation(options)` | Accepts an already-authorized source snapshot, validates it before effects, requests action admission, checks an optional eligible cache payload, then requests provider-attempt admission before one dispatch. Returns the correlated AI/fallback union. |
+| `schemas.ts` | Strict Zod request/source/result validation, canonical JSON serialization and whole-result reference/evidence checks. Provider content must parse as one complete JSON object; unsupported completions, tools/functions and refusals are rejected. Unknown provider metadata is ignored. |
+| `prompts.ts` | Fixed literal system messages from the integration contract. Variable source strings stay in the separate canonical JSON user message; they cannot select a prompt, destination or tool. |
+| `transport.ts` | Validates provider/model/reasoning configuration and usage policy, constructs the configured `/v1/chat/completions` destination and supplies deterministic fake responses or one native `fetch` call. Requests are non-streaming, reject redirects and have no automatic retries or provider substitution. |
+
+The three operations consume only the
+[specified feature contexts](../workflow/specs/INTEGRATION-SPEC.md#exact-feature-prompts-and-schemas):
+Brew query and café/item candidates, Prep dates and sales aggregates, or review
+references/text for moderation. Extra source fields are rejected. Prep output
+quantities and reason text are reconstructed from matched aggregates. Brew
+references must match supplied café/item pairs; moderation must classify exactly
+the supplied reviews. One invalid member rejects the complete result, including
+cache payloads. These checks establish structure and references, not advice quality.
+
+`AI_PROVIDER=disabled` and missing credentials in `soclaas` mode bypass admission,
+cache and dispatch after source validation. Invalid configuration fails closed;
+fake mode is prohibited in prod. Disable state is rechecked after asynchronous
+work and before AI delivery. Serialized context and provider response bodies
+each have a 65,536-byte ceiling. A 30-second deadline covers provider dispatch
+and body reading; caller cancellation aborts that attempt, and overflow cancels
+the reader. Cancellation cannot undo provider consumption already incurred.
+
+The operation returns typed fallback identifiers from the
+[result contract](../workflow/specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope):
+`rating_sorted_catalogue`, `top_items` or `manual_queue`, with a reason of
+`disabled`, `usage_limited`, `unavailable` or Brew's empty-source
+`no_source_data`. Admission denial and provider 429 use `usage_limited`;
+admission-service, transport and validation failures use `unavailable`.
+These identifiers contain no fallback domain data and do not render a view.
+
+Callers must bind `admit(stage)` to verified actor/scope and server-generated
+operation/admission identities using the durable admission service below.
+Eligible cache hits still require action admission but consume no provider
+attempt. Optional cache callbacks operate only on data payloads; callers own
+actor/workspace/café/model/source-version/expiry eligibility and current source
+authorization. Moderation never reads or writes this cache. Invalid cache data
+falls back without dispatch or a success write. The optional `recordUsage` hook
+receives only validated supplied token counts; it supplies no persistent audit.
+
+No production caller, source query or persistent cache/audit repository is added
+by this layer. Endpoint integration still needs session/role/origin checks,
+authorized source acquisition and current-eligibility rechecks before delivery,
+ordinary authorized fallback reads, inert text rendering and separate authorized
+human mutations. Prep aggregation windows and data sufficiency remain story-owned.
 
 `src/server/llm/usage-client.ts` uses the installed `@supabase/supabase-js`
 2.118.0 client with `NEXT_PUBLIC_SUPABASE_URL` and server-only
@@ -595,11 +656,20 @@ Synthetic 429/timeout/transport/invalid-output exceptions prove one callback,
 fallback and retained capacity; they do not exercise a provider response parser.
 No live LLM, hosted database or real-credential Data API gateway call is tested.
 
+The 238 cases in `tests/integration/llm/` cover shared HTTP parsing, exact prompts
+and captured wire data, strict source/provider/cache schemas and references,
+injection-as-data, aggregate-derived Prep evidence, admission ordering, typed
+fallbacks, disable precedence, one-attempt failures, byte bounds, timeout and
+cancellation. Synthetic transports block unexpected global fetch. These checks
+do not establish live SoCLaaS compatibility, model quality, production endpoint
+authorization, persistent cache isolation or browser rendering.
+
 CI installs locked dependencies, starts and resets local Supabase, runs
 `db:check`, then executes `verify` and Chromium Playwright. Local verification
-passes all 466 tests across 22 files and the production build. The prior session
-foundation verification passed all 14 browser cases locally; the usage change
-adds no browser surface. Remote CI execution remains unobserved. The implementation
+passes all 704 tests across 25 files and the production build, including isolation
+checks for all 35 client artifacts. The prior session foundation verification
+passed all 14 browser cases locally; the shared LLM layer adds no browser surface.
+Remote CI execution remains unobserved. The implementation
 handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
 automated regression.
@@ -734,9 +804,12 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Account/domain/AI screens and account HTTP flows, demo-kit creation, maintenance provisioning,
-remaining story fields/transitions, provider transport, feature cache/audit
+remaining story fields/transitions, feature cache/audit
 services and retention cleanup are not yet available. Durable usage admission
-is implemented internally, without an AI feature endpoint or UI. Its
+and shared validated LLM operations/provider transport are implemented internally,
+without an AI feature endpoint or UI. Live provider compatibility and model
+quality remain unverified; source authorization, persistent cache eligibility,
+audit/retention and browser rendering require their owning integrations. The admission service's
 per-environment transaction lock serializes admissions; no production load test
 has been run. Usage records remain retained without cleanup/reset, and no
 monetary quota guarantee is supplied.
