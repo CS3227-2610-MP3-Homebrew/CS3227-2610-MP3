@@ -145,7 +145,7 @@ Agents and `review.sh` use their configured model and effort.
    pass for browser-visible changes.
 9. A human reviews the diff, opens and merges the PR through the branch ruleset's
    required `verify` check. Merging deploys to dev. Production deploys come from
-   version tags and require a teammate's approval.
+   version tags and need a listed reviewer's approval.
 
 If a spec is ambiguous, report `awaiting-decision`. The fix flows spec PR merged
 → PLAN.md updated by the spec agent → tests for affected IDs → code. Only the
@@ -167,7 +167,7 @@ re-run `verify`) before the next agent starts, and to prepare that agent's promp
 
 Humans approve every spec merge, every merge to `master` and every production
 deploy. The branch ruleset requires `verify`, the human reviews the diff, and a
-teammate approves production deploys. Agents never commit, push, open PRs or deploy.
+listed reviewer approves the production job. Agents never commit, push, open PRs or deploy.
 
 ### Session logs
 
@@ -198,7 +198,7 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | The pair session sets both tasks to `done` after the latest completed/pass reviewer report, then reruns `bun run verify`; the spec agent reconciles statuses from handoffs on every PLAN update. | Completion follows reviewed evidence. CI does not enforce reviewer evidence; structural PLAN checks remain. |
 | Every agent and `review.sh` default to `gpt-6.1-sol` at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. `review.sh` requires the Codex CLI even for teammates using another assistant. |
 | Implementation may add supplementary unit tests for introduced internal code under `tests/unit/`, without criterion IDs in titles, and never edits, skips or weakens testing-owned tests, fixtures or config. Files under `.github/workflows/` and other configuration are in scope when named in the task's File scope. Implementation may add one row per workflow file it creates to this guide's Workflow files table, with no other `docs/` edits; stage 3 checks this exception. | Acceptance coverage remains independent while internal code receives focused checks. |
-| Merge gates are the branch ruleset's required `verify` check and the human's diff review; a teammate approves production deploys. | Keeps merge ownership with the human and production approval separate. |
+| Merge gates are the branch ruleset's required `verify` check and the human's diff review; a listed reviewer approves the production job. | Keeps merge ownership with the human and production approval separate. |
 | Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. `bun run db:start` and `bun run db:reset` are also allowed for local Docker. Additional forbidden commands are `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
 
 ### Workflow files
@@ -534,9 +534,10 @@ requirements from the delivery contract:
 
 1. Create GitHub `development` and `production` environments. Allow only the
    `master` branch for development and only `v*` tags, no branches, for production.
-   Require a teammate's production approval, prevent self-review and disable
-   administrator bypass. YAML environment binding alone does not configure these
-   protections.
+   Add the team as required reviewers for production. Self-review and
+   administrator bypass stay allowed: production approval is a release
+   checkpoint, not a second review of changes already merged to `master`. YAML
+   environment binding alone does not configure these protections.
 2. Store the table's secrets and variables in their respective environments;
    keep no repository- or organization-level deploy-secret copies. Select the
    appropriate database for each `SUPABASE_DB_URL`: Supavisor shared-pooler
@@ -563,8 +564,8 @@ requirements from the delivery contract:
    reference it or invoke maintenance; T-27 owns that extension.
 6. A human merges reviewed changes to `master` for dev delivery, then creates
    and pushes a `v*` tag at a commit reachable from `master` for production.
-   A teammate approves the production environment job. Humans verify approval
-   enforcement, the migration result, application target/database/region and
+   A listed reviewer approves the production environment job. Humans verify the
+   approval, the migration result, application target/database/region and
    domain reachability from the resulting run before claiming deployed acceptance.
 
 Agents never execute deployment workflows, Vercel commands or hosted migrations,
@@ -613,4 +614,5 @@ lockfile. See the [security re-check](../workflow/handoffs/48-delivery-workflows
 for the inspected fixes and remaining verification limits.
 - Delivery validation in the repository is static. It cannot prove hosted environment protections, secret storage, Vercel or Supabase settings, or migration and deployment outcomes; humans check those on each delivery run.
 - `VERCEL_TOKEN` is project-scoped. Vercel CLI commands that first look up the token's account, such as `vercel alias` and `vercel promote`, fail with "User not found", so the development alias is set through Vercel's REST API. Future delivery changes should use the REST API for those operations.
+- Production approval allows self-review and administrator bypass, so it is a human release checkpoint rather than separation of duties: whoever pushes a `v*` tag can approve its deployment.
 - Step-level `env` limits which steps receive the token but does not isolate steps from a compromised tool on the same runner, and the globally installed Vercel CLI is outside the application lockfile. See the [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
