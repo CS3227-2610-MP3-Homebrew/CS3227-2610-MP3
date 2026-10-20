@@ -77,14 +77,14 @@ Provider HTTP errors are translated; their bodies and headers are not forwarded.
 | HTTP | Code | Meaning |
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST` | Malformed JSON, schema-invalid input or invalid source selection. |
-| 401 | `UNAUTHENTICATED` | No valid authenticated session, or a missing/wrong maintenance bearer secret. |
+| 401 | `UNAUTHENTICATED` | No valid authenticated session, incorrect account sign-in credentials, or a missing/wrong maintenance bearer secret. |
 | 403 | `FORBIDDEN` | Wrong role or failed same-origin protection. |
 | 404 | `NOT_FOUND` | Requested record absent or outside the caller's authorized record scope. |
 | 405 | `METHOD_NOT_ALLOWED` | Unsupported HTTP method; `Allow` advertises the supported method. |
-| 409 | `STATE_CONFLICT` | The target record is in scope but not in the state the operation requires; nothing changes. |
+| 409 | `STATE_CONFLICT` | The target record is in scope but not in the state the operation requires; nothing changes. Account routes also use this for duplicate registration or an already authenticated sign-up/sign-in submission, with no account/session replacement. |
 | 413 | `PAYLOAD_TOO_LARGE` | Application request body exceeds the limit below. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | A JSON endpoint receives another content type. |
-| 429 | `RATE_LIMITED` | Demo-kit creation limit reached; `Retry-After` and a clear safe message say when to try again. |
+| 429 | `RATE_LIMITED` | Demo-kit creation limit reached, with `Retry-After` and a clear safe message saying when to try again; account routes also use this for Auth throttling under the account failure contract. |
 | 500 | `INTERNAL_ERROR` | Unexpected application failure; no protected data or exception detail. |
 | 503 | `SOURCE_UNAVAILABLE` | Authorized source/fallback cannot be safely obtained. |
 
@@ -98,7 +98,7 @@ duplicate-submission semantics remain with their owning stories.
 
 ### Demo access and maintenance routes
 
-These are the only additional shared routes. Workspace, creation and maintenance
+These demo/maintenance routes are separate from the account routes below. Workspace, creation and maintenance
 behavior is authoritative in [SYS-12 and SYS-13](TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits);
 security controls are in [SEC-10](AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 
@@ -116,6 +116,147 @@ cleanup, main-Admin and showcase-café steps; a step failure does not prevent
 later steps. Both routes use the shared private no-store JSON response
 conventions; the maintenance GET authenticates with the bearer rather than a
 cookie session.
+
+### Shared account contracts
+
+The [sign-up story](stories/SYS-01-sign-up.md),
+[session story](stories/SYS-02-sign-in-out.md) and
+[navigation story](stories/SYS-03-role-navigation.md) own user-facing behavior.
+This section owns their exact HTTP fields, responses and browser destination
+vocabulary. It introduces no new requirement ID, account permission, generic
+profile endpoint or domain-data read. SYS-05 remains authoritative for proxy
+refresh/streaming authentication; SYS-06/SYS-12 remain authoritative for
+protected roles, RLS and main/kit workspace assignment. Email confirmation is
+off in dev and prod under SYS-06.4; sign-up cannot create an Admin.
+
+#### Account fields and validation
+
+| Field | Exact contract |
+| --- | --- |
+| `email` | Required string. Apply JavaScript `trim()` then lowercase; validate the normalized result with the installed Zod email validator (`z.email()`) and a maximum of 254 Unicode code points. Use that normalized email for sign-up/sign-in. No submitted value appears in an error. |
+| Sign-up `password` | Required string, at least 8 Unicode code points and at most 72 UTF-8 bytes after JSON decoding. Do not trim, lowercase, normalize, truncate or impose a composition rule. |
+| Sign-in `password` | Required nonempty string, at most 72 UTF-8 bytes after JSON decoding; otherwise preserve exactly. Do not apply the sign-up minimum to existing kit/seed accounts. |
+| Sign-up `role` | Required exact string `customer` or `owner`, displayed as Customer/Café owner. No default. No role field is accepted on sign-in. |
+
+The sign-up form contains only email/password/role, without a display name or
+password-confirmation input. Sign-in contains email/password only. Client
+field feedback supplements the same server-side Zod validation; passing browser
+validation never establishes permission. A strict request rejects additional
+keys including profile metadata, user/workspace IDs and return destinations.
+Profiles retain only their existing protected identity/role/workspace contract;
+no new editable profile field or role-change lifecycle is added.
+
+#### Account transport and routes
+
+Every route below is POST-only and uses the shared JSON/error/no-store
+conventions and 65,536-UTF-8-byte request-body ceiling. Every request, including
+anonymous sign-up/sign-in and idempotent sign-out, requires the exact trusted
+Origin check. Missing/malformed/mismatched Origin returns `403 FORBIDDEN`
+before credential verification or account/session mutation. There is no GET
+mutation or cross-origin credential flow. Unsupported methods return
+`405 METHOD_NOT_ALLOWED` with `Allow: POST`; wrong media type gives
+`415 UNSUPPORTED_MEDIA_TYPE`, malformed/unknown-field/wrong-type/invalid fields
+give `400 INVALID_REQUEST`, and body overflow gives `413 PAYLOAD_TOO_LARGE`.
+Rejected transport/validation requests have no account/session mutation.
+
+| Method and route | Exact request body | Normal HTTP 200 result and cookie effect |
+| --- | --- | --- |
+| `POST /api/auth/sign-up` | `{email: string, password: string, role: "customer" \| "owner"}` | Exactly `{requestId, redirectTo: RoleHome}` after account, protected main-workspace profile and initial persistent session succeed; set session cookies. The completed-profile/failed-session alternative is below. |
+| `POST /api/auth/sign-in` | `{email: string, password: string}` | Exactly `{requestId, redirectTo: RoleHome}` after credentials and protected profile verify; set persistent session cookies for the existing role/workspace, including kit accounts. |
+| `POST /api/auth/sign-out` | `{}` | Exactly `{requestId, redirectTo: "/sign-in"}`; revoke this browser's corresponding remote session only and clear local session cookies. An absent session is idempotent success and still clears residual cookies. Remote failure uses the alternative below. |
+
+`requestId` uses the shared opaque correlation-reference convention.
+`redirectTo` is one of the fixed destinations below, never a caller value or a
+provider URL. Successful account responses contain no additional fields,
+credentials, tokens or profile records. Cookies are server-set/cleared; they
+are not JSON fields. The browser follows the returned destination and does not
+retain an attempted protected path. An already authenticated caller cannot
+replace the active account via sign-up/sign-in: return `409 STATE_CONFLICT`
+with “An account is already signed in.” and leave that session unchanged.
+This applies to a verified Auth identity even if its protected profile is
+unavailable/invalid; browser profile failures use the states below.
+
+#### Account results and failures
+
+All failure rows use exactly the existing
+`{requestId, error: {code, message}}` envelope, never field-value echoes,
+validation dumps, provider exceptions/bodies, credentials or tokens. The two
+HTTP 200 alternatives retain exactly `{requestId,redirectTo}` and make no
+authenticated role-home claim.
+
+| Condition | HTTP/result | Safe message and observable effect |
+| --- | --- | --- |
+| Unknown email or wrong sign-in password | `401 UNAUTHENTICATED` | Both: “Email or password is incorrect.” No role home or protected content. |
+| Duplicate sign-up email | `409 STATE_CONFLICT` | “Unable to create account. Try signing in.” Existing identity/profile/session unchanged; no linking, deletion or reassignment. |
+| Profile creation fails after this request creates Auth identity; cleanup succeeds | `503 SOURCE_UNAVAILABLE` | “Unable to complete account setup. Try again.” Attempt cleanup only of the new identity created by this request; report no successful signup or application session. |
+| Same profile failure; cleanup fails | `500 INTERNAL_ERROR` | “Account setup could not be completed. Try signing in; account access is unavailable until setup is resolved.” No application access, automatic registration retry, deletion of an existing identity or automatic profile repair. Later verified missing-profile access uses account unavailable. |
+| Account/profile complete; initial session fails | `200`, `redirectTo: "/sign-in?notice=account-created"` | Retain the usable account; clear any incomplete local session cookies. Sign-in shows “Account created. Sign in to continue.” This is account creation success requiring separate authentication, not a successful session. |
+| Auth credentials/session verify, but protected profile is absent or has invalid role/workspace | `403 FORBIDDEN` for account sign-in; safe account-unavailable browser state | “Account access is unavailable. Sign out and try again.” No role-home access, role choice, repair or private domain content; Sign out remains usable. |
+| Auth/profile verification source temporarily unavailable | `503 SOURCE_UNAVAILABLE` for account JSON operations; browser retry state | “Account service is temporarily unavailable. Try again.” No bad-password claim, fabricated profile or protected content; explicit retry only. |
+| Auth throttles account operation | `429 RATE_LIMITED` | “Too many attempts. Try again later.” No automatic retry or invented app throttle limit. Include `Retry-After` only when Auth supplies a valid retry delay; do not forward provider bodies/other headers or fabricate a delay. This does not change demo creation's required `Retry-After` or AI's HTTP 200 fallbacks. |
+| Other unexpected account failure | `500 INTERNAL_ERROR` | “Unable to complete the request. Try again.” No private detail or success claim. |
+| Remote sign-out revocation fails after endpoint is reached | `200`, `redirectTo: "/sign-in?notice=sign-out-unconfirmed"` | Clear this browser's cookies regardless; show “Signed out of this browser; session revocation could not be confirmed.” Do not claim other sessions ended or already-issued tokens were instantly revoked. |
+
+An invalid field gives client field feedback plus server `400 INVALID_REQUEST`
+with “Check the account fields and try again.” Other transport errors retain
+the shared safe meanings. Forms disable repeat submission while pending;
+after a submitted request fails they keep email/selected role and clear the
+password. No browser or server automatically retries account operations.
+A network failure with no confirmed response displays “Unable to complete the
+request. Try again.” without claiming creation, login, cookie clearance or
+remote sign-out succeeded. The partial-profile failure cleanup is the sole
+new-account compensation described here; it is not permission to delete an
+older/duplicate account. Local sign-out cannot promise immediate revocation
+of previously issued tokens; subsequent browser requests still require SYS-05
+verification.
+
+Persistent sign-in cookies are issued only after credentials and the protected
+profile both verify. A new sign-in attempt that fails profile validation or
+source verification clears any provisional cookies produced by that attempt;
+the form shows the documented account-unavailable/retry state rather than a
+role redirect. Sign out on that state remains usable because absent-session
+sign-out is idempotent. A sign-up profile-creation failure likewise clears any
+provisional local session cookies whether new-identity cleanup succeeds or
+fails. These rules do not clear/replace a previously active account on the
+already-authenticated 409 path. If a later protected-profile check fails for
+an established session, application access is denied and its failure state
+offers Sign out as above; no new session is issued to bypass that failure.
+
+Use Supabase's normal persistent cookie/refresh session, without a Remember me
+checkbox, new app-specific lifetime or custom idle timer. Session expiry,
+revocation and source failures always remain subject to server verification.
+This specification does not infer numeric hosted Auth lifetime settings.
+
+#### Account browser destinations
+
+| Destination | Meaning |
+| --- | --- |
+| `RoleHome` = `/customer/cafes` | Verified Customer home; CUS-01 owns catalogue content. |
+| `RoleHome` = `/owner/dashboard` | Verified Café owner home; owner stories own dashboard content. Without a café, show the minimal no-café state linking to `/owner/application`, never fabricated sales/queue data. |
+| `RoleHome` = `/admin/moderation` | Verified Admin home; ADM-03 owns the moderation queue. This is not `/admin/applications`. |
+| `/sign-in` | Anonymous access or confirmed local sign-out without a warning notice; offers Sign up and existing Create demo kit. |
+| `/sign-in?notice=session-ended` | Expired/invalid session: “Your session ended. Sign in again.” |
+| `/sign-in?notice=account-created` | Completed account/profile but failed initial session: “Account created. Sign in to continue.” |
+| `/sign-in?notice=sign-out-unconfirmed` | Local cookie clearance with unconfirmed remote revocation; fixed warning above. |
+
+These three `notice` values select fixed plain app text only; unknown values
+show the ordinary sign-in form without a notice. They are not proof of account
+creation/authentication/revocation, executable content or redirect targets.
+`/sign-up` links to `/sign-in`; `/sign-in` links to `/sign-up`. `/` redirects
+anonymous visitors to `/sign-in` and verified profiles to their own RoleHome.
+Already authenticated visits to either account form and wrong-role browser
+requests redirect to the caller's own RoleHome, with no requested-role content.
+There is no return-to parameter or external/cross-role destination. A missing
+session goes to ordinary sign-in; an expired/invalid one uses the session-ended
+notice. Source outages instead show the safe explicit-retry state with no
+protected content. Missing/invalid protected profiles show account unavailable
+with Sign out and no automatic redirect loop. Protected domain JSON operations
+continue to use their owning errors rather than browser redirects.
+
+SYS-03 owns the role-only MVP navigation. Detailed Customer, owner and Admin
+screen behavior remains with the corresponding product stories. Shared
+navigation adds no stretch links, role/workspace switcher, domain record access
+or alternative account lifecycle.
 
 ### AI routes and result envelope
 
