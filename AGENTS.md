@@ -68,6 +68,9 @@ AI-SECURITY-SPEC evaluation cases when present.
 base and rejects unresolved refs. From Codex, each run requires approval for
 escalated execution, without an allow rule.
 
+Run allow-listed commands bare: output redirection, environment-variable prefixes
+or `cd … &&` stop them matching `.codex/rules` and force an approval prompt.
+
 Humans approve specs, review diffs, commit, open PRs and merge. The branch ruleset
 requires `verify`; a listed reviewer approves production deploys. Agents leave a
 reviewable local diff.
