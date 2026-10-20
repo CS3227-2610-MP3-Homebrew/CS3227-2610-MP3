@@ -4,8 +4,12 @@ Homebrew is being built for home cafés: small coffee setups run from someone's 
 
 The server infrastructure also provides durable AI usage admission with atomic
 reservations, explicit configured limits and database-clock minute/Singapore-day
-windows. It uses a restricted secret-key Supabase RPC; AI features and provider
-transport are still to come. See the [usage foundation](docs/DeveloperGuide.md#ai-features-and-the-shared-llm-module).
+windows. It uses a restricted secret-key Supabase RPC. Shared server-only LLM
+operations now validate feature inputs and provider/cache results, use fixed
+prompts and one bounded provider attempt, and return typed fallbacks. Deterministic
+fake and disabled modes support local checks; AI screens and endpoints remain
+pending. See the [shared LLM layer](docs/DeveloperGuide.md#ai-features-and-the-shared-llm-module)
+for caller responsibilities and integration limits.
 
 ## User roles
 
