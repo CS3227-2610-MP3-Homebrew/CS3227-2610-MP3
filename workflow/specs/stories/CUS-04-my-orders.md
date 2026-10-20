@@ -14,6 +14,11 @@ outstanding orders that have not yet been collected, including accepted and
 ready orders. My orders retains these orders and shows the cancellation reason
 “Cafe is suspended”. Already collected orders remain unchanged.
 
+The [customer order boundary](../INTEGRATION-SPEC.md#customer-pickup-and-order-boundary)
+owns transport schemas and projects the shared pending/accepted/ready/collected/
+rejected/cancelled vocabulary. OWN-05 owns owner queue operations; CUS-04 owns
+only pending→cancelled customer transitions and the suspension display below.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.
@@ -30,11 +35,11 @@ ready orders. My orders retains these orders and shows the cancellation reason
 
 #### Acceptance criteria
 
-- **`CUS-04.1`:** Given a signed-in Customer with orders, when My orders is opened, then it returns only orders belonging to that Customer in its workspace and their associated order items, without another customer's orders.
-- **`CUS-04.2`:** Given a newly placed own order that the café has not accepted and that has not otherwise ended, when the Customer cancels it, then the order is cancelled and a subsequent own-order read reflects cancellation.
-- **`CUS-04.3`:** Given an order the café has already accepted, when the Customer attempts cancellation, then it does not cancel or otherwise change the order; an application-owned JSON mutation uses the shared `409 STATE_CONFLICT` boundary.
+- **`CUS-04.1`:** Given a signed-in Customer with orders, when `/customer/orders` is opened, then it returns only its own workspace orders, newest placed first then order reference ascending, 20 per page; display retained café/item/price snapshots, pickup time, state and SGD totals in dollars to exactly two decimal places, including after café suspension, without exposing restricted live café/private data or another Customer's orders.
+- **`CUS-04.2`:** Given an own pending order, when the Customer submits the canonical empty-body cancellation request, then it becomes cancelled with no suspension reason and subsequent reads reflect cancellation; a simultaneous owner acceptance can commit only if cancellation did not, with the losing request receiving `409 STATE_CONFLICT` and no further mutation.
+- **`CUS-04.3`:** Given an own accepted, ready, collected, rejected or cancelled order, when Customer cancellation is attempted, including repeat cancellation, then `409 STATE_CONFLICT` changes nothing; only pending orders are manually cancellable.
 - **`CUS-04.4`:** Given another customer's order, an order in another workspace or a missing order reference, when a Customer attempts to read or cancel it through a JSON endpoint, then the same shared `404 NOT_FOUND` boundary applies without protected order disclosure or mutation.
-- **`CUS-04.5`:** Given outstanding own orders for a café that have not yet been collected, including unaccepted, accepted and ready orders, when that café is successfully suspended under ADM-02, then those orders are automatically cancelled without requiring a customer action, remain available through My orders, and display the cancellation reason “Cafe is suspended”; already collected orders remain unchanged, and later un-suspension does not restore the cancelled orders.
+- **`CUS-04.5`:** Given own orders for a café, when ADM-02 suspension commits, then all pending/accepted/ready orders are automatically cancelled, retained in My orders and show “Cafe is suspended”; collected/rejected/cancelled orders and their prior reasons remain unchanged and un-suspension revives none. Collection committed first preserves collected; suspension committed first prevents collection. Suspension, cancellations and its audit entry commit together or all roll back under the canonical race matrix.
 - **`CUS-04.6`:** Given a kit Customer, when it reads or cancels its kit orders, then the same ownership and cancellation rules apply and no main-workspace or other-kit order is accessible.
 - **`CUS-04.7`:** Given no valid session or a wrong-role caller, when protected order reads or customer cancellation are requested, then server role checks supply no protected data or mutation; JSON endpoints return `401 UNAUTHENTICATED` or `403 FORBIDDEN`, respectively, under the shared contract.
 - **`CUS-04.8`:** Given a cancellation request violating shared origin, method, JSON or media-type rules, when it is checked, then the shared error response applies without changing the order; a hidden/disabled button does not replace server enforcement.
@@ -88,9 +93,9 @@ actions remain OWN-05. This story adds no order editing, refund or payment flow.
 
 ## Out of scope
 
-No additional order states, historical retention policy or owner queue
-permission is introduced. The fixed order cancellation reason is distinct from
-the private administrative suspension reason under ADM-02.
+No automatic expiry/no-show, order editing or owner queue permission is
+introduced. The fixed cancellation reason is distinct from ADM-02's private
+administrative reason; customer history never exposes that reason.
 
 ## Assumptions
 

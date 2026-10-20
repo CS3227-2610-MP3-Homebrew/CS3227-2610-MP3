@@ -29,17 +29,17 @@ endpoints can be finalized.
 | Scope | Owning IDs | Contract reserved to the owning story |
 | --- | --- | --- |
 | Accounts and role navigation | SYS-01–SYS-03 | Account fields, validation, redirect paths, session errors and account lifecycle. Admin creation remains seed-only. |
-| Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Filter fields and time semantics, rating calculation/ties, candidate selection/size, suggested-item availability, result count and empty-result behavior. Reconcile Brew Finder's empty model result with CUS-06's result-count contract. |
-| Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Pickup representation, quantities, price snapshots, lifecycle transitions, cancellation races, duplicate submission and conflict responses. |
-| Reviews and moderation | CUS-05, ADM-03–ADM-04 | Rating/text constraints, pending membership/order, concurrent review changes and keep/hide/restore audit transaction. |
-| Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Profile/menu fields, money representation, hours, application transitions and suspension effects on existing activity. |
+| Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Customer read/filter/rating and recommendation boundaries are defined below. Owner profile/menu/hour editing remains OWN-02–OWN-03; shared navigation remains SYS-03. |
+| Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Customer pickup/order boundaries and shared state/race vocabulary are defined below. Owner pickup-rule editing and queue action contracts remain OWN-04–OWN-05. |
+| Reviews and moderation | CUS-05, ADM-03–ADM-04 | Customer review fields/submission are defined below. Admin queue ordering, keep/hide/restore transactions and AI classification remain ADM-03–ADM-04. |
+| Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Customer-facing enums, money and hours read vocabulary are defined below; owner field validation/edit actions, applications and owner-side suspension display remain with their owning stories. |
 | Sales and preparation advice | OWN-06–OWN-07 | Included order states, aggregation window, business-day boundaries, minimum data, top-item sorting and meaning of more/less advice. |
-| Stretch features | CUS-07, OWN-08, ADM-05–ADM-06 | Favourite, boost and runtime AI-control contracts. No MVP endpoints are implied. |
+| Stretch features | CUS-07, OWN-08, ADM-05–ADM-06 | CUS-07's optional favourite boundary is defined below. Boost and runtime AI-control contracts remain with their owning stories. No MVP favourite endpoint is implied. |
 
-Ordinary domain route paths, request/response schemas and domain-specific
-errors remain with these dependencies. No generic CRUD API or extra permission
-is introduced. The AI boundary below can describe shared transport without
-establishing the missing queries, sales calculations or domain transitions.
+Customer domain paths, schemas and error mappings below project their owning
+stories. Other role route/query/edit contracts remain with the dependencies
+above. No generic CRUD API or extra permission is introduced; shared AI
+transport does not establish missing owner queries or sales calculations.
 
 ## Shared HTTP boundary
 
@@ -128,9 +128,8 @@ is a POST, uses the shared JSON conventions, and returns the following union.
 | `/api/ai/prep-advisor` | Café owner | `{cafeId: Ref, refresh: boolean}` | Ownership-checked café aggregates and its top-items fallback. | OWN-07 |
 | `/api/ai/moderation` | Admin | `{reviewIds: Ref[]}` | Distinct currently pending review references/text within the configured batch cap. | ADM-04 |
 
-`CatalogueFilters` is a dependency name, not an arbitrary JSON object schema:
-its strict fields must come from CUS-01. The Brew Finder HTTP schema is not
-final until that contract exists. Body-supplied café/review IDs select records;
+`CatalogueFilters` is the strict customer filter schema below, owned by CUS-01.
+Body-supplied café/review IDs select records;
 they never prove ownership or authorization. Review IDs must be distinct and
 the selection must be nonempty and within `AI_MODERATION_REVIEWS_PER_CALL`.
 Invalid selection is rejected before admission and is never silently split.
@@ -152,7 +151,7 @@ FallbackReason = "disabled" | "usage_limited" | "unavailable" | "no_source_data"
 `feature` fixes the `data` schema and fallback discriminator; mismatched pairs
 are invalid. Moderation cannot return `source: "cache"`. Fallback is a typed
 instruction to show the ordinary authorized domain view; it contains no AI
-content and does not redefine that view's still-missing data schema. This makes
+content and does not redefine that view's domain data schema. This makes
 fallback transport independent of sales, catalogue and review pagination shapes.
 
 `disabled` covers disabled mode and missing live credentials;
@@ -202,6 +201,269 @@ attempt, and zero automatic retries. See
 Exceeding the feature-context ceiling prevents dispatch and yields fallback;
 HTTP-body overflow uses the 413 mapping. Provider-envelope overflow
 or invalid output yields fallback and never a cached success.
+
+## Customer catalogue and detail boundary
+
+Behaviour belongs to [CUS-01](stories/CUS-01-browse-cafes.md) and
+[CUS-02](stories/CUS-02-cafe-page.md). All customer routes require a Customer
+session and the verified workspace; all record reads repeat current scope/RLS
+checks. These are domain read schemas, not owner edit permissions or AI bounds.
+
+```text
+DrinkType = "coffee" | "matcha" | "tea" | "chocolate" | "juice" | "other"
+Area = "Central" | "North" | "South" | "East" | "West"
+CatalogueFilters = {
+  timeMode: "all" | "now" | "at", at: Instant | null,
+  drinkType: DrinkType | null, area: Area | null
+}
+RatingSummary = {average: number | null, visibleReviewCount: Count}
+OpeningInterval = {weekday: Weekday, opensAt: LocalTime,
+  closesAt: LocalTime, closesNextDay: boolean}
+LocalTime = valid 24-hour "HH:mm", minute precision
+CafeCard = {cafeId: Ref, name: string, area: Area,
+  rating: RatingSummary, isOpen: boolean, closingSoon: boolean,
+  nextOpeningAt: Instant | null}
+MenuItem = {itemId: Ref, name: string, drinkType: DrinkType,
+  priceCents: Count, soldOut: boolean}
+CafeDetail = {cafeId: Ref, name: string, description: string, area: Area,
+  pickupAddress: string, rating: RatingSummary,
+  openingHours: OpeningInterval[], menu: MenuItem[]}
+PublicReview = {reviewId: Ref, rating: integer 1..5, text: string,
+  submittedAt: Instant, authorLabel: "Verified customer"}
+Page<T> = {requestId: Ref, items: T[], page: positive safe integer,
+  pageSize: 20, hasNextPage: boolean}
+```
+
+Every filter key is required in JSON. For `timeMode: "at"`, `at` is a UTC
+instant at minute precision (seconds zero, no fractional seconds); other modes
+require `at: null`. The UI converts a chosen Singapore date/minute to that
+instant. Exact enum spelling/case applies: no trimming, case folding, unknown
+keys or implicit type coercion. Reset is
+`{timeMode: "all", at: null, drinkType: null, area: null}`.
+Active time, drink and area predicates combine with AND. A drink match includes
+sold-out menu items of that type. AI availability and order creation apply their
+own additional constraints. Time-mode `now` uses the database clock. Card
+open/closed/closing-soon state always describes now, even in an open-at result.
+
+Hours are recurring weekly Singapore-local intervals anchored on `weekday`.
+Opening is inclusive and closing exclusive. `closesNextDay` moves closing to
+the following calendar day, including Sunday→Monday. Intervals have positive
+duration; overnight closing is at or before the starting local time (at most
+24 hours). Overlaps, including across the week boundary, are invalid. Adjacent
+intervals form one continuous opening for closing-soon and pickup-cutoff
+calculations. Empty hours mean closed with no next opening. Opening-hours
+management is OWN-02; this read contract adds no exception/holiday editor.
+
+`isOpen` uses those intervals; `closingSoon` is true only when the remaining
+continuous opening time is greater than zero and at most 30 minutes. The next
+opening is the earliest future closed→open transition, or null when none exists.
+For a closed card with a next opening, use “Cafe opens at X time”, substituting
+`D MMM YYYY, h:mm AM/PM SGT`; otherwise use “No opening hours scheduled”.
+Closed cards remain greyed out and clickable. Open cards in their final
+30 minutes, including exactly 30, show “closing soon”. No label invents a time.
+
+CUS-01 owns the rating formula; this is its transport/display summary: sum
+original integer ratings of pending/kept
+reviews for the café and divide by their count. Hidden reviews never contribute.
+Zero count gives `average: null` and “No reviews yet”; otherwise `average` is
+the mean rounded half-up to one decimal for display. Sorting compares exact
+unrounded means, then visible-review count descending, then café reference
+ascending by Unicode code point. Unrated cafés follow rated cafés. This same
+ordering governs catalogue pages and Brew Finder's ordinary fallback, without
+a separate AI ranking formula. Moderation changes affect subsequent reads.
+
+Money is SGD integer cents in storage and JSON; menu prices are 1–1,000,000
+cents. Render all menu prices, line totals and order totals as `S$` dollars
+with exactly two decimal places (`450` cents → `S$4.50`). Arithmetic uses cents.
+Owner menu field validation/editing remains OWN-03. Customer profile fields
+are only those in CafeCard/CafeDetail; public pickup address is intentional.
+Menu arrays sort by name then item reference, by Unicode code point; opening
+intervals sort by weekday then opening time. Public reviews exclude author
+references/emails/account profiles, hidden state and Admin reasons. No current
+profile lookup is needed to render “Verified customer”.
+
+| Method/path | Query | Successful response |
+| --- | --- | --- |
+| `GET /api/customer/cafes` | `timeMode`, `at`, `drinkType`, `area`, `page` | HTTP 200 `Page<CafeCard>`, rating order. |
+| `GET /api/customer/cafes/{cafeId}` | None | HTTP 200 `{requestId, cafe: CafeDetail}`. |
+| `GET /api/customer/cafes/{cafeId}/reviews` | `page` | HTTP 200 `Page<PublicReview>`, submitted time descending then review reference ascending. |
+
+Queries allow only the listed keys, once each. Omitted `timeMode` defaults to
+`all`; omitted nullable filters default to null, represented by absence rather
+than a literal `"null"` string. `at` must be present only for mode `at`.
+`page` defaults to 1 and explicitly parses only decimal digits representing a
+positive safe integer, without signs, whitespace, fractions or leading zeroes.
+This URL parsing is distinct from JSON's no-coercion rule. Unknown/duplicate
+keys or invalid values return `400 INVALID_REQUEST`. Pages contain up to 20
+items, with `hasNextPage` based on authorized matches only; a valid out-of-range
+page is empty. No record-scope failure or source failure is disguised as empty
+data. Café pages are `/customer/cafes` and `/customer/cafes/{cafeId}`; shared
+entry/redirect/navigation behaviour remains SYS-01–SYS-03.
+
+## Customer pickup and order boundary
+
+Customer creation is [CUS-03](stories/CUS-03-pre-order.md), own reads/cancellation
+are [CUS-04](stories/CUS-04-my-orders.md), suspension mutation is
+[ADM-02](stories/ADM-02-cafe-suspension.md). The shared state vocabulary used
+by these contracts is `pending`, `accepted`, `ready`, `collected`, `rejected`,
+`cancelled`. Owner queue action contracts remain OWN-05; no owner endpoint is
+defined here. Customer page paths are `/customer/cafes/{cafeId}/pre-order`
+and `/customer/orders`.
+
+Pickup choices are 15-minute slots aligned to Singapore midnight, on the current
+Singapore date and the next six dates. Each must be at least 15 minutes after
+the database clock, inside a continuous opening interval and at or before its
+last-pickup cutoff. The cutoff is interval closing minus the café's configured
+integer 0–180 minutes (default 15); equality at the cutoff is allowed, but
+closing itself is always excluded, including a zero cutoff. Overnight slots
+use their actual pickup date/instant; an interval can start on the prior date.
+No slots, including past/horizon/cutoff exclusions, means an empty choices array.
+Owner rule editing remains OWN-04. There is no capacity reservation.
+
+```text
+CreateOrder = {cafeId: Ref, pickupAt: Instant,
+  items: [{itemId: Ref, quantity: integer 1..20}],
+  expectedTotalCents: Count, submissionKey: UUID}
+OrderItem = {itemId: Ref, name: string, quantity: integer 1..20,
+  unitPriceCents: Count, lineTotalCents: Count}
+Order = {orderId: Ref, cafeId: Ref, cafeName: string, placedAt: Instant,
+  pickupAt: Instant, state: "pending" | "accepted" | "ready" |
+  "collected" | "rejected" | "cancelled", items: OrderItem[],
+  totalCents: Count, currency: "SGD",
+  cancellationReason: "Cafe is suspended" | null}
+```
+
+`items` contains 1–20 distinct item references from this one café. Reject
+duplicate references rather than merging quantities. Quantities are JSON
+integers 1–20 inclusive, permitting bulk pickup without an unlimited per-item
+amount. The server derives actor/workspace, validates current café/item scope
+and sold-out/removal state, revalidates the selected slot and calculates the
+total from current menu prices. `expectedTotalCents` confirms the displayed
+total, never supplies a price. A different server total gives
+`409 STATE_CONFLICT` without creating an order, with UI feedback to review
+current prices before submitting again. Invalid schema/grid/horizon/lead-time
+gives `400 INVALID_REQUEST`; an in-scope sold-out/removed item or slot no longer
+permitted by current hours/rules gives `409 STATE_CONFLICT`. Missing/foreign
+café/item references give `404 NOT_FOUND`; an ineligible café also gives that
+same record-scope failure. Source failure is `503 SOURCE_UNAVAILABLE`.
+
+New orders start in `pending`. Store café-name, item-name and unit-price
+snapshots at creation. Line total is
+quantity times unit price; total is their sum. Snapshot item arrays sort by
+item reference. Later menu/name/price/hour/rule changes do not change an existing
+order's pickup, price or item snapshots. Reads of retained own orders do not
+require the live café to remain publicly eligible and disclose no private
+owner/Admin data. All amounts render as dollars to two decimal places under
+the money contract above. No online payment is added.
+
+The submission key is a lowercase canonical UUID scoped to the verified
+Customer, distinct from `requestId`. Compare normalized content consisting of
+the café, UTC pickup instant, expected total and item/quantity set ordered by
+item reference. Creation, snapshots and key record commit atomically. The same
+key/content returns the existing currently readable own order with HTTP 200,
+even if its state or current catalogue has since changed; it creates nothing
+and never revives an order. Different content gives `409 STATE_CONFLICT`.
+Concurrent identical requests produce exactly one order. Failed creation
+persists neither order, items nor key. Keep the successful key with order
+history. New work always requires fresh current eligibility checks; replay
+requires current authenticated Customer ownership and workspace checks.
+
+| Method/path | Request | Successful response |
+| --- | --- | --- |
+| `GET /api/customer/cafes/{cafeId}/pickup-slots` | No query/body | HTTP 200 `{requestId, pickupSlots: Instant[]}`, chronological permitted slots over the seven-date horizon. |
+| `POST /api/customer/orders` | `CreateOrder` | HTTP 201 `{requestId, order: Order}`; replay HTTP 200 with the same shape. |
+| `GET /api/customer/orders` | Only optional `page`, parsed as above | HTTP 200 `Page<Order>`, placed time descending then order reference ascending. |
+| `GET /api/customer/orders/{orderId}` | No query/body | HTTP 200 `{requestId, order: Order}`. |
+| `POST /api/customer/orders/{orderId}/cancel` | Exactly `{}` | HTTP 200 `{requestId, order: Order}`. |
+
+The state/conflict matrix below records shared state effects, not new Customer
+or Admin queue permissions. Each request repeats server authorization and RLS.
+All actions against an in-scope order in another state, including repeat
+cancellation, give `409 STATE_CONFLICT` and change nothing. Unknown/foreign
+orders give indistinguishable `404 NOT_FOUND`.
+
+| Actor/action | Allowed prior state | New state | Existing responsibility |
+| --- | --- | --- | --- |
+| Customer cancel | pending | cancelled, null cancellation reason | CUS-04 |
+| Owner accept | pending | accepted | OWN-05 |
+| Owner reject | pending | rejected | OWN-05 |
+| Owner mark ready | accepted | ready | OWN-05 |
+| Owner mark collected | ready | collected | OWN-05 |
+| Admin suspension consequence | pending, accepted, ready | cancelled, fixed “Cafe is suspended” | ADM-02 applies CUS-04.5 |
+| Suspension against terminal orders | collected, rejected, cancelled | Unchanged, including prior cancellation reason | ADM-02/CUS-04.5 |
+| Un-suspension | Any retained order state | Unchanged | ADM-02 |
+
+State-changing operations serialize on café/order state. Acceptance versus
+Customer cancellation admits exactly one transition from pending; the loser
+gets `409 STATE_CONFLICT`. Collection before suspension preserves collected;
+suspension before collection cancels and collection fails with that conflict.
+Creation before suspension is included in its cancellations; creation after
+suspension is denied. Suspension atomically changes café state, cancels every
+pending/accepted/ready order and appends exactly one Admin audit entry, or rolls
+all effects back. Terminal orders never revive or change. No automatic expiry,
+no-show, refund, rescheduling or payment operation is introduced. Transactional
+application failures return the shared `500 INTERNAL_ERROR` with no partial
+mutation; source-read failures use `503 SOURCE_UNAVAILABLE`.
+
+## Customer review boundary
+
+[CUS-05](stories/CUS-05-review-order.md) owns submission fields/eligibility;
+[ADM-03](stories/ADM-03-review-moderation.md) owns moderation and immutability.
+The Review form path is `/customer/orders/{orderId}/review`, reached from My
+orders. It remains available for an own collected purchase after café suspension;
+it does not disclose the live restricted café page. No review is allowed for a
+pending/accepted/ready/rejected/cancelled order. Creation and one-review uniqueness
+commit together; the server derives author/café/workspace from session/order.
+
+```text
+CreateReview = {rating: integer 1..5, text: string}
+OwnReview = {reviewId: Ref, orderId: Ref, rating: integer 1..5,
+  text: string, submittedAt: Instant,
+  moderationState: "pending" | "kept" | "hidden"}
+```
+
+Text is required, 1–1,000 Unicode code points, and not whitespace-only under
+ECMAScript `trim()` whitespace rules. Valid text is stored/rendered exactly as
+submitted; nonblankness validation never trims stored content, normalizes,
+truncates or interprets markup. Fractional/out-of-range ratings, invalid text,
+extra keys or wrong types give `400 INVALID_REQUEST`. The form retains entered
+values on invalid input and shows safe feedback based on these field rules,
+without returning submitted values in error messages. These input limits are
+independent of integration Label/Reason bounds used by AI.
+
+| Method/path | Request | Successful response |
+| --- | --- | --- |
+| `POST /api/customer/orders/{orderId}/review` | `CreateReview` | HTTP 201 `{requestId, review: OwnReview}`, initially pending. |
+| `GET /api/customer/orders/{orderId}/review` | No query/body | HTTP 200 `{requestId, review: OwnReview}`, including the caller's hidden review; absent review gives 404. |
+
+An own non-collected order or any existing review gives `409 STATE_CONFLICT`;
+every second valid submission, including identical/concurrent attempts, creates
+no review and never upserts. A missing/foreign order gives indistinguishable
+`404 NOT_FOUND`. Hiding/restoring a review never releases its unique order
+reference. No customer edit/delete or moderation-state write is supported.
+Visible public review projections remain the catalogue boundary above.
+
+## Stretch favourite boundary
+
+[CUS-07](stories/CUS-07-favourite-cafes.md) is optional, outside MVP. Save controls
+appear in Browse cafés and Café page; a Saved view within Browse returns the
+personal list without adding a screen. Server-persisted associations survive
+sign-out and devices, with unique Customer/café identity and original server
+saved time. Actor/workspace cannot be supplied by the caller.
+
+| Method/path | Request | Successful response |
+| --- | --- | --- |
+| `POST /api/customer/favourites` | Exactly `{cafeId: Ref}` | HTTP 200 `{requestId, saved: true}`, including repeat save of a currently eligible café. |
+| `GET /api/customer/favourites` | Only optional `page`, parsed as above | HTTP 200 `Page<{cafe: CafeCard, savedAt: Instant}>`, saved time descending then café reference ascending. |
+
+Only the verified Customer reads/saves its own associations, subject to matching
+actor/café workspace and RLS. Saving/re-saving checks current café eligibility;
+ineligible/missing/foreign cafés give indistinguishable `404 NOT_FOUND`.
+Concurrent repeat saves preserve one association and its original saved time.
+Ineligible cafés are omitted from list content and pagination without deleting
+the association; restored eligibility makes them appear again at their original
+saved position. A saved reference never grants catalogue access. Removal,
+sharing, notifications and public favourite counts are outside this contract.
 
 ## SoCLaaS transport
 
@@ -277,14 +539,34 @@ BrewResult = {
 }
 ```
 
-`candidates` and each `items` array contain distinct references. Selection,
-size, eligible item rules and result-count requirements must come from
-CUS-01–CUS-02/CUS-06; the schema supplies no invented recommendation count.
-An empty eligible set makes no provider call. Returned café IDs must be distinct;
+`candidates` and each `items` array contain distinct references. CUS-06 selects
+from the full CUS-01 filtered catalogue, independently of browser pagination:
+discard cafés without an available (not sold-out) matching menu item, then take
+the first 20 in CUS-01 rating order. If a drink type is selected, candidate items
+must match it. For each café take the first 20 available matching items ordered
+by name then item reference, comparing Unicode code points. These are explicit
+selection caps, not permission to truncate source strings. Candidate/item labels
+must satisfy Label bounds; invalid/oversized selected content or a serialized
+context above the security ceiling yields the existing unavailable fallback.
+No disallowed record is substituted to fill a list.
+
+An empty recommendable set makes no provider call and uses `no_source_data`.
+Its ordinary filtered catalogue can still contain sold-out-only cafés; the
+fallback remains that complete paginated CUS-01 catalogue. A valid nonempty
+AI result contains 1–5 suggestions, never more than the supplied café count.
+The literal prompt below remains unchanged; a response above the count bound
+is invalid rather than truncated or repaired. Returned café IDs must be distinct;
 each item must belong to its returned café and supplied candidate set. Array
 order is the ranking. Resolve names/navigation from authorized domain records,
-never model-generated URLs. Recheck eligibility before return, including caches;
-an invalid suggestion invalidates the entire AI result.
+never model-generated URLs. Recheck eligibility, current filter membership and
+item availability before return, including caches; an invalid suggestion
+invalidates the entire AI result and uses the existing unavailable fallback.
+
+A schema-valid empty suggestions array from a nonempty source is a successful
+HTTP 200 AI envelope with `data: {suggestions: []}`, not a new fallback reason.
+It can enter the ordinary same-actor success cache. Show “No close match found”
+with the ordinary authorized rating-sorted filtered catalogue separately; make
+no second call and fabricate no suggestion. Source failure still gives 503.
 
 Exact system message:
 
@@ -408,18 +690,22 @@ browser results, usage logs or audit payloads. No secret is a key component.
 | Identity | Canonical preimage |
 | --- | --- |
 | Brew input fingerprint | `{query, filters}` after strict validation; exact query and story-defined normalized filters. No normalization of filters is invented here. |
-| Brew source revision | Complete authorized selected candidate snapshot plus story-defined rating/fallback-order inputs and filter-relevant catalogue state. A content change or changed source selection invalidates reuse. |
+| Brew source revision | `{catalogue, candidates, candidateOrder, itemOrders}`. `catalogue` contains every currently authorized café before ordinary filters: café reference/name/area/eligibility, weekly intervals, current open state and next state-change instant, and all current menu references/names/drink types/sold-out flags; include visible-review rating sum/count per café. `candidates` is the complete selected BrewInput candidate snapshot. `candidateOrder` and `itemOrders` preserve the selection order as arrays of café/item references. Set snapshots sort by reference; content/selection/order or current open-state boundary changes invalidate reuse. No raw reviews, customer identity or private fields enter this source snapshot or the provider context. |
 | Prep input fingerprint | `{cafeId, businessDate}` derived from the authorized scope and database day. `refresh` bypasses lookup; it is not a distinct data variant. |
 | Prep source revision | Complete `PrepInput`, including period, aggregate IDs, labels and counts; changes invalidate reuse. |
 | Model identity | `{provider, baseUrl, model, reasoningEffort}` from validated server configuration, excluding credentials. |
-| Contract identity | `{feature, version: "1", systemPrompt}` with the exact prompt above. Any schema/semantic change requires a new version before results can be reused. |
+| Contract identity | `{feature, version, systemPrompt}` with the exact prompt above. Brew Finder uses version `"2"` for the strict filters, selection/count/availability and empty-result semantics; Prep Advisor and Moderation Assistant retain `"1"`. Any further schema/semantic change requires a new feature version before results can be reused. Stored-envelope `version` below remains `"1"`; it is a separate serialization version. |
 | Cache key | Digest of `{environment, feature, scope, inputFingerprint, sourceRevision, modelIdentity, contractIdentity}`; nested identity values are their digests. |
 
 `scope` is `{actorId}` for Brew and `{cafeId, businessDate}` for Prep, obtained
 on the server. Source revisions are content fingerprints, not an unmaintained
-timestamp or caller-supplied version. The complete rating/filter snapshot cannot
-be finalized until its story contract exists; absent source-version inputs
-cannot silently produce an eligible Brew cache key.
+timestamp or caller-supplied version. Brew source fingerprints are rebuilt from
+current authorized domain data and clock-derived opening state before reuse;
+missing source-version inputs cannot silently produce an eligible cache key.
+Catalogue pagination never narrows Brew's source. Relative time filters do not
+hash the ever-changing clock itself: current state, its next boundary and current
+candidate membership ensure interval boundaries invalidate advice. Exact query
+content remains unchanged; filters use the canonical JSON values above.
 
 Strict stored payload:
 
@@ -463,9 +749,10 @@ These are required contract/evaluation cases.
 ## Out of scope
 
 This specification adds no app code, executable tests, migrations, hosted-service
-changes, payments, extra roles, live provider probes, deployment or stretch
-features. It does not choose missing order/café/review lifecycle behavior or
-sales calculations. No numeric performance or classification-accuracy target
+changes, payments, extra roles, live provider probes or deployment. It defines
+only CUS-07's specified optional favourite boundary, not other stretch APIs,
+unspecified owner edit/queue behaviour or sales calculations. No numeric
+performance or classification-accuracy target
 is inferred. Supabase SDK/domain contracts remain subject to their owning
 stories; this file does not expose a secret-key browser endpoint.
 

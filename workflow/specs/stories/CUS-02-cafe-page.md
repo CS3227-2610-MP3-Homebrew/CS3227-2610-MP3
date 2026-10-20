@@ -12,6 +12,13 @@ visible reviews before deciding what to order and when to visit. The page
 inherits catalogue eligibility, workspace scope and Singapore time semantics;
 it cannot expose private owner information or hidden reviews.
 
+The [customer catalogue/detail boundary](../INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary)
+defines the exact page/API paths and public field projections. Café content is
+name, description, area, public pickup address, opening hours and CUS-01's
+rating/count. Menus show name, drink type, price and sold-out state. Public
+reviews show original rating/text, submitted time and “Verified customer”,
+without account names, IDs or emails. Owner editing remains OWN-02/OWN-03.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.
@@ -28,10 +35,10 @@ it cannot expose private owner information or hidden reviews.
 
 #### Acceptance criteria
 
-- **`CUS-02.1`:** Given an eligible café in the signed-in Customer's workspace, when its café page is opened, then it shows that café's menu and prices, opening hours and customer-visible reviews using the authorized café's data.
+- **`CUS-02.1`:** Given an eligible café in the signed-in Customer's workspace, when `/customer/cafes/{cafeId}` is opened, then it shows only the public fields above through the canonical read schemas, with menus ordered by name then item reference, hours by weekday/opening time, CUS-01's rating summary and SGD prices rendered as dollars to exactly two decimal places from stored integer cents.
 - **`CUS-02.2`:** Given an eligible café with both sold-out and available menu items, when its page is read, then both appear and sold-out items are identified as sold out; sold-out items are not silently removed from the displayed menu.
 - **`CUS-02.3`:** Given opening hours for the café, when the page displays them, then they use the Singapore business-time interpretation from INTEGRATION-SPEC rather than the browser's local timezone.
-- **`CUS-02.4`:** Given pending, kept and hidden reviews for an eligible café, when the customer-visible review section is read, then pending and kept reviews are available and hidden reviews are absent, under ADM-03; reviews from another café or workspace are not included.
+- **`CUS-02.4`:** Given pending, kept and hidden reviews for an eligible café, when its public reviews are read, then only pending/kept reviews appear, newest submission first then review reference ascending, 20 per page, with the public fields and fixed author label above; hidden/foreign reviews and reviewer account identities are absent under ADM-03.
 - **`CUS-02.5`:** Given a review hidden or restored through ADM-03, when a subsequent authorized café-page read occurs, then its visibility reflects that moderation state; hiding or restoring does not rewrite the original rating or review text.
 - **`CUS-02.6`:** Given a missing, pending, rejected, suspended or other-workspace café reference, when a Customer attempts a direct café-page read, then no protected café, menu, hours or reviews are disclosed; JSON record reads use the shared indistinguishable `404 NOT_FOUND` scope boundary.
 - **`CUS-02.7`:** Given a café seen earlier in browse or AI results, when it becomes ineligible before a later page read, then the page rechecks eligibility and does not use the old result as authorization.
@@ -79,9 +86,9 @@ to ADM-03. This page does not grant menu or profile editing.
 
 ## Out of scope
 
-No additional café-profile fields, reviewer identity disclosure, rating formula,
-payment flow or independent review mutation is introduced. Customer page
-reading does not expand the owner/Admin permissions defined elsewhere.
+Only the explicitly listed public café fields are disclosed. Ratings use the
+single CUS-01 formula. Payment and independent review mutations are outside
+this page; reading does not expand owner/Admin permissions.
 
 ## Assumptions
 
