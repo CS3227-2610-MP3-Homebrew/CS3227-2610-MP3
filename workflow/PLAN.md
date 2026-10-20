@@ -15,7 +15,10 @@ Customer story sources: [CUS-01](specs/stories/CUS-01-browse-cafes.md),
 [CUS-05](specs/stories/CUS-05-review-order.md),
 [CUS-06](specs/stories/CUS-06-brew-finder.md) and
 [CUS-07](specs/stories/CUS-07-favourite-cafes.md).
-Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Customer adds five pairs and Admin three, with nine specification tasks across the plan.
+Shared story sources: [SYS-01](specs/stories/SYS-01-sign-up.md),
+[SYS-02](specs/stories/SYS-02-sign-in-out.md) and
+[SYS-03](specs/stories/SYS-03-role-navigation.md).
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Shared adds one pair, Customer five and Admin three: 21 pairs total, with nine specification tasks across the plan.
 Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
@@ -38,7 +41,7 @@ Changed criteria and new tasks require their governing specs on master before ex
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- CUS-01–CUS-07 and ADM-01–ADM-04 story specs exist; owner/account story contracts and the named customer field/API decisions remain
+- CUS-01–CUS-07 and ADM-01–ADM-04 story specs exist; owner story contracts and the named customer field/API decisions remain
   prerequisites where named. New file scopes below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
@@ -525,7 +528,44 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] All three source IDs have authoritative story/HTTP/navigation contracts with no invented account lifecycle or permission.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
-- **Status:** awaiting-decision
+- **Status:** done
+- **Issue:** none (spec task)
+
+One pair owns the 28 Shared account/session/navigation criteria. T-08 retains
+technical role/workspace enforcement, T-10 proxy refresh and streaming gates,
+and T-25/T-27 demo/maintenance provisioning. Role-domain screens keep their
+existing owners; Shared supplies account forms and role shells/entry points.
+
+### T-50: Test Shared sign-up, sessions and role navigation
+
+- **Depends on:** T-34, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** SYS-01.1, SYS-01.2, SYS-01.3, SYS-01.4, SYS-01.5, SYS-01.6, SYS-01.7, SYS-01.8, SYS-01.9; SYS-02.1, SYS-02.2, SYS-02.3, SYS-02.4, SYS-02.5, SYS-02.6, SYS-02.7, SYS-02.8, SYS-02.9, SYS-02.10, SYS-02.11; SYS-03.1, SYS-03.2, SYS-03.3, SYS-03.4, SYS-03.5, SYS-03.6, SYS-03.7, SYS-03.8 — [sign-up criteria](specs/stories/SYS-01-sign-up.md#acceptance-criteria), [session criteria](specs/stories/SYS-02-sign-in-out.md#acceptance-criteria), [navigation criteria](specs/stories/SYS-03-role-navigation.md#acceptance-criteria).
+- **Description:** Derive failing-first tests from [SYS-01](specs/stories/SYS-01-sign-up.md#requirements), [SYS-02](specs/stories/SYS-02-sign-in-out.md#requirements) and [SYS-03](specs/stories/SYS-03-role-navigation.md#requirements), using the canonical [account HTTP/browser contracts](specs/INTEGRATION-SPEC.md#shared-account-contracts).
+- **Work:** Cover minimal labelled forms, explicit Customer/owner selection, exact email/password/strict-body validation, pending/repeat-submit behavior, retained email/role and cleared passwords after submitted failure. Test complete registration, duplicate/concurrent registration, bounded cleanup of only the newly created identity after profile failure (including failed cleanup), completed-account/failed-session notice and active-account conflict. Cover normal main/kit sign-in for all roles, generic bad credentials, absent/invalid profiles versus source outages, provisional-cookie clearance, persistent cookie/refresh behavior, expired versus absent sessions, local/idempotent sign-out and unconfirmed remote revocation. Exercise exact account routes, methods/Origin/body/media failures, cookie effects, private/no-store responses and content-free errors/logs. Test fixed homes, root/account-form/wrong-role redirects, role-only MVP navigation, inert allowlisted notices, ignored return destinations, no-café owner application entry and safe retry/account-unavailable states without protected shell content. Use local synthetic multi-role/main/kit sessions, controlled Auth/profile faults and foundation fixtures; preserve demo-control integration while leaving kit creation/once-shown credential behavior to T-24/T-25. Domain content may use testing-owned shells/fixtures without implementing or claiming domain criteria.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/accounts/` and `tests/{unit,integration,e2e}/navigation/`, with browser cases only under `tests/e2e/accounts/` and `tests/e2e/navigation/`; testing-owned synthetic account/session/profile/cookie and fault fixtures. Database/route files use `// @vitest-environment node`. Extend existing local Supabase/session/role harnesses; testing owns required fixtures/mocks/test configuration.
+- **Prerequisite:** T-34 Shared story/account contracts on master; T-08/T-10 provide role/workspace/session/streaming foundations. Main/kit credentials can use local fixtures without T-25 provisioning. T-25 owns the Create demo kit control/credential flow mounted on the shared sign-in surface; its integrated presence is evidenced when that surface is available, without making account test authoring depend on kit creation. Customer/owner/Admin domain content is outside this pair and is not a prerequisite for isolated shell tests.
+- **Acceptance criteria:**
+  - [ ] All 28 listed criteria have deterministic named tests and recorded failing-first evidence, including partial provisioning, cookie/session/source failures, transport denials, main/kit role navigation and fixed destinations.
+  - [ ] Tests preserve foundation SYS/SEC and role-domain criterion ownership, use local Supabase/synthetic faults only and distinguish shell evidence from later demo-control/domain integration evidence.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
+- **Status:** todo
+- **Issue:** unassigned
+
+### T-51: Implement Shared sign-up, sessions and role navigation
+
+- **Depends on:** T-50, T-34, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** SYS-01.1, SYS-01.2, SYS-01.3, SYS-01.4, SYS-01.5, SYS-01.6, SYS-01.7, SYS-01.8, SYS-01.9; SYS-02.1, SYS-02.2, SYS-02.3, SYS-02.4, SYS-02.5, SYS-02.6, SYS-02.7, SYS-02.8, SYS-02.9, SYS-02.10, SYS-02.11; SYS-03.1, SYS-03.2, SYS-03.3, SYS-03.4, SYS-03.5, SYS-03.6, SYS-03.7, SYS-03.8 — [sign-up criteria](specs/stories/SYS-01-sign-up.md#acceptance-criteria), [session criteria](specs/stories/SYS-02-sign-in-out.md#acceptance-criteria), [navigation criteria](specs/stories/SYS-03-role-navigation.md#acceptance-criteria).
+- **Description:** Implement the [Shared account experience](specs/INTEGRATION-SPEC.md#shared-account-contracts) and [own-role navigation](specs/stories/SYS-03-role-navigation.md#requirements), reusing protected profile/workspace enforcement and request-time authentication.
+- **Work:** Add `/sign-up`, `/sign-in` and the three specified `/api/auth/sign-up`, `/api/auth/sign-in`, `/api/auth/sign-out` POST handlers with strict server Zod validation, exact transport/errors/no-store results and server-set/cleared cookies. Integrate Customer/owner-only main-workspace registration with the existing protected profile boundary, safe duplicate/partial-creation compensation, explicit completed-account/failed-session outcome and unchanged active-account conflicts. Resolve main/kit sign-in through the verified profile before persistent session success; separate bad credentials, source outages and unavailable profiles, and clear only the failed attempt's provisional cookies. Implement this-browser/idempotent sign-out with honest remote-revocation uncertainty. Add form pending/field/safe failure states and fixed notice text. Integrate root/role/account-form routing, fixed own-role homes, role-only MVP navigation and the minimal owner no-café application entry, using T-10 gates and no protected data in unverified shells. Provide the sign-in integration surface for T-25's owned Create demo kit control without duplicating its provisioning or credential panel. Reuse existing domain pages when present; own only role shells/entry points, without fabricating catalogue, sales, queue or moderation data. Preserve domain API errors and separate authorization; add no return-to, role/workspace switching or account lifecycle beyond these specs.
+- **File scope:** Proposed `src/app/sign-up/`, `src/app/sign-in/`, `src/app/api/auth/{sign-up,sign-in,sign-out}/route.ts`, shared account/navigation components and server-only account/session adapters under `src/server/auth/`; extend existing `src/app/page.tsx`, role layouts/shells under `src/app/{customer,owner,admin}/`, `src/app/_components/role-gate.tsx` and `src/proxy.ts` only as needed for approved destinations/session outcomes. Additive protected-profile provisioning migrations only if required by SYS-01; preserve T-08 ownership. Serialize shared auth/layout/migration edits with foundation and role owners. No acceptance tests/fixtures/mocks, domain screen content or demo provisioning authoring.
+- **Prerequisite:** T-50 failing-first evidence and merged T-34 contracts; reuse T-08/T-10 protections. T-25 supplies its owned demo-control integration; role stories supply domain content independently. Local account/session/shell implementation uses fixtures for existing main/kit roles and does not require demo provisioning or domain screens first; integrated demo-control evidence remains explicit before claiming full SYS-02.1 acceptance.
+- **Acceptance criteria:**
+  - [ ] T-50's 28-criterion suite passes, including exact account/cookie outcomes, safe partial creation and source failures, fixed homes and role-only navigation; integrated SYS-02.1 demo-control presence is evidenced with its owning surface.
+  - [ ] Existing role/workspace/RLS/session protections and domain ownership remain intact; no unapproved role/workspace assignment, caller-selected redirect, secret response/log data, automatic retry or fabricated domain data is introduced.
+  - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase only; the issue-scoped [handoff](templates/handoff.md) records actual checks and integration evidence.
+- **Status:** todo
 - **Issue:** unassigned
 
 ## Customer
@@ -824,18 +864,18 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-30: Test moderation queue and Admin audit log
 
-- **Depends on:** T-08, T-10, T-16, T-37
+- **Depends on:** T-08, T-10, T-16
 - **Owner role:** testing
 - **Requirements:** ADM-03.1, ADM-03.2, ADM-03.3, ADM-03.4, ADM-03.5, ADM-03.6, ADM-03.7, ADM-03.8, ADM-03.9, ADM-03.10, ADM-03.11, ADM-03.12, ADM-03.13, ADM-03.14, ADM-03.15, ADM-03.16, ADM-03.17, ADM-03.18 — [ADM-03 criteria](specs/stories/ADM-03-review-moderation.md#acceptance-criteria).
 - **Description:** Derive failing-first tests for [manual moderation and audit screens](specs/stories/ADM-03-review-moderation.md#screens), [permissions](specs/stories/ADM-03-review-moderation.md#permissions) and the ordinary moderation route, independently of AI triage.
 - **Work:** Test initial pending/kept customer RLS visibility and hidden exclusion without inventing rating formulas. Cover Pending/Kept/Hidden tabs, security-configured page size, URL state, ordering/ties, suspended-café reviews, Singapore timestamps, row fields, escaped content and the fixed quick-pick reasons linked from [ADM-04](specs/stories/ADM-04-moderation-assistant.md#user-experience). Test the full Keep/Hide/Restore transition matrix and exact responses, reason bounds/preservation, strict HTTP/origin/Ref/action-only bodies, session/role/workspace denials, stale/concurrent actions and audit rollback. Assert immutable text/rating, denied customer edit/delete and unchanged reviews on failures. Test workspace audit order, 50-row URL pagination/action filters, seven action types, exact columns/target labels, scoped Admin-email access, excluded review text/AI events, append-only history and retention. Use contract-derived local café-action audit fixtures without requiring café mutations to be implemented or claiming their ADM criteria.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/moderation/` and `tests/{unit,integration,e2e}/audit/` unit and local database/route cases, with browser cases under `tests/e2e/moderation/` and `tests/e2e/audit/`; testing-owned synthetic review/café/Admin audit and retention fixtures. Extend shared foundation harnesses.
-- **Prerequisite:** BLOCKED: T-37 must finalize CUS-05 review creation/field constraints while preserving ADM-03's initial pending state and immutability. Contract-derived local review fixtures suffice for this pair; T-45 Customer review creation/screens are not a prerequisite. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
+- **Prerequisite:** The [CUS-05 review contract](specs/stories/CUS-05-review-order.md#requirements) and [Customer review boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary) define rating/text limits, exact text preservation, collected-order eligibility, strict creation/read schemas, duplicate/conflict outcomes and initial pending state while preserving ADM-03 immutability. Contract-derived local review fixtures suffice for this pair; T-45 Customer review creation/screens are not a prerequisite. CUS-01/CUS-02 rating formulas/customer display remain outside this pair, with its customer-read assertions bounded by RLS/SYS-05.3. T-08/T-10 supply workspace/session/streaming gates, T-16 audit/eligibility/cleanup repositories. ADM-04 already supplies the fixed quick-pick text; AI execution is not a dependency.
 - **Acceptance criteria:**
   - [ ] All 18 ADM-03 criteria have deterministic named failing-first cases, including transition races, atomic audit, workspace isolation, customer immutability and retention.
   - [ ] Common audit-screen tests cover every action without taking café criterion ownership; no tests infer review field limits or rating formulas.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results and the issue-scoped [handoff](templates/handoff.md) are recorded with local data only.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#60](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/60)
 
 ### T-31: Implement moderation queue and Admin audit log
@@ -846,12 +886,12 @@ Missing story contracts below block execution, not criterion allocation.
 - **Description:** Implement [manual moderation](specs/stories/ADM-03-review-moderation.md#requirements) and the shared read-only [Admin audit screen](specs/stories/ADM-03-review-moderation.md#screens) using foundation guards and audit persistence.
 - **Work:** Add `/admin/moderation` and `/admin/audit` with the specified tabs/filters, ordering/ties, URL pagination, Singapore display, escaped row fields, empty/conflict states and streaming role gates. Implement `POST /api/admin/reviews/{reviewId}/moderation` with strict action/reason-only validation, same-origin/session/workspace/current-state checks and exact shared errors/success bodies. Apply only pending→kept, pending/kept→hidden and hidden→kept, atomically with one append-only T-16 Admin-action entry; failure changes neither. Provide per-review reason controls with the fixed ADM-04 app-text quick picks, not model-authored reasons. Enforce immutable review text/rating, denied customer edit/delete and customer RLS visibility. Render all seven Admin action types, including T-29's café entries when available, with scoped acting-Admin email and no review text or AI-use events. Keep audit history outside AI cleanup; author no review creation, rating formulas or AI triage.
 - **File scope:** Proposed `src/app/admin/moderation/`, `src/app/admin/audit/`, `src/app/api/admin/reviews/[reviewId]/moderation/route.ts`, server-only review/audit queries and transactional operations under `src/server/`, additive review/policy migrations. Extend T-16's audit repository rather than recreate it; serialize shared layout/migrations with T-29. No tests/fixtures/mocks.
-- **Prerequisite:** BLOCKED on T-30's T-37/CUS-05 review contract prerequisite and T-30 failing-first evidence. T-08/T-10/T-16 provide shared access, streaming and audit infrastructure. Local review fixtures allow this task before T-45, avoiding a cycle through T-29/T-43. T-29 café operations may be integrated later; the common audit display is independently implementable from the ADM-01/ADM-02 audit contracts and local fixtures.
+- **Prerequisite:** T-30 failing-first evidence and T-16 audit/eligibility repositories are required. The [CUS-05 review contract](specs/stories/CUS-05-review-order.md#requirements) and [Customer review boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary) define the review field/creation constraints, initial pending state and immutability used by this pair. T-08/T-10/T-16 provide shared access, streaming and audit infrastructure. Local review fixtures allow this task before T-45, avoiding a cycle through T-29/T-43. T-29 café operations may be integrated later; the common audit display is independently implementable from the ADM-01/ADM-02 audit contracts and local fixtures.
 - **Acceptance criteria:**
   - [ ] T-30's 18-criterion suite passes, including immutable reviews, exact transitions/errors, one atomic audit, role/workspace denial and all audit display/retention cases.
   - [ ] T-28's café audit-display cases can consume this screen without duplicated screen or criterion ownership; T-32/T-33 can reuse ordinary per-review confirmation.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual checks without hosted execution.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#61](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/61)
 
 ### T-32: Test Moderation Assistant
