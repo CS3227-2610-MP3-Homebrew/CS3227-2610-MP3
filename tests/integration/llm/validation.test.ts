@@ -134,7 +134,10 @@ test("SYS-04.2, SEC-08.2: source context UTF-8 ceiling rejects before dispatch e
 test("SYS-04.2: 1000-codepoint exact query, 200-codepoint label and 128-codepoint reference remain intact", async () => {
   const api = await operations(); const f = fixture("brew_finder"); const cafeId = "😀".repeat(128); const reason = "Match";
   f.options.input = { query: "😀".repeat(1000), candidates: [{ ...input.brew_finder.candidates[0], cafeId, name: "😀".repeat(200) }] };
-  f.transport.mockResolvedValue(Response.json(envelope({ suggestions: [{ cafeId, itemId: "i1", reason }] })));
+  f.transport.mockImplementation(async (request) => {
+    f.calls.push(request);
+    return Response.json(envelope({ suggestions: [{ cafeId, itemId: "i1", reason }] }));
+  });
   expect((await api.runLlmOperation(f.options)).mode).toBe("ai");
   expect(JSON.parse((await f.calls[0].json()).messages[1].content)).toEqual(f.options.input);
 });
