@@ -13,6 +13,12 @@ The shared domain contract includes review text and a rating. Review creation
 does not confer moderation authority or permit later editing/deletion in the
 MVP.
 
+The [customer review boundary](../INTEGRATION-SPEC.md#customer-review-boundary)
+defines exact page/API paths and schemas. Rating is a required integer 1–5;
+text is required, nonblank and 1–1,000 Unicode code points. Validate trimmed
+nonblankness but preserve the exact original valid text, including whitespace
+and newlines. These are customer field limits, independent of AI schema bounds.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in using a demo-kit Customer account.
@@ -29,16 +35,16 @@ MVP.
 
 #### Acceptance criteria
 
-- **`CUS-05.1`:** Given an own collected order without an existing review and a valid review submission, when the Customer submits the Review form, then exactly one review is created for that order, its Customer and its café in the same workspace.
+- **`CUS-05.1`:** Given an own collected order without a review and a valid integer 1–5 rating plus nonblank text of 1–1,000 Unicode code points, when the Customer submits `/customer/orders/{orderId}/review`, then exactly one review is created atomically for that order/Customer/café/workspace and valid text is preserved exactly; a later café suspension does not remove this collected-purchase eligibility or grant access to the restricted café page.
 - **`CUS-05.2`:** Given an order that has not been collected, when its Customer attempts to submit a review, then no review is created; an application-owned JSON mutation uses the shared `409 STATE_CONFLICT` boundary for an in-scope order in an ineligible state.
-- **`CUS-05.3`:** Given an order already has a review, when a second submission is attempted, including concurrent submissions, then no second review can exist; the unique order reference required by SYS-06 enforces one review per order independently of the form UI.
+- **`CUS-05.3`:** Given an order already has a review, when a second valid submission is attempted, including identical retries/concurrent submissions or a hidden prior review, then `409 STATE_CONFLICT` creates no second review and never upserts; the unique order reference required by SYS-06 enforces this independently of the form. Own-review GET can confirm the prior submission, including hidden state.
 - **`CUS-05.4`:** Given another customer's order, an order outside the workspace or a missing order, when a Customer attempts review creation through a JSON endpoint, then the shared indistinguishable `404 NOT_FOUND` boundary applies, without order disclosure or review creation.
 - **`CUS-05.5`:** Given a valid review creation, when its stored relationships are inspected, then the author is derived from the session and the café/workspace from the authorized collected order; caller-supplied identities cannot attach the review to another author, order or café.
 - **`CUS-05.6`:** Given a newly created review, when its moderation state and customer-visible eligibility are read, then ADM-03's initial `pending` state and post-moderation visibility rules apply; the Customer cannot choose `kept` or `hidden` during submission.
 - **`CUS-05.7`:** Given any existing review, when its Customer attempts to edit its text/rating or delete it, then the operation is denied and the review remains unchanged under ADM-03; review creation is not an update/upsert permission.
 - **`CUS-05.8`:** Given review text containing markup, executable content or instructions, when the submitted review is displayed or later classified, then it remains untrusted data and does not execute, change access or direct moderation actions; ADM-03/ADM-04 own moderation handling.
 - **`CUS-05.9`:** Given no valid session or a wrong-role caller, when customer review creation is requested through a JSON endpoint, then the shared `401 UNAUTHENTICATED` or `403 FORBIDDEN` response applies, respectively, and no review is created.
-- **`CUS-05.10`:** Given a request violating shared origin, method, body-size, media-type or strict-JSON rules, when it is validated, then the shared safe error applies with no review creation or rewrite of an existing review.
+- **`CUS-05.10`:** Given invalid rating/text fields or a violation of shared origin, method, body-size, media-type or strict-JSON rules, when validated, then the applicable safe error applies without creation/rewrite; invalid fields use `400 INVALID_REQUEST`, entered form values remain for correction and safe field-rule feedback includes no submitted values, truncation or normalization.
 
 #### Edge cases and failure paths
 
@@ -83,9 +89,9 @@ ADM-04. This requirement adds no customer edit/delete or owner reply feature.
 
 ## Out of scope
 
-No rating scale, review length limit, reviewer-profile disclosure or domain
-retention rule is inferred from AI prompt/schema limits. Those limits are not
-customer review-field definitions. Order fulfilment remains OWN-05.
+Reviewer-profile disclosure and domain retention are not inferred from AI
+prompt/schema limits. CUS-02 owns the fixed public author label; CUS-01 owns
+rating aggregation, and order fulfilment remains OWN-05.
 
 ## Assumptions
 

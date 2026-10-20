@@ -52,6 +52,15 @@ state change. Errors and source failures use the shared status mapping.
 An empty approved-café list shows an empty state. Suspension never turns an
 unapproved café into an approved one.
 
+The [shared order race matrix](../INTEGRATION-SPEC.md#customer-pickup-and-order-boundary)
+projects CUS-04.5: suspension cancels pending/accepted/ready, preserves collected/
+rejected/cancelled and their prior reasons, and never revives orders. Creation
+committed before suspension is included; new creation after it is denied.
+Collection committed first preserves collected; suspension committed first
+cancels and subsequent collection fails with `409 STATE_CONFLICT`. The café
+change, all cancellations and exactly one Admin audit entry commit together or
+all roll back; other owner queue action contracts remain OWN-05.
+
 #### Out of scope
 
 New-order checks and order lifecycles belong to CUS-03/CUS-04/OWN-05. The suspended-owner banner belongs to OWN-02. Application decisions belong to ADM-01.

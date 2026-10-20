@@ -22,7 +22,7 @@ by rating.
 
 ## User experience
 
-- **Where it appears:** The single Brew Finder natural-language box on Browse cafés, alongside CUS-01's ordinary filters. [ASSUMPTION ASM-02] The Customer explicitly submits a search; typing alone makes no AI request, and a pending search shows a loading indicator.
+- **Where it appears:** The single Brew Finder natural-language box on Browse cafés, alongside CUS-01's ordinary filters. Search button or Enter explicitly submits; typing alone makes no AI request. A pending search shows a loading indicator and prevents concurrent duplicate submission from that form. Filter changes clear earlier advice without automatically calling AI.
 - **What the user sees:** A valid result is labelled AI-generated advice. Suggestions appear in returned ranking order, each resolving an authorized café and its suggested item with an escaped plain-text reason. A fallback shows the ordinary filtered catalogue sorted by rating and a brief safe explanation that distinguishes usage limits from disabled/unavailable AI. No internal error or exact remaining global capacity is shown.
 - **What the user must confirm:** Search itself changes no business data. Opening a suggestion uses current CUS-02 access; placing an order still requires the Customer's separate CUS-03 action and all ordinary server checks. Model advice never places an order automatically.
 
@@ -51,8 +51,16 @@ contain no raw query, prompt, output or provider body under SEC-09.
 ## Output
 
 - **Shape:** The canonical `BrewResult` contains an ordered `suggestions` array with a café reference, that café's suggested item reference and a short reason per entry. See [the authoritative schema](../INTEGRATION-SPEC.md#brew-finder--cus-06); this file does not duplicate or alter it.
-- **Validation:** Strict schema validation plus authorized café/item membership, correct parent relationship, distinct café references and integration text bounds. Recheck current eligibility before delivery, including cache hits. Invalid output rejects the complete result; never salvage selected entries or make a repair call.
+- **Validation:** Strict schema validation, 0–5 suggestions bounded by candidate count, authorized café/item membership, available matching item, correct parent relationship, distinct café references and integration text bounds. Recheck current eligibility/filter membership and item availability before delivery, including caches. Invalid output rejects the complete result; never salvage selected entries or make a repair call.
 - **Use:** Reasons render as escaped plain text, never HTML, Markdown links, executable content or trusted instructions. Names/navigation resolve from authorized domain references, never model-authored URLs. Array order is ranking; ranking/reason quality is evaluated with examples rather than treated as proven by schema validation.
+
+Candidate selection uses the entire CUS-01 filtered catalogue, independent of
+page selection: discard cafés without an available matching item, then take up
+to 20 cafés in CUS-01 rating order and up to 20 available matching items per
+café in name/reference order. Drink-filter matches can include sold-out-only
+cafés for ordinary browsing, but these are not recommendable candidates.
+The [canonical Brew boundary](../INTEGRATION-SPEC.md#brew-finder--cus-06)
+defines the exact selection and empty-source/empty-model envelopes.
 
 ## Requirements
 
@@ -64,14 +72,14 @@ contain no raw query, prompt, output or provider body under SEC-09.
 
 #### Acceptance criteria
 
-- **`CUS-06.1`:** Given a Customer on Browse cafés, when it supplies a valid query and filters and submits a search, then `POST /api/ai/brew-finder` uses the existing strict `{query, filters}` request boundary and only the currently authorized, deterministically filtered catalogue as its source; the single search box does not become a general chat or tool endpoint.
-- **`CUS-06.2`:** Given a valid nonempty recommendation result for supplied candidates, when the route returns HTTP `200` with INTEGRATION-SPEC's unchanged `brew_finder` AI envelope, then suggestions appear in returned ranking order, labelled AI-generated advice, with a short reason and suggested item for each café; names and navigation are resolved from authorized records and search creates no order or other business mutation.
+- **`CUS-06.1`:** Given a Customer on Browse cafés, when Search/Enter submits a valid query and CUS-01 filters, then `POST /api/ai/brew-finder` selects up to 20 currently authorized recommendable cafés and 20 available matching items each in the defined deterministic order, independent of catalogue pagination; typing/filter edits make no call, pending work has loading/duplicate-submit controls, and edits clear old advice. The single box is not a chat/tool endpoint.
+- **`CUS-06.2`:** Given a valid result for supplied candidates, when HTTP 200 returns the unchanged `brew_finder` AI envelope, then 1–5 suggestions (no more than the candidate count) appear in model ranking order as AI advice with reasons and available matching items; a valid empty array instead shows “No close match found” with the ordinary rating-sorted filtered catalogue separately, remains a cacheable AI success and makes no second call. Names/navigation resolve from authorized records and search creates no business mutation.
 - **`CUS-06.3`:** Given no valid session or a Café owner/Admin caller, when the Brew Finder route is called, then it returns the shared `401 UNAUTHENTICATED` or `403 FORBIDDEN`, respectively, with no protected AI/fallback content or provider call.
 - **`CUS-06.4`:** Given a kit Customer and its kit's catalogue, when it searches, then only that workspace's eligible candidates reach the provider or results; another kit's or main-workspace records/cache entries cannot be returned, while environment-wide provider caps remain shared under SYS-12/SEC-10.
 - **`CUS-06.5`:** Given a blank query, a query above 1,000 Unicode code points, a wrong query type, unknown body fields or another shared HTTP/strict-schema violation, when the route validates it, then the applicable shared error is returned before admission/provider dispatch; no truncation, query rewriting or implicit type coercion makes the input valid.
-- **`CUS-06.6`:** Given an authorized search whose eligible candidate set is empty, when the source is evaluated, then no provider call occurs and HTTP `200` returns the unchanged `brew_finder` fallback envelope with `reason: "no_source_data"` and `fallback: "rating_sorted_catalogue"`; the ordinary authorized filtered list is empty, with no fabricated suggestion.
+- **`CUS-06.6`:** Given an authorized search with no recommendable candidate after available-item selection, when source is evaluated, then no provider call occurs and HTTP 200 returns the unchanged `no_source_data`/`rating_sorted_catalogue` fallback; the ordinary authorized CUS-01 list may be empty or contain sold-out-only cafés and is never replaced with fabricated suggestions.
 - **`CUS-06.7`:** Given an unknown café/item reference, an item paired with the wrong café, duplicate café suggestions, malformed JSON, extra output fields or a schema/bounds failure, when output is validated, then the complete AI result is discarded, no success is cached, and HTTP `200` returns the unchanged `unavailable` rating-sorted-catalogue fallback; no retry/repair call occurs.
-- **`CUS-06.8`:** Given a café becomes suspended, otherwise ineligible or outside the authorized source before delivery, when a provider or cached result is checked for return, then no ineligible café data is disclosed and stale advice is not treated as authorization under SEC-07.
+- **`CUS-06.8`:** Given a café becomes suspended, otherwise ineligible or outside current filters, or its suggested item becomes unavailable before delivery, when provider/cache results are checked, then the complete invalid result is discarded under the unavailable fallback and no ineligible data is disclosed; current source/open-state changes also invalidate cache reuse under SEC-07.
 - **`CUS-06.9`:** Given disabled AI or missing live credentials, when an otherwise valid authorized search is made, then HTTP `200` returns the unchanged `disabled` rating-sorted-catalogue fallback with a brief safe message, no provider call and no AI-cache result; a disable observed before delivery also suppresses pending AI content.
 - **`CUS-06.10`:** Given an applicable user/feature/global cap denies work or the provider returns 429, when the search reaches that condition, then HTTP `200` returns the unchanged `usage_limited` rating-sorted-catalogue fallback with a safe usage-limit message; no unadmitted dispatch, automatic retry or later repair call occurs.
 - **`CUS-06.11`:** Given invalid configuration, unavailable admission storage, provider timeout/failure, oversized context/response or invalid output, when an authorized valid search reaches that AI-stage failure, then HTTP `200` returns the unchanged `unavailable` rating-sorted-catalogue fallback with a brief safe message; authorized catalogue source failure instead returns `503 SOURCE_UNAVAILABLE`, without a fabricated empty successful fallback.
@@ -100,7 +108,7 @@ menu-write, order-write or moderation permission.
 
 | Screen | What it shows | Actions | Requirement IDs |
 | --- | --- | --- | --- |
-| Browse cafés, Brew Finder box | Natural-language query, ordinary filters, advisory ranked suggestions or rating-sorted catalogue fallback; [ASSUMPTION ASM-02] loading indicator during explicit search | Submit query; read advice/fallback; open authorized café through CUS-02 | CUS-06 |
+| Browse cafés, Brew Finder box | Natural-language query, filters, ranked advice, valid empty-advice state or rating-sorted fallback; pending loading indicator | Explicit Search/Enter; read advice/catalogue; open authorized café through CUS-02 | CUS-06 |
 
 ## Use cases
 
@@ -149,7 +157,8 @@ menu-write, order-write or moderation permission.
 | LLM disabled or missing live credentials | Shared provider/disable checks, repeated before delivery | `disabled` fallback; filtered catalogue sorted by rating and safe disabled message; no cached advice |
 | Usage limit reached, including provider 429 | Durable admission denial or translated provider status | `usage_limited` fallback with safe limit feedback and ordinary catalogue |
 | Invalid output, timeout, overflow, transport/admission failure or invalid policy configuration | Shared bounds, provider checks and strict semantic/schema validation | `unavailable` fallback, safe explanation and ordinary catalogue; no invalid snippets or retries |
-| No eligible candidates | Authorized filtered source is empty | `no_source_data` fallback containing no fabricated cafés; no provider call |
+| No recommendable candidates | No authorized filtered café has an available matching item | `no_source_data` fallback; ordinary catalogue can contain sold-out-only cafés; no provider call |
+| Valid empty model suggestions from nonempty source | Strict output/reference checks accept an empty array | HTTP 200 AI success; “No close match found” plus ordinary catalogue; eligible same-actor cache, no extra call |
 | Authorized catalogue source unavailable | Server cannot safely obtain ordinary source/fallback | Shared `503 SOURCE_UNAVAILABLE`; no fabricated successful empty list |
 | Invalid input or unauthorized caller | Validation/session/role checks before admission | Shared safe error; no provider call or protected AI/fallback content |
 
@@ -175,6 +184,9 @@ examples without inventing a numeric accuracy threshold.
 | CUS-06-E11 | Parallel searches at the final capacity unit, restart, or disable during an in-flight call | Guardrail: Quota exhaustion, retry loops or cache bypass of disable; caps hold, no unadmitted call, suppressed advice after observed disable | adversarial |
 | CUS-06-E12 | Synthetic content/secret canaries in query, provider output and error | Guardrail: Query/secret leakage through logs and errors; forbidden payloads absent from audit/log/error output, no server-added secret context | adversarial |
 | CUS-06-E13 | Cross-site cookie POST or kit query targeting another workspace | Guardrail: Excessive agency or model-granted access and Cross-actor/workspace cache leakage or stale eligibility; request denied before protected disclosure/provider work | adversarial |
+| CUS-06-E14 | Nonempty source and fake provider returns exactly `{"suggestions":[]}` | AI success and empty-advice message plus ordinary catalogue; normal cache eligibility, no invented fallback reason/repair | edge |
+| CUS-06-E15 | Filter matches only sold-out drinks; separately more than 20 eligible cafés/items | Sold-out-only catalogue remains browsable with no-source fallback; deterministic 20/20 candidate caps ignore page selection | edge |
+| CUS-06-E16 | Open-now interval boundary or suggested item sold out before cache/provider delivery | Source identity/availability recheck prevents stale recommendation; whole invalid result falls back | edge |
 
 ## Out of scope
 
@@ -185,6 +197,4 @@ probe, new route, in-app payment or runtime Admin switch is added here.
 
 ## Assumptions
 
-- **ASM-02:** Searches require explicit submission, typing makes no AI request and a pending search has a loading indicator. This proposes the interaction needed for a bounded user action; a different trigger/loading decision changes UI behaviour and usage expectations and requires confirmation.
-
-Retired IDs: ASM-01.
+None. Retired IDs: ASM-01–ASM-02.

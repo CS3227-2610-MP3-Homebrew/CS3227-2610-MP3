@@ -127,11 +127,13 @@ dates and opening-hours calculations use `Asia/Singapore`.
 | Workspaces | Stable workspace identity; one main workspace and one workspace per demo kit. | Actor access is limited to their own workspace; no role, including Admin, gains cross-workspace access. | None for workspace identity and isolation. |
 | Profiles | Workspace reference; Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
 | Cafés | Workspace and owner profile references; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner and profile fields: OWN-01–OWN-04. Application decisions and one-way approval: [ADM-01](stories/ADM-01-cafe-applications.md); rejection resubmission is OWN-01's owner action. Suspension and effects on existing orders/access: [ADM-02](stories/ADM-02-cafe-suspension.md). |
-| Menu items | Café reference; item identity, name, drink type, price and availability/sold-out state. | Owners manage items only through their own café. Customer reads are restricted by parent café eligibility and include sold-out items. No extra Admin menu-write permission is implied. | Item fields, price representation, categories, deletion/history and sold-out ordering eligibility: OWN-03 and CUS-01–CUS-03. |
-| Opening hours | Café reference and Singapore-local opening/closing information. | Owners manage only their café's hours. Customer reads require eligible parent café. | Overnight/boundary rules and changes affecting pickups: OWN-02, OWN-04 and CUS-01–CUS-03. |
-| Orders | Customer profile and café references, pickup timing and fulfilment state; payment occurs at pickup without a payment integration. | Customers access only their own orders; owners access orders only for their café. Authorized mutations must satisfy story transitions as well as RLS. No unrelated Admin order access is granted. | Exact states/transitions, cancellation races, rejection/no-show behavior, duplicate submission and later café/hour changes: CUS-03–CUS-04 and OWN-05. |
-| Order items | Parent order and menu-item identity, quantity and data required to represent the ordered purchase. | Access follows the parent order. A customer cannot attach items to another customer's order or mix an item from another café. Owner access follows ownership of the order's café. | Historical item/price snapshots and sales treatment when menus change: CUS-03 and OWN-06. |
+| Menu items | Café reference; item identity, name, DrinkType, integer SGD price cents and sold-out state; customer projections follow the [catalogue boundary](INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). | Owners manage items only through their own café. Customer reads require parent eligibility and include sold-out items; new orders require available items. No extra Admin menu-write permission. | Owner edit validation, item removal/history management: OWN-03; customer eligibility/snapshots: CUS-01–CUS-03. |
+| Opening hours | Café reference; weekly Singapore-local opening/closing intervals with explicit next-day closing and café pickup-cutoff offset, projected by the [customer boundary](INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). | Owner management stays within their café. Customer reads require eligible parent; new pickup validation uses current intervals/rules. | Owner hour/rule edit contracts: OWN-02/OWN-04; Customer time/slot behaviour: CUS-01–CUS-03. |
+| Orders | Customer/café references; placed/pickup instants, fulfilment state, café-name/price snapshots, total cents and fixed public cancellation reason under [CUS-03/CUS-04 transport](INTEGRATION-SPEC.md#customer-pickup-and-order-boundary). | Customers read their own retained purchases and cancel only pending; owners access only their café queue. Mutations satisfy story transitions/RLS. No unrelated Admin order access. | Owner queue action contracts: OWN-05; Customer creation/read/races: CUS-03–CUS-04; suspension transaction: ADM-02. |
+| Order items | Parent order/menu-item identity, integer quantity 1–20 and immutable item-name/unit-price/line-total snapshots in SGD cents. | Access follows parent order; cross-customer or cross-café attachment is denied. Historical data remains readable after menu changes. | Snapshot creation: CUS-03; owner menu removal strategy: OWN-03; sales aggregation: OWN-06. |
+| Order submission keys | Verified Customer, unique submission key, normalized creation request identity and resulting order reference. Successful key persists with order history. | Creation/key/items commit together. Only the owning authenticated Customer can obtain a replay through its ordinary order operation; no public key lookup or new role permission. | Exact idempotency request/conflict semantics: CUS-03 and [order boundary](INTEGRATION-SPEC.md#customer-pickup-and-order-boundary). |
 | Reviews | Customer and collected-order references, café relationship, review content and moderation state (`pending`, `kept`, `hidden`) as defined by [ADM-03](stories/ADM-03-review-moderation.md); unique order reference prevents a second review for the same order. Review text and rating are immutable after creation; customers cannot edit or delete reviews in the MVP. | Review creation requires the caller's own collected order. Customers can read their own reviews and visible reviews of eligible cafés. Admins access the moderation queue and keep, hide or restore with a reason, never edit review text. Any further write/read permission remains denied until specified. | Fields and rating scale/formula: CUS-01–CUS-02 and CUS-05. Initial state and moderation transitions: [ADM-03](stories/ADM-03-review-moderation.md); AI label/action relationship: [ADM-04](stories/ADM-04-moderation-assistant.md). |
+| Favourites (stretch only) | Unique Customer/café association, original server saved timestamp; workspace inherited through café and checked against Customer. | Personal Customer-only save/read with current catalogue eligibility independently enforced; no owner/Admin access, sharing, removal or public count. Ineligible associations persist without disclosing café content. | [CUS-07](stories/CUS-07-favourite-cafes.md) and [optional favourite boundary](INTEGRATION-SPEC.md#stretch-favourite-boundary). |
 | AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Adopted usage-limit values: AI-SECURITY-SPEC; mechanism below. |
 | AI caches | Environment, feature, scope identity, input fingerprint, model/contract version, source revision, creation/expiry or Singapore business date, and validated result. | Server-only reads/writes. Every hit repeats caller authorization; Prep Advisor entries are café-scoped; Brew Finder entries cannot cross actor scopes under the [cache scope decision](#cache-eligibility-and-scope). No client Data API access. | Exact feature payloads: INTEGRATION-SPEC; source selection and sales windows: AI/story specifications. |
 | Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Admin-action events: approve, reject, suspend, un-suspend, keep, hide and restore, each with acting Admin, target café or review reference, action, reason and timestamp. Admin-action entries are never deleted automatically. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields: [ADM-03](stories/ADM-03-review-moderation.md). AI retention: AI-SECURITY-SPEC. Admin reasons are separate from AI prompt/output payloads. |
@@ -146,9 +148,51 @@ workspace or another kit. Normal sign-ups always join the main workspace;
 untrusted input cannot select or reassign a workspace.
 
 The model intentionally does not decide account/café cardinality beyond each
-café's single owner, enumerate a full order/review lifecycle, define aggregate
-sales rules, or add favourite/boost/runtime-settings entities before their
-stretch story contracts exist.
+café's single owner, owner edit/queue APIs, aggregate sales rules, or boost and
+runtime-settings entities before their owning story contracts exist. Optional
+favourite data is established solely by CUS-07 and does not add an MVP entity.
+
+### Customer contract data and integrity
+
+The [customer integration boundaries](INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary)
+project domain data for CUS-01–CUS-07; they do not grant owner edit permissions.
+Shared Area and DrinkType values are exact domain enums there, including
+matcha and the Central/North/South/East/West area set. Monetary fields persist
+integer SGD cents, never floating-point dollars; all customer amounts display
+as dollars to exactly two decimal places. Customer ratings aggregate the
+original visible ratings under CUS-01's single formula; rounded display means
+never replace original ratings or determine tie order.
+
+Orders preserve their original café-name/item-name/unit-price/quantity/pickup
+snapshots after menu, price, hour and rule edits. Item references and histories
+must survive removal from the current orderable menu; no cascading deletion
+can erase a recorded purchase or its review. This does not select the owner's
+menu deletion/archive UI. Current schema relationships alone do not constitute
+the completed customer field/state model.
+
+Relational uniqueness enforces successful Customer/submission-key identity,
+one review per order and optional Customer/café favourite identity. Actor,
+workspace and parent café derive from verified relationships. Business state
+checks and transitions are atomic with those constraints, not form assertions.
+Order creation/owner queue/customer cancellation and Admin suspension serialize
+their competing café/order effects under the [shared race matrix](INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
+Suspension alone applies pending/accepted/ready cancellations with its audit
+transaction; there is no general Admin order-edit grant. Collected/rejected/
+cancelled states and historical snapshots remain unchanged.
+
+Review creation validates own collected state even after café suspension;
+RLS permits that own-purchase operation without permitting the Customer to read
+the restricted live café. A Customer can read its own hidden review; public
+reads remain pending/kept only on eligible cafés. Original rating/text are
+immutable under ADM-03; field limits come from CUS-05, not AI input limits.
+
+Optional favourites persist across sessions/devices, enforce Customer ownership
+and matching actor/café workspace in RLS, and allow no ownership transfer or
+deletion operation through this feature. Saved-list projections and pagination
+exclude currently ineligible cafés; retained associations reappear when eligible
+again. Repeated saves preserve the unique association's original timestamp.
+Neither the association nor its cached UI state grants café access. Ordinary
+role operations continue to use session-bound RLS clients.
 
 ### RLS and database exposure
 

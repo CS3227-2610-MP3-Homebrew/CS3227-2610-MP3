@@ -16,6 +16,20 @@ show a closing-soon label at the bottom. Browsing remains available independentl
 of Brew Finder or provider availability. Opening-time interpretation uses
 `Asia/Singapore` under the shared integration contract.
 
+The exact filter/read schemas, page paths, enum spelling, pagination and time
+representation are in the [customer catalogue boundary](../INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
+Drink choices are coffee, matcha, tea, chocolate, juice and other; area choices
+are Central, North, South, East and West. One time mode and optional drink/area
+filters combine with AND. Reset clears them to the unfiltered catalogue.
+
+CUS-01 owns the rating formula: the arithmetic mean of original ratings from
+pending and kept reviews, excluding hidden reviews. No visible reviews gives
+null and “No reviews yet”. Display rated means to one decimal with half-up
+rounding. Catalogue and non-AI fallback ordering compares unrounded means
+descending, visible-review count descending, then café reference ascending by
+Unicode code point; unrated cafés follow rated cafés. CUS-05 owns input ratings.
+The shared read boundary projects this formula; CUS-06 does not redefine it.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up; a demo kit also supplies a Customer account for normal sign-in. Normal sign-ups use the main workspace; kit accounts use their own kit workspace.
@@ -32,17 +46,17 @@ of Brew Finder or provider availability. Opening-time interpretation uses
 
 #### Acceptance criteria
 
-- **`CUS-01.1`:** Given a signed-in Customer and approved, non-suspended cafés in its workspace, when Browse cafés is opened without any filters, then all those eligible cafés are included in the browsable main view, including cafés that are currently closed, without submitting an AI request; pending, rejected, suspended and other-workspace cafés remain excluded from customer-scoped reads and display.
-- **`CUS-01.2`:** Given cafés whose opening schedules unambiguously include or exclude the current Singapore time, when the Customer selects Open now, then only eligible cafés open at that time are returned; a café closed at that time is excluded.
-- **`CUS-01.3`:** Given a chosen Singapore date/time unambiguously inside one café's opening interval and outside another's, when the Customer selects Open at that time, then the open eligible café matches and the closed café does not, irrespective of browser or deployment-host timezone.
-- **`CUS-01.4`:** Given eligible cafés with menu drink types, when the Customer filters by a drink type, then returned cafés match that drink type and cafés without it are excluded; the filter never makes an ineligible café visible.
-- **`CUS-01.5`:** Given eligible cafés in different areas, when the Customer filters by an area, then only cafés matching the selected area are returned.
+- **`CUS-01.1`:** Given a signed-in Customer and approved, non-suspended cafés in its workspace, when `/customer/cafes` is opened without filters, then all eligible cafés are browsable in the rating order defined above, 20 per page, including closed cafés, without an AI request; pending, rejected, suspended and other-workspace cafés remain excluded. Ratings use the defined visible-only formula, null/unrated handling, precision and tie order, including after moderation changes.
+- **`CUS-01.2`:** Given eligible cafés with weekly Singapore opening intervals, when Open now is selected, then only cafés open at the database clock match, including the opening instant and excluding closing; overnight and week-boundary intervals follow the canonical hours contract, adjacent intervals count as continuous opening and absent schedules do not match.
+- **`CUS-01.3`:** Given a chosen Singapore date/minute, when Open at is selected, then the UI converts it to the canonical UTC minute instant and the server applies the same inclusive-opening/exclusive-closing and overnight rules at that instant, irrespective of browser/host timezone; card states still describe now.
+- **`CUS-01.4`:** Given eligible cafés with menu drink types, when coffee, matcha, tea, chocolate, juice or other is selected, then cafés containing that exact type match, including sold-out-only matches, and cafés without it do not; active time/area predicates combine with AND and no filter makes an ineligible café visible.
+- **`CUS-01.5`:** Given eligible cafés in Central, North, South, East and West, when an area is selected, then only exact matches remain with other active predicates; invalid enum spellings, incompatible time fields, unknown/duplicate query keys and invalid pages fail with `400 INVALID_REQUEST` under the strict filter/query contract rather than silently changing filters.
 - **`CUS-01.6`:** Given a displayed café, when the Customer opens it, then CUS-02 supplies its café page after current eligibility and workspace checks; an old browse result cannot grant access after suspension.
 - **`CUS-01.7`:** Given a Customer in a demo kit, when the same browse/filter actions are used, then only that kit's eligible catalogue is returned; the main showcase café and other kits' cafés are absent.
 - **`CUS-01.8`:** Given no valid session or a wrong-role visitor, when protected browse content is requested, then SYS-05's authentication/role controls supply no protected catalogue content; customer-specific data is absent from a static loading shell.
-- **`CUS-01.9`:** Given an eligible café is currently closed and has a next scheduled opening, when its card appears in the unfiltered main view, then the card is greyed out but remains clickable, and its bottom text follows “Cafe opens at X time”, with “X time” replaced by that café's next opening time in Singapore time; opening the card still uses CUS-02's current eligibility checks.
+- **`CUS-01.9`:** Given an eligible café is currently closed, when its card appears in the unfiltered main view, then it is greyed out but clickable; with a next opening its bottom text follows “Cafe opens at X time”, substituting `D MMM YYYY, h:mm AM/PM SGT`, and with no scheduled opening it shows “No opening hours scheduled”; no invented time appears and opening the card repeats CUS-02's eligibility checks.
 - **`CUS-01.10`:** Given an eligible café is open and its current opening interval ends within the next 30 minutes, including exactly 30 minutes from now, when its card is shown, then the bottom text reads “closing soon”; an open café with more than 30 minutes remaining does not show this label, and a closed café follows CUS-01.9 instead.
-- **`CUS-01.11`:** Given an eligible café is currently closed and appears in the unfiltered main view, when Open now is selected, then it is excluded from that filtered result; removing the filter returns it to the unfiltered catalogue as a greyed-out clickable card.
+- **`CUS-01.11`:** Given a closed eligible café in the unfiltered view, when Open now is selected, then it is excluded; removing that filter restores it when other filters permit, and Reset clears all filters to restore the complete eligible catalogue including its greyed-out clickable card.
 
 #### Edge cases and failure paths
 
@@ -53,7 +67,7 @@ Source-read failure follows the shared `SOURCE_UNAVAILABLE` boundary rather than
 being represented as a successful empty result. Eligibility is rechecked for
 each read. Review states eligible for rating inputs are owned by
 [ADM-03](ADM-03-review-moderation.md#overview): only pending and kept reviews
-contribute, never hidden reviews. This summary does not define a rating formula.
+contribute, never hidden reviews. CUS-01's formula above is authoritative.
 
 #### Out of scope
 
