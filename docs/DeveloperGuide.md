@@ -199,7 +199,7 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Testing may add devDependencies required by its tests and the corresponding bun.lock changes, listing each dependency and its purpose in its report. Stage 2 checks that package.json changes only devDependencies; runtime dependencies, scripts and other manifest edits are excluded. These additions are testing-owned alongside fixtures and test configuration. | Tests can use required database clients or parsers while preserving the testing and implementation write boundaries. |
 | Test layout: use `tests/{unit,integration,e2e}/<area>/`, browser specs only under `tests/e2e/`, and `// @vitest-environment node` for database and route tests because Vitest defaults to jsdom. | Playwright reads only `tests/e2e/` and Vitest collects everything else, so one convention lives in the skills that generate plans and tests. |
 | Local Supabase: agents use the fixed-target `bun run db:start`, `bun run db:reset` and `bun run db:check` wrappers; reset and delete bans apply to hosted databases; fixtures are testing-owned. | Migration replay needs a local reset. The wrapper rejects extra arguments and fixes reset to `--local --no-seed`. Prefix allow rules still match command prefixes, so humans review package scripts and configuration before approving them. |
-| `verify` includes unit/integration tests and traceability; e2e runs separately in CI. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
+| `verify` includes unit/integration tests and traceability; e2e runs separately in CI. CI splits `verify`'s steps into parallel jobs and shards Vitest across three runners with their own local Supabase, gathered by one required `verify` job. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Parallel jobs cut a 5–9 minute serial run, mostly database tests, and keep CI time near-flat as tests grow; the gathering job stops a skipped or cancelled job from counting as a pass. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
 | The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
@@ -267,7 +267,7 @@ loads its workflow instructions.
 | `.agents/skills/sdd-docs/agents/openai.yaml` | UI metadata and default prompt for the docs skill. |
 | `.agents/skills/sdd-orchestrate/SKILL.md` | For the human's coordinating session: per-stage entry and exit gates with the commands that check them, copy-ready agent prompts, review-round and security-finding routing, and the spec change flow. Foundation stage 0 checks cross-cutting requirements on the selected review base and permitted assumptions, stage 1 requires approval outside the sandbox for the issue script, and stage 3 permits task-scoped workflow/configuration files and workflow-table row additions. |
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
-| `.github/workflows/ci.yml` | Starts and resets local Supabase, checks all application tables for RLS, then runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
+| `.github/workflows/ci.yml` | On PRs to and pushes on master, with pinned actions, runs `bun run verify`'s steps in parallel jobs: lint, typecheck, traceability, spec check and build in one; Vitest in three shards, each starting and resetting local Supabase and checking every application table for RLS; and Chromium Playwright. A final `verify` job, the ruleset's required check, passes only when all of them passed. |
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
 | `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
@@ -701,8 +701,9 @@ cancellation. Synthetic transports block unexpected global fetch. These checks
 do not establish live SoCLaaS compatibility, model quality, production endpoint
 authorization, persistent cache isolation or browser rendering.
 
-CI installs locked dependencies, starts and resets local Supabase, runs
-`db:check`, then executes `verify` and Chromium Playwright. Local verification
+CI installs locked dependencies and runs `verify`'s steps and Chromium Playwright
+in parallel jobs; each test shard and the browser job start and reset their own
+local Supabase, and the test shards run `db:check`. Local verification
 passes all 704 tests across 25 files and the production build, including isolation
 checks for all 35 client artifacts. The prior session foundation verification
 passed all 14 browser cases locally; the shared LLM layer adds no browser surface.
