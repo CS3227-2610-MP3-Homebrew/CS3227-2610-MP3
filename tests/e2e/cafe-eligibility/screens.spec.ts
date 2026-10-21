@@ -66,7 +66,8 @@ for (const path of paths) test.describe(path, () => {
     await expect(page.getByText(/no .*applications|no .*cafés|no .*cafes|empty/i)).toBeVisible();
     await expect(control(page, /previous/i)).toBeVisible(); await expect(control(page, /next/i)).toBeVisible();
   });
-  for (const role of ["anonymous", "customer", "owner"] as const) test(`ADM-01.13 ADM-02.13: ${role} gets no protected server or loading content`, async ({ page }) => {
+  for (const role of ["anonymous", "customer", "owner"] as const) test.describe(role, () => {
+  test("ADM-01.13 ADM-02.13: gets no protected server or loading content", async ({ page }) => {
     const f = scenario(true, application ? "pending" : "approved"); localSql(`update public.cafes set name='PRIVATE APPLICATION MARKER' where id=${q(f.cafe)};`);
     if (role !== "anonymous") await login(page.request, f[role]);
     const response = await page.request.get(path); const raw = await response.text();
@@ -74,10 +75,12 @@ for (const path of paths) test.describe(path, () => {
     await page.goto(path); await expect(page.getByRole("table")).toHaveCount(0);
     if (role === "anonymous") await expect(page).toHaveURL(`${origin}/sign-in`);
   });
+  });
 });
 
 test("ADM-01.1 ADM-01.2 ADM-01.3: application details and reason confirmation decide and remove a row", async ({ page }) => {
   for (const decision of ["Approve", "Reject"]) {
+    await page.context().clearCookies();
     const f = scenario(); applicationDetails(f.cafe); await login(page.request, f.admin); await page.goto("/admin/applications");
     const row = rowFor(page, f.name); await expect(row).toContainText("Synthetic application description"); await expect(row).toContainText("Central");
     await expect(row).toContainText("123 Synthetic Pickup Lane"); await expect(row).toContainText("15");
@@ -121,12 +124,13 @@ test("ADM-01.10 ADM-02.10: latest private reasons reach own owner and workspace 
   const f = scenario(); const foreign = scenario(); const outsider = account("owner", f.admin.workspaceId);
   await login(request, f.admin); expect((await mutate(request, f.cafe, "decision")).status()).toBe(200);
   expect((await mutate(request, f.cafe, "suspension")).status()).toBe(200);
-  const decision = column("public", "cafes", ["latest_decision_reason", "decision_reason"]);
-  const suspension = column("public", "cafes", ["suspension_reason", "latest_suspension_reason"]);
-  const read = `select coalesce(json_agg(t),'[]'::json) from (select ${ident(decision)} as decision_reason,${ident(suspension)} as suspension_reason from public.cafes where id=${q(f.cafe)}) t;`;
+  const decision = column("public", "cafe_admin_reasons", ["decision_reason"]);
+  const suspension = column("public", "cafe_admin_reasons", ["suspension_reason"]);
+  const read = `select coalesce(json_agg(t),'[]'::json) from (select ${ident(decision)} as decision_reason,${ident(suspension)} as suspension_reason from public.cafe_admin_reasons where cafe_id=${q(f.cafe)}) t;`;
   for (const actor of [f.owner, f.admin]) {
     expect(JSON.parse(asActor(actor.id, read))).toEqual([{ decision_reason: reason, suspension_reason: reason }]);
   }
+  expect(columns("public", "cafes").filter(name => name.includes("reason"))).toEqual([]);
   for (const actor of [f.customer, outsider, foreign.admin, foreign.owner]) {
     // A zero-row RLS result or an explicit SQL permission denial both prevent
     // disclosure; syntax, connection and other failures do not count as denials.
@@ -147,8 +151,8 @@ test("ADM-01.11: resubmitted application fixture re-enters queue at new submissi
   applicationDetails(peer, "2026-01-02T00:00:00Z");
   resubmittedApplication(f.cafe, "2026-01-03T00:00:00Z");
   expect(targetAudits(f.cafe)).toEqual(before);
-  const decision = column("public", "cafes", ["latest_decision_reason", "decision_reason"]);
-  expect(JSON.parse(asActor(f.owner.id, `select to_json(${ident(decision)}) from public.cafes where id=${q(f.cafe)};`))).toBe(reason);
+  const decision = column("public", "cafe_admin_reasons", ["decision_reason"]);
+  expect(JSON.parse(asActor(f.owner.id, `select to_json(${ident(decision)}) from public.cafe_admin_reasons where cafe_id=${q(f.cafe)};`))).toBe(reason);
   await login(page.request, f.admin); await page.goto("/admin/applications"); await expect(rowFor(page, f.name)).toBeVisible();
   const queue = await page.getByRole("row").allTextContents();
   expect(queue.findIndex(text => text.includes("Earlier pending application"))).toBeGreaterThanOrEqual(0);

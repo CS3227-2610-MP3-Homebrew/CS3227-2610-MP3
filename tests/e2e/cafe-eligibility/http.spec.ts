@@ -58,9 +58,11 @@ for (const state of applicationStates) for (const suspended of [false, true]) fo
 }
 for (const op of operations) test.describe(op, () => {
   const setup = () => scenario(true, op === "decision" ? "pending" : "approved");
-  for (const value of ["", " \n\t\u00a0\uFEFF", "😀".repeat(301), null, 1, {}, []]) test(`ADM-01.4 ADM-02.5: invalid reason ${JSON.stringify(value).slice(0, 15)} has no effects`, async ({ request }) => {
+  for (const value of ["", " \n\t\u00a0\uFEFF", "😀".repeat(301), null, 1, {}, []]) test.describe(`invalid reason ${JSON.stringify(value).slice(0, 15)}`, () => {
+  test("ADM-01.4 ADM-02.5: invalid reason has no effects", async ({ request }) => {
     const f = setup(); const before = snapshot(f.cafe); await login(request, f.admin);
     await failure(await mutate(request, f.cafe, op, { ...body(op), reason: value }), 400, "INVALID_REQUEST"); expect(snapshot(f.cafe)).toEqual(before);
+  });
   });
   for (const value of ["😀".repeat(300), "x", reason]) test(`ADM-01.4 ADM-02.5: preserves valid reason ${value.slice(0, 12)} exactly`, async ({ request }) => {
     const f = setup(); await login(request, f.admin); expect((await mutate(request, f.cafe, op, { ...body(op), reason: value })).status()).toBe(200);
@@ -70,12 +72,14 @@ for (const op of operations) test.describe(op, () => {
     const f = setup(); const before = snapshot(f.cafe); if (role !== "anonymous") await login(request, f[role]);
     await failure(await mutate(request, f.cafe, op), role === "anonymous" ? 401 : 403, role === "anonymous" ? "UNAUTHENTICATED" : "FORBIDDEN"); expect(snapshot(f.cafe)).toEqual(before);
   });
-  for (const kit of [false, true]) test(`ADM-01.6 ADM-02.7: ${kit ? "kit" : "main"} foreign and absent targets are indistinguishable`, async ({ request }) => {
+  for (const kit of [false, true]) test.describe(`${kit ? "kit" : "main"} target scope`, () => {
+  test("ADM-01.6 ADM-02.7: foreign and absent targets are indistinguishable", async ({ request }) => {
     const f = scenario(kit); const foreign = scenario(!kit, "approved"); const before = snapshot(foreign.cafe); await login(request, f.admin); const responses = [];
     for (const id of [foreign.cafe, randomUUID(), "opaque-authorized-shape", "x".repeat(128)]) {
       const response = await mutate(request, id, op); await failure(response, 404, "NOT_FOUND"); const value = await response.json(); delete value.requestId; responses.push(value);
     }
     for (const value of responses) expect(value).toEqual(responses[0]); expect(snapshot(foreign.cafe)).toEqual(before);
+  });
   });
   test("ADM-01.8 ADM-02.4: concurrent identical transitions commit one state and audit only", async ({ request }) => {
     const f = setup(); await login(request, f.admin);
@@ -103,13 +107,15 @@ for (const op of operations) test.describe(op, () => {
       ...(op === "decision" ? [{ decision: "approved", reason }, { decision: true, reason }, { decision: "approve" }] : [{ suspended: "true", reason }, { suspended: 1, reason }, { suspended: null, reason }, { suspended: false }])]
       .map((data, i) => ({ name: `strict body ${i}`, data: JSON.stringify(data), status: 400, code: "INVALID_REQUEST" })),
   ];
-  for (const item of invalid) test(`ADM-01.12 ADM-02.12: ${item.name} returns shared HTTP error without effects`, async ({ request }) => {
+  for (const item of invalid) test.describe(item.name, () => {
+  test("ADM-01.12 ADM-02.12: returns shared HTTP error without effects", async ({ request }) => {
     const f = setup(); const before = snapshot(f.cafe); await login(request, f.admin); const method = item.method ?? "POST";
     const response = await request.fetch(route(item.target ?? f.cafe, op), { method, headers: item.headers ?? { origin, "content-type": "application/json", "x-forwarded-host": "evil.example" },
       ...(["GET", "HEAD"].includes(method) ? {} : { data: item.data ?? JSON.stringify(body(op)) }) });
     if (method === "HEAD") { expect(response.status()).toBe(405); expect(response.headers()["cache-control"]).toBe("private, no-store"); }
     else await failure(response, item.status, item.code);
     if (item.status === 405) expect(response.headers().allow).toBe("POST"); expect(snapshot(f.cafe)).toEqual(before);
+  });
   });
 });
 
