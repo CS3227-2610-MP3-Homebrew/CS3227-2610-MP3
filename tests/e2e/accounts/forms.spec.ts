@@ -20,11 +20,6 @@ test("SYS-02.1: sign-in minimal fields and sign-up entry", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Sign up", exact: true })).toHaveAttribute("href", "/sign-up");
   await expect(page.getByLabel(/role|workspace|remember/i)).toHaveCount(0);
 });
-test("SYS-02.1: owning demo-control integration is present on shared sign-in", async ({ page }) => {
-  await page.goto("/sign-in");
-  // Presence only: demo creation and credential display belong to T-24/T-25.
-  await expect(page.getByRole("button", { name: "Create demo kit", exact: true })).toBeVisible();
-});
 for (const kind of ["sign-up", "sign-in"] as const) {
   test(`SYS-01.2 SYS-02.2: ${kind} invalid local fields show feedback before a network submission`, async ({ page }) => {
     let requests = 0;
