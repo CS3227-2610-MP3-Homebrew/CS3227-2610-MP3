@@ -62,6 +62,11 @@ test("CUS-02.1 CUS-02.4: empty menu/review collections stay empty on a closed el
 for (const role of [null, "owner", "admin"] as const) test(`CUS-01.8 CUS-02.9: ${role ?? "anonymous"} receives no protected page or static shell data`, async ({ page }) => {
   const f = fixture(); if (role) await login(page.request, provisionAccount(role, true));
   for (const path of ["/customer/cafes", `/customer/cafes/${f.cafe}`]) {
-    const response = await page.goto(path); const html = await response!.text(); expect(html).not.toContain(f.name); expect(html).not.toContain(f.cafe); await expect(page.getByText(f.name)).toHaveCount(0);
+    // A streamed auth redirect can navigate Chromium away before its response
+    // body is read. The context request shares browser cookies and retains the
+    // complete raw HTTP shell independently of that navigation.
+    const response = await page.request.get(path); const html = await response.text();
+    expect(html).not.toContain(f.name); expect(html).not.toContain(f.cafe);
+    await page.goto(path); await expect(page.getByText(f.name)).toHaveCount(0);
   }
 });
