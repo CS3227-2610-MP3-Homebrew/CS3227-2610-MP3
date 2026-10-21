@@ -1126,7 +1126,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] All 18 ADM-03 criteria have deterministic named failing-first cases, including transition races, atomic audit, workspace isolation, customer immutability and retention.
   - [ ] Common audit-screen tests cover every action without taking café criterion ownership; no tests infer review field limits or rating formulas.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results and the issue-scoped [handoff](templates/handoff.md) are recorded with local data only.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#60](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/60)
 
 ### T-31: Implement moderation queue and Admin audit log
@@ -1142,7 +1142,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] T-30's 18-criterion suite passes, including immutable reviews, exact transitions/errors, one atomic audit, role/workspace denial and all audit display/retention cases.
   - [ ] T-28's café audit-display cases can consume this screen without duplicated screen or criterion ownership; T-32/T-33 can reuse ordinary per-review confirmation.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual checks without hosted execution.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#61](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/61)
 
 ### T-32: Test Moderation Assistant
