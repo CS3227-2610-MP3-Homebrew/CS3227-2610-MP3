@@ -2,14 +2,14 @@ import "server-only";
 import { z } from "zod";
 
 export type Feature = "brew_finder" | "prep_advisor" | "moderation";
-const text = (max: number, nonblank = false) => z.string().refine((v) =>
+export const text = (max: number, nonblank = false) => z.string().refine((v) =>
   [...v].length >= 1 && [...v].length <= max && (!nonblank || v.trim().length > 0));
 export const ref = text(128);
-const label = text(200);
+export const label = text(200);
 const reason = text(300);
-const query = text(1000, true);
-const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
-const weekday = z.number().int().min(1).max(7);
+export const query = text(1000, true);
+export const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+export const weekday = z.number().int().min(1).max(7);
 const direction = z.enum(["more", "less"]);
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 export const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((v) => {
@@ -109,7 +109,7 @@ const instant = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$/).refine((
   const d = new Date(v);
   return date.safeParse(v.slice(0, 10)).success && Number.isFinite(d.getTime()) && d.toISOString() === v.replace("Z", ".000Z");
 });
-const filters = z.strictObject({ timeMode: z.enum(["all", "now", "at"]), at: instant.nullable(),
+export const filters = z.strictObject({ timeMode: z.enum(["all", "now", "at"]), at: instant.nullable(),
   drinkType: z.enum(["coffee", "matcha", "tea", "chocolate", "juice", "other"]).nullable(),
   area: z.enum(["Central", "North", "South", "East", "West"]).nullable(),
 }).refine((v) => v.timeMode === "at" ? v.at !== null : v.at === null);

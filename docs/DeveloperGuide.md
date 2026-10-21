@@ -450,8 +450,9 @@ The server-only usage foundation implements
 [durable admission](../workflow/specs/TECHNICAL-SPEC.md#admission-and-windows)
 and the assigned [usage controls](../workflow/specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 It supplies an internal reservation and dispatch seam. Shared validated feature
-operations and provider transport are also implemented under `src/server/llm/`;
-there is no production feature endpoint or AI screen consuming them yet.
+operations, provider transport, durable AI result caches and content-free AI
+audit are also implemented under `src/server/llm/`; there is no production
+feature endpoint or AI screen consuming them yet.
 
 The operations implement the shared
 [LLM boundary](../workflow/specs/TECHNICAL-SPEC.md#llm-module),
@@ -501,15 +502,15 @@ authorization. Moderation never reads or writes this cache. Invalid cache data
 falls back without dispatch or a success write. The optional `recordUsage` hook
 receives only validated supplied token counts; it supplies no persistent audit.
 
-No production caller, source query or persistent cache/audit repository is added
-by this layer. Endpoint integration still needs session/role/origin checks,
+Feature routes call these operations through the cache and audit layer below
+rather than directly. Endpoint integration still needs session/role/origin checks,
 authorized source acquisition and current-eligibility rechecks before delivery,
 ordinary authorized fallback reads, inert text rendering and separate authorized
 human mutations. Prep aggregation windows and data sufficiency remain story-owned.
 
 `src/server/llm/usage-client.ts` uses the installed `@supabase/supabase-js`
 2.118.0 client with `NEXT_PUBLIC_SUPABASE_URL` and server-only
-`SUPABASE_SECRET_KEY`. It calls only `public.reserve_ai_usage` through
+`SUPABASE_SECRET_KEY`. It calls only `public.reserve_ai_usage` and `public.ai_state` through
 `.rpc(fn, args)`, with Data API retries and session persistence/refresh/URL
 detection disabled. It is separate from the publishable-key, request-bound
 session client. Application admission needs no direct PostgreSQL credential.
@@ -560,6 +561,42 @@ preserve returned partial token counts, including zero; absent counts remain
 unknown and cost is null. Counts do not measure monetary consumption or confirm
 provider entitlement. The seam does not parse model output or render the
 feature's non-AI fallback.
+
+### AI caches, eligibility and audit
+
+This layer implements [SYS-10](../workflow/specs/TECHNICAL-SPEC.md#sys-10--durable-feature-caches-and-audit),
+[SEC-07](../workflow/specs/AI-SECURITY-SPEC.md#sec-07--safe-cache-reuse) and
+[SEC-09](../workflow/specs/AI-SECURITY-SPEC.md#sec-09--content-free-audit-and-bounded-retention).
+
+| Module/API | Implemented responsibility |
+| --- | --- |
+| `ai-state-client.ts`: `createConfiguredAiState()` | Production composition: secret-key RPC adapter, configured admission and a session-RLS eligibility read of approved, unsuspended cafés in the actor's workspace. |
+| `ai-state.ts`: `runOperation(context, options)` | Entrypoint for feature routes. T-14's `runLlmOperation` sequences the stages; this layer supplies one admission per stage, cache reads, eligibility rechecks, audit and publication. Moderation has no result cache. |
+| `ai-state.ts`: `readCache`, `writeCache`, `invoke`, `cleanup` | Lower-level repository operations. `invoke` takes a provider callback; prefer `runOperation` for new routes. `cleanup` deletes expired caches, 30-day AI audit and 7-day closed usage windows, preserving active state and never touching moderation audit. |
+| `cache-identity.ts` | Canonical JSON (unsupported values fail closed), SHA-256 digests, cache keys and Brew/Prep source revisions from the [integration contract](../workflow/specs/INTEGRATION-SPEC.md#cache-payload-fingerprints-and-source-revisions). |
+| `cache-schema.ts`, `ai-audit.ts` | Strict cache context, envelope and audit event validation, reusing T-14's result schemas. |
+
+Callers supply a verified actor, a server-generated operation ID and an
+authorized source snapshot; scope is never taken from request input. Brew
+entries are scoped to the actor and expire after 10 minutes; Prep entries are
+scoped to the café and business date and expire at the next Singapore midnight.
+Every cache hit rechecks current role, ownership and café eligibility, both
+through session RLS and inside the RPC. A refresh commits when its validated
+result is durably stored: authorization, the readiness audit and the write run
+first, so a failure leaves the earlier entry unchanged; a disable or
+cancellation observed after the write suppresses only that response.
+
+Audit rows hold only operation, actor, feature, time, outcome and provider
+token counts when supplied. Outcomes are `started`, `cache`,
+`provider_attempt`, `ready` (validated and authorized for delivery, not proof
+of receipt), `fallback` and `denied`. A terminal fallback can still be recorded
+after midnight or an eligibility change, bound to the operation's original
+authorization; that binding grants no cache access or new dispatch.
+
+Storage is three private, RLS-enabled tables with all privileges revoked,
+reached only through the security-definer `public.ai_state` RPC that only
+service_role may execute. Admin audit entries are separate and belong to the
+moderation pair.
 
 ## Security
 
@@ -804,15 +841,15 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Account/domain/AI screens and account HTTP flows, demo-kit creation, maintenance provisioning,
-remaining story fields/transitions, feature cache/audit
-services and retention cleanup are not yet available. Durable usage admission
-and shared validated LLM operations/provider transport are implemented internally,
-without an AI feature endpoint or UI. Live provider compatibility and model
+scheduled retention cleanup and remaining story fields/transitions are not yet
+available. Durable usage admission, shared validated LLM operations/provider
+transport and AI caches/audit are implemented internally, without an AI feature
+endpoint or UI. Live provider compatibility and model
 quality remain unverified; source authorization, persistent cache eligibility,
-audit/retention and browser rendering require their owning integrations. The admission service's
+browser rendering and scheduled cleanup require their owning integrations. The admission service's
 per-environment transaction lock serializes admissions; no production load test
-has been run. Usage records remain retained without cleanup/reset, and no
-monetary quota guarantee is supplied.
+has been run. Cleanup exists but nothing schedules it yet, and no monetary
+quota guarantee is supplied.
 The workspace helper requires trusted actor context and supplies only a scope
 prerequisite; no actual AI source/cache/route consumer is implemented here.
 Hosted confirmation-off evidence is the recorded human check, not automated
