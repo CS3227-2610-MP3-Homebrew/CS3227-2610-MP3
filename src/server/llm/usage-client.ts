@@ -13,8 +13,8 @@ export function createUsageRpc(): UsageRpc {
     db: { schema: "public", retry: false },
   });
   return async (fn, args) => {
-    // Limit this privileged adapter to the single infrastructure operation.
-    if (fn !== "reserve_ai_usage") return { data: null, error: { message: "Usage operation unavailable." } };
+    // Allow only explicit AI infrastructure RPCs; never arbitrary SQL or domain reads.
+    if (!["reserve_ai_usage", "ai_state"].includes(fn)) return { data: null, error: { message: "Usage operation unavailable." } };
     const { data, error } = await client.rpc(fn, args);
     return { data, error: error ? { message: "Usage admission unavailable." } : null };
   };
