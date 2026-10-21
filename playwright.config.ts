@@ -21,6 +21,7 @@ export default defineConfig({
     env: {
       APP_ENV: "local",
       AI_PROVIDER: "disabled",
+      AI_MODERATION_REVIEWS_PER_CALL: "7",
       NEXT_PUBLIC_SUPABASE_URL: localAccounts.url,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: localAccounts.publicKey,
       SUPABASE_SECRET_KEY: localAccounts.secretKey,
