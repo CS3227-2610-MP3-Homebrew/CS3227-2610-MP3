@@ -13,6 +13,45 @@ overnight opening. Customer visibility still requires approval without
 suspension. Public profile projections remain defined by the catalogue
 contract; editing conveys no additional access or approval authority.
 
+## Editable fields and atomic saves
+
+The [owner café boundary](../INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+owns exact input/read projections. Café name is trimmed and 2–100 Unicode code
+points; public pickup address is trimmed and 10–200. Area is a required dropdown
+using Central, North, South, East and West. Description is 0–500 Unicode code points and may be empty;
+surrounding whitespace is trimmed and internal line breaks are preserved.
+All application keys remain mandatory even where empty content is allowed.
+
+Pending cafés expose read-only settings. Rejected cafés allow all application
+fields to change through atomic resubmission. Approved cafés allow description,
+weekly hours and pickup cutoff changes immediately, without approval; name,
+area and pickup address render fixed and cannot be changed server-side.
+Settings are one batch: any field/interval validation failure or transactional
+failure rejects the whole batch. Safe field-specific feedback identifies the
+invalid field or interval without echoing submitted values or internal errors.
+
+There are at most two opening intervals per starting weekday and fourteen per
+week. Duplicate and overlapping intervals are rejected, including overnight
+overlap across weekdays or Sunday/Monday. Existing positive-duration, adjacency,
+minute-precision, empty-hours and Singapore-time semantics remain unchanged.
+
+Concurrent ordinary saves use last committed save wins, without a stale-revision
+rejection. All fields are still validated against the current application and
+suspension state; stale saves cannot restore older Admin-controlled state.
+An Admin suspend/un-suspend increments the canonical suspensionVersion. An
+in-flight settings save using the old version fails with 409, changes nothing
+and preserves input while showing current suspension status on
+`/owner/application`. Subsequent explicit management uses the current version
+and remains allowed during suspension. Ordinary owner saves do not change the
+version; this is not stale-edit rejection between ordinary saves.
+Application/decision/suspension context is shown at `/owner/application`.
+Without a café, `/owner/cafe` shows an empty state with an application CTA.
+
+### Known limitations
+
+Changing an approved café's name, area or pickup address, holiday calendars,
+drafts and field-level merge of concurrent saves are outside MVP scope.
+
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or uses a demo-kit owner account.
@@ -30,9 +69,9 @@ contract; editing conveys no additional access or approval authority.
 #### Acceptance criteria
 
 - **`OWN-02.1`:** Given the owner opens Café profile for its own café, when source reads succeed, then it sees that café's stored profile and weekly opening hours, using Singapore local dates/times regardless of browser or host timezone.
-- **`OWN-02.2`:** Given the owner saves a profile change, when the save succeeds, then subsequent own-profile reads return the saved information and subsequent eligible Customer café reads use the current public projection; no other café changes and private Admin reasons never become public profile data.
+- **`OWN-02.2`:** Given the owner saves a profile change, when the save succeeds, then only the state-permitted fields above change in one atomic settings batch using last-committed-save wins, field-specific failures change nothing, and subsequent own-profile reads return the saved information and subsequent eligible Customer café reads use the current public projection; no other café changes and private Admin reasons never become public profile data.
 - **`OWN-02.3`:** Given weekly intervals satisfying the shared `OpeningInterval` contract, when the owner saves hours, then later reads preserve weekday, minute-precision opening/closing times and explicit next-day closing; opening is inclusive, closing exclusive, and adjacent intervals form continuous opening under the shared contract.
-- **`OWN-02.4`:** Given overlapping intervals, a nonpositive duration, or an overnight duration exceeding the shared 24-hour bound, when the owner attempts to save them, then the invalid hours are not persisted; overlap checks include Sunday-to-Monday and do not depend on browser timezone.
+- **`OWN-02.4`:** Given overlapping intervals, a nonpositive duration, or an overnight duration exceeding the shared 24-hour bound, when the owner attempts to save them, then the entire settings batch is rejected without partial writes, including duplicates or more than two intervals per starting day/fourteen per week; overlap checks include Sunday-to-Monday and do not depend on browser timezone.
 - **`OWN-02.5`:** Given an empty weekly-hours list, when it is saved and the café is read, then hours are empty and the café is closed with no next opening or pickup slots under the Customer contracts; no opening interval is fabricated.
 - **`OWN-02.6`:** Given an existing order, when the owner later changes café information or hours, then its original café-name, pickup, item-name and price snapshots remain unchanged under CUS-03; subsequent new-order submission validates the current hours.
 - **`OWN-02.7`:** Given a suspended café, when its owner manages its profile/hours, then owner management remains available under ADM-02, while the changes neither clear suspension nor restore Customer visibility; pending/rejected cafés likewise cannot become approved by editing.

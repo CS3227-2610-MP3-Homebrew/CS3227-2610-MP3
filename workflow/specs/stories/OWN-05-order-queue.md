@@ -12,6 +12,33 @@ marking accepted orders ready, then marking ready orders collected. The queue
 uses retained purchase snapshots and current fulfilment state. No action
 collects an online payment; Customers pay at pickup.
 
+## Queue presentation and action fields
+
+`/owner/orders` defaults to the active queue: pending, accepted and ready.
+UI labels map `pending` to “New”, `ready` to “Ready for pick up”, and `collected`
+to “Completed”; stored state names and shared transitions do not change.
+Active filters are Active (default), New, Accepted and Ready for pick up.
+The history view contains cancelled, rejected and collected orders, with an All
+history filter plus individual state filters. Both views sort pickup instant
+ascending, placement instant ascending, then order reference ascending, 10 per
+page. The exact [owner queue boundary](../INTEGRATION-SPEC.md#owner-order-queue-boundary)
+defines strict URL filters, page parsing and JSON projections.
+
+Display retained purchase fields, current state and the customer name snapshotted
+from the verified customer profile when the order was placed. This grants no
+email, phone or general customer-profile access; later profile changes cannot
+rewrite the retained name. Each successful accept/ready/collect/reject action
+records its server event timestamp atomically with the state transition.
+
+Rejection requires a nonblank reason of at most 100 whitespace-delimited words,
+using ECMAScript whitespace boundaries. Trim surrounding whitespace, preserve
+internal content and render it as inert text. Store it separately from suspension
+cancellation reasons and expose it to that order's customer in My orders.
+Acceptance/readiness/collection cannot supply a rejection reason. Repeat and
+stale actions retain the shared 409 outcome; show “Order changed. Refresh to see
+its current state.” and reload the selected queue page. No-café entry shows an
+empty state with an application CTA. No-source is never represented as no orders.
+
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or uses the demo-kit owner account.
@@ -28,9 +55,9 @@ collects an online payment; Customers pay at pickup.
 
 #### Acceptance criteria
 
-- **`OWN-05.1`:** Given the owner opens Order queue, when authorized source reads succeed, then only its café's in-workspace orders are disclosed, with current fulfilment state and retained item/quantity/price/pickup information; live menu edits do not replace purchase snapshots.
-- **`OWN-05.2`:** Given an own-café `pending` order, when the owner accepts it, then it becomes `accepted`; when the owner instead rejects a pending order, it becomes `rejected`. Each transition preserves the purchase and pickup snapshots.
-- **`OWN-05.3`:** Given an own-café `accepted` order, when the owner marks it ready, then it becomes `ready`; given a `ready` order, marking it collected makes it `collected`, preserving its purchase snapshots.
+- **`OWN-05.1`:** Given the owner opens Order queue, when authorized source reads succeed, then the active/history state filters, labels, 10-item pages and ascending pickup/placement/reference ordering above apply and only its café's in-workspace orders are disclosed, with current fulfilment state and retained item/quantity/price/pickup information; live menu edits do not replace purchase snapshots.
+- **`OWN-05.2`:** Given an own-café `pending` order, when the owner accepts it, then it becomes `accepted`; when the owner instead rejects a pending order, it becomes `rejected`. Rejection requires the customer-visible reason above; each transition records its timestamp and preserves purchase, customer-name and pickup snapshots.
+- **`OWN-05.3`:** Given an own-café `accepted` order, when the owner marks it ready, then it becomes `ready`; given a `ready` order, marking it collected makes it `collected`, recording the corresponding timestamp and preserving its purchase snapshots.
 - **`OWN-05.4`:** Given an in-scope order in any state other than the selected action's allowed prior state, when the owner requests that action, then `409 STATE_CONFLICT` is returned and nothing changes; repeated transitions, skipped stages and terminal-state revival are not permitted.
 - **`OWN-05.5`:** Given a Customer cancellation and owner acceptance compete for one pending order, when they execute concurrently, then exactly one pending-state transition succeeds and the loser receives `409 STATE_CONFLICT`; the order cannot be both accepted and cancelled.
 - **`OWN-05.6`:** Given owner collection competes with café suspension, when collection commits first, then the collected order is preserved; when suspension commits first, then the order is cancelled under ADM-02/CUS-04 and collection fails with `409 STATE_CONFLICT`. Un-suspension never revives a cancelled order.
@@ -56,7 +83,7 @@ refunds, online payment and automatic inventory or review actions.
 
 | Screen | What it shows | Actions | Requirement IDs |
 | --- | --- | --- | --- |
-| Order queue | Own café's order snapshots and current fulfilment state; empty/source-failure and changed-state outcomes | Accept/reject pending; mark accepted ready; mark ready collected | OWN-05 |
+| `/owner/orders` | Own café active/history views, state filters, purchase/customer-name snapshots, rejection reasons and timestamps; 10-item pickup/placement-ordered pages, no-café CTA and source/conflict states | Accept/reject pending; mark accepted ready; mark ready collected | OWN-05 |
 
 ## Use cases
 

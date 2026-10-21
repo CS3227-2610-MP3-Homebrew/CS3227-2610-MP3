@@ -19,6 +19,14 @@ owns transport schemas and projects the shared pending/accepted/ready/collected/
 rejected/cancelled vocabulary. OWN-05 owns owner queue operations; CUS-04 owns
 only pending→cancelled customer transitions and the suspension display below.
 
+## Owner rejection feedback
+
+An owner-rejected order remains in My orders with its required rejection reason,
+at most 100 whitespace-delimited words under OWN-05. Render this as inert text
+and keep it separate from the fixed “Cafe is suspended” cancellation reason.
+Only the owning customer and authorized café owner can read that order's reason;
+this adds no public review, private Admin reason or cross-order access.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.
@@ -35,7 +43,7 @@ only pending→cancelled customer transitions and the suspension display below.
 
 #### Acceptance criteria
 
-- **`CUS-04.1`:** Given a signed-in Customer with orders, when `/customer/orders` is opened, then it returns only its own workspace orders, newest placed first then order reference ascending, 20 per page; display retained café/item/price snapshots, pickup time, state and SGD totals in dollars to exactly two decimal places, including after café suspension, without exposing restricted live café/private data or another Customer's orders.
+- **`CUS-04.1`:** Given a signed-in Customer with orders, when `/customer/orders` is opened, then it returns only its own workspace orders, newest placed first then order reference ascending, 20 per page; display retained café/item/price snapshots, pickup time, state, an owner rejection reason when rejected, lifecycle timestamps and SGD totals in dollars to exactly two decimal places, including after café suspension, without exposing restricted live café/private data or another Customer's orders.
 - **`CUS-04.2`:** Given an own pending order, when the Customer submits the canonical empty-body cancellation request, then it becomes cancelled with no suspension reason and subsequent reads reflect cancellation; a simultaneous owner acceptance can commit only if cancellation did not, with the losing request receiving `409 STATE_CONFLICT` and no further mutation.
 - **`CUS-04.3`:** Given an own accepted, ready, collected, rejected or cancelled order, when Customer cancellation is attempted, including repeat cancellation, then `409 STATE_CONFLICT` changes nothing; only pending orders are manually cancellable.
 - **`CUS-04.4`:** Given another customer's order, an order in another workspace or a missing order reference, when a Customer attempts to read or cancel it through a JSON endpoint, then the same shared `404 NOT_FOUND` boundary applies without protected order disclosure or mutation.

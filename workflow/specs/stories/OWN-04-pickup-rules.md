@@ -12,6 +12,20 @@ The established rule is a café-level integer cutoff offset, 0–180 minutes
 before continuous closing, default 15. This story manages that rule without
 changing the Customer slot grid, lead time, horizon or existing orders.
 
+## Settings save boundary
+
+The cutoff field is `pickupCutoffMinutes`; it is a strict JSON integer from
+0 through 180, defaulting to 15 for a newly submitted café when omitted from
+its pickup settings object. It is saved together with description and weekly
+hours under the [owner café boundary](../INTEGRATION-SPEC.md#owner-cafe-management-boundary),
+not through an independent partial-save endpoint. Invalid settings or persistence
+failure roll back every part of the batch. Pending cafés cannot edit; rejected
+cafés resubmit all application fields; approved cafés save allowed settings
+without reapproval. Last committed ordinary settings save wins. The suspension-version guard rejects
+an in-flight batch overtaken by an Admin suspension change and shows current
+status on /owner/application; subsequent explicit management remains allowed. No café yields
+an empty state with an application CTA. Saved order pickup instants never change.
+
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or uses the demo-kit owner account.

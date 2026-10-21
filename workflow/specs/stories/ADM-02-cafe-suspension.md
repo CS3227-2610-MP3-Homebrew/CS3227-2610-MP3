@@ -14,6 +14,17 @@ state. Customer eligibility is authoritative in
 [SYS-05.3](../TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access)
 and [Product roles](../PRODUCT-SPEC.md#roles-and-access).
 
+## Owner save concurrency
+
+Each successful suspend/un-suspend increments the café's suspensionVersion
+atomically with its existing state, cancellation and audit effects. Failed or
+no-op actions do not increment it. Owner settings/resubmission/menu mutations
+compare the version read when editing inside their transaction; an intervening
+Admin change returns a 409 conflict without saving, and the owner sees current
+suspension status on /owner/application. A later explicit owner edit remains
+permitted during suspension under the existing management permissions. Owner
+saves committed before suspension stay saved and do not prevent suspension.
+
 ## Access
 
 - **How a user gets the role:** The main Admin is maintenance-created and kit Admins are demo-kit-created; sign-up cannot grant Admin.

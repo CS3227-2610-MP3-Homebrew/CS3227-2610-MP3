@@ -12,6 +12,48 @@ state from customer visibility. Submission leaves the café pending; only an
 Admin decision can approve it. Rejection is followed by owner resubmission,
 not an Admin reversal. Approval and suspension remain independent.
 
+## Application lifecycle and fields
+
+An owner has at most one pending or approved café in its workspace. Rejection
+allows another application. Each rejected attempt remains in submission/decision
+history; resubmitting uses the same owner/café identity with a new application
+attempt, a fresh server submission timestamp and a new pending queue position.
+There is no draft-saving operation. An owner with a pending or approved café
+cannot create another one. An identical repeat of that owner's latest submitted
+content returns the existing application; a different submission in those states
+is a conflict. Concurrent submissions admit one winner, with the remaining
+requests evaluated against that committed result.
+
+Application input contains café name, description, area, public pickup address,
+opening hours and pickup settings. All keys are required; description can be
+empty. The shared [owner café boundary](../INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+defines normalized fields, strict schemas and atomic writes. Café names allow
+duplicates, but the case-insensitive trimmed name/address pair must be unique
+among current café identities in the workspace, including rejected identities.
+An existing identity's own resubmission is exempt from its own duplicate match;
+a different owner's matching pair returns a generic conflict without disclosure.
+Area and description do not participate in duplicate checks.
+
+Pending applications cannot be edited. Rejected applications allow all submitted
+fields to change on resubmission; no field change is required. Approved cafés
+allow description, opening hours and pickup settings to change without further
+approval. Approved name, area and public pickup address are fixed in the UI and
+server contract; changing them is outside MVP scope. Owner writes never change
+approval or suspension.
+
+`/owner/application` serves new owners and existing application state. It shows
+the latest decision reason and current suspension reason as inert private text.
+A previous rejection reason stays visible through resubmission until a later
+approval or rejection replaces it. Previous attempts/audit entries remain intact.
+No-café management pages show an empty state and a clear Apply for a café CTA
+to this page rather than immediately redirecting.
+
+### Known limitations
+
+A rejected application may be resubmitted without any field changes. There is
+no draft saving, approved café relocation/renaming or owner-created second
+pending/approved café. Rejected attempt history does not grant another active café.
+
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or signs in with the demo kit's Café owner account. Becoming an owner does not approve a café.
@@ -28,11 +70,11 @@ not an Admin reversal. Approval and suspension remain independent.
 
 #### Acceptance criteria
 
-- **`OWN-01.1`:** Given a signed-in owner submitting a café registration application, when submission succeeds, then the application belongs to that verified owner/workspace, is `pending`, and does not appear in Customer catalogue, café-detail or Brew Finder sources.
+- **`OWN-01.1`:** Given a signed-in owner submitting a café registration application, when submission succeeds, then the application and all profile/hour/pickup fields commit atomically under the one-pending-or-approved-café and duplicate-pair constraints above, belong to that verified owner/workspace, are `pending`, and does not appear in Customer catalogue, café-detail or Brew Finder sources.
 - **`OWN-01.2`:** Given the owner's pending application, when the owner reads Café application at `/owner/application`, then its pending state is shown and neither opening the screen nor editing owner-managed café data approves it.
 - **`OWN-01.3`:** Given an Admin approves or rejects the owner's application under ADM-01, when the owner next reads the application, then it shows the resulting `approved` or `rejected` state and the latest decision reason as escaped plain text; another owner's decision reason is not disclosed.
 - **`OWN-01.4`:** Given an approved café, when its customer eligibility is evaluated, then it is eligible only while not suspended; an owner application/profile write cannot change the Admin-controlled approval or suspension state.
-- **`OWN-01.5`:** Given the owner resubmits its rejected application, when resubmission succeeds, then it returns to `pending`, remains Customer-invisible, and earlier decision audit entries remain intact under ADM-01.11; resubmission does not itself approve the café.
+- **`OWN-01.5`:** Given the owner resubmits its rejected application, when resubmission succeeds, then it returns to `pending`, remains Customer-invisible, and earlier decision audit entries remain intact under ADM-01.11; resubmission does not itself approve the café, creates a fresh submission attempt on the retained café identity, and requires no field changes. Pending/approved duplicate and concurrent submissions follow the application lifecycle and strict owner boundary above.
 - **`OWN-01.6`:** Given a missing or other-owner/other-workspace café target, when an owner application JSON operation addresses it, then the shared indistinguishable `404 NOT_FOUND` record-scope response applies without protected disclosure or change; a supplied owner/workspace reference grants no authority.
 - **`OWN-01.7`:** Given no valid session or a Customer/Admin session, when an owner application JSON operation is requested, then it returns `401 UNAUTHENTICATED` or `403 FORBIDDEN` respectively without application disclosure or change; browser entry follows SYS-03.
 - **`OWN-01.8`:** Given a kit owner, when it submits or reads an application, then the same lifecycle and ownership rules apply inside its kit only; normal sign-up belongs to the main workspace and cannot choose a kit through request data.
@@ -54,7 +96,7 @@ account registration (SYS-01) and profile/menu/pickup editing (OWN-02–OWN-04).
 
 | Screen | What it shows | Actions | Requirement IDs |
 | --- | --- | --- | --- |
-| `/owner/application` | Café registration context, own application state and latest Admin decision reason; protected loading/source-failure states | Submit application; read state/reason; resubmit a rejected application | OWN-01 |
+| `/owner/application` | Café registration context, own application state, latest Admin decision reason and current suspension reason; no-café application form and protected loading/source-failure states | Submit application; read state/reason; resubmit a rejected application | OWN-01 |
 
 ## Use cases
 
