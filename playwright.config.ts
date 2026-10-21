@@ -1,4 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { localAuthConfiguration } from "./tests/e2e/accounts/local";
+
+const localAccounts = localAuthConfiguration();
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,8 +21,9 @@ export default defineConfig({
     env: {
       APP_ENV: "local",
       AI_PROVIDER: "disabled",
-      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "synthetic-public-local-auth-fixture",
+      NEXT_PUBLIC_SUPABASE_URL: localAccounts.url,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: localAccounts.publicKey,
+      SUPABASE_SECRET_KEY: localAccounts.secretKey,
     },
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
