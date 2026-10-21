@@ -30,9 +30,9 @@ endpoints can be finalized.
 | --- | --- | --- |
 | Accounts and role navigation | SYS-01–SYS-03 | Account fields, validation, redirect paths, session errors and account lifecycle. Admin creation remains seed-only. |
 | Catalogue and Brew Finder | CUS-01–CUS-02, CUS-06 | Customer read/filter/rating and recommendation boundaries are defined below. Owner profile/menu/hour editing remains OWN-02–OWN-03; shared navigation remains SYS-03. |
-| Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Customer pickup/order boundaries and shared state/race vocabulary are defined below. Owner pickup-rule editing and queue action contracts remain OWN-04–OWN-05. |
+| Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Customer pickup/order boundaries and shared state/race vocabulary are defined below. Owner pickup-rule editing and queue actions are projected in the owner boundaries below under OWN-04–OWN-05 ownership. |
 | Reviews and moderation | CUS-05, ADM-03–ADM-04 | Customer review fields/submission are defined below. Admin queue ordering, keep/hide/restore transactions and AI classification remain ADM-03–ADM-04. |
-| Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Customer-facing enums, money and hours read vocabulary are defined below; owner field validation/edit actions, applications and owner-side suspension display remain with their owning stories. |
+| Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Customer enums/money/hours and the owner café/menu boundaries below project OWN-01–OWN-04 decisions, including fields, atomic edits, applications and private suspension context. |
 | Sales and preparation advice | OWN-06–OWN-07 | Included order states, aggregation window, business-day boundaries, minimum data, top-item sorting and meaning of more/less advice. |
 | Stretch features | CUS-07, OWN-08, ADM-05–ADM-06 | CUS-07's optional favourite boundary is defined below. Boost and runtime AI-control contracts remain with their owning stories. No MVP favourite endpoint is implied. |
 
@@ -136,15 +136,22 @@ off in dev and prod under SYS-06.4; sign-up cannot create an Admin.
 | `email` | Required string. Apply JavaScript `trim()` then lowercase; validate the normalized result with the installed Zod email validator (`z.email()`) and a maximum of 254 Unicode code points. Use that normalized email for sign-up/sign-in. No submitted value appears in an error. |
 | Sign-up `password` | Required string, at least 8 Unicode code points and at most 72 UTF-8 bytes after JSON decoding. Do not trim, lowercase, normalize, truncate or impose a composition rule. |
 | Sign-in `password` | Required nonempty string, at most 72 UTF-8 bytes after JSON decoding; otherwise preserve exactly. Do not apply the sign-up minimum to existing kit/seed accounts. |
+| Customer sign-up `customerName` | Required only for role customer; trimmed string of 2–100 Unicode code points, preserving case/internal whitespace. No uniqueness check. Persist on the protected Customer profile; owner sign-up must omit the key. |
 | Sign-up `role` | Required exact string `customer` or `owner`, displayed as Customer/Café owner. No default. No role field is accepted on sign-in. |
 
-The sign-up form contains only email/password/role, without a display name or
-password-confirmation input. Sign-in contains email/password only. Client
+The sign-up form contains email/password/role and a name field shown and required
+only when Customer is selected. Owner sign-up omits customerName. There is no
+password-confirmation input. Sign-in still contains email/password only. Client
 field feedback supplements the same server-side Zod validation; passing browser
 validation never establishes permission. A strict request rejects additional
 keys including profile metadata, user/workspace IDs and return destinations.
-Profiles retain only their existing protected identity/role/workspace contract;
-no new editable profile field or role-change lifecycle is added.
+Customer profiles additionally retain customerName from registration. The server
+provisions it together with the protected identity/role/workspace; a later profile
+editing or name-change endpoint is outside scope. Owner/Admin profiles do not
+gain a name requirement. Names never select identity, role or workspace and
+are never checked for uniqueness. Provisioned demo/test Customer profiles use
+valid synthetic names through their owning provisioning contracts, not email
+derivation or an order-submitted name fallback.
 
 #### Account transport and routes
 
@@ -161,7 +168,7 @@ Rejected transport/validation requests have no account/session mutation.
 
 | Method and route | Exact request body | Normal HTTP 200 result and cookie effect |
 | --- | --- | --- |
-| `POST /api/auth/sign-up` | `{email: string, password: string, role: "customer" \| "owner"}` | Exactly `{requestId, redirectTo: RoleHome}` after account, protected main-workspace profile and initial persistent session succeed; set session cookies. The completed-profile/failed-session alternative is below. |
+| `POST /api/auth/sign-up` | `{email: string, password: string, role: "customer", customerName: string}` or `{email: string, password: string, role: "owner"}` | Exactly `{requestId, redirectTo: RoleHome}` after account, protected main-workspace profile and initial persistent session succeed; set session cookies. The completed-profile/failed-session alternative is below. |
 | `POST /api/auth/sign-in` | `{email: string, password: string}` | Exactly `{requestId, redirectTo: RoleHome}` after credentials and protected profile verify; set persistent session cookies for the existing role/workspace, including kit accounts. |
 | `POST /api/auth/sign-out` | `{}` | Exactly `{requestId, redirectTo: "/sign-in"}`; revoke this browser's corresponding remote session only and clear local session cookies. An absent session is idempotent success and still clears residual cookies. Remote failure uses the alternative below. |
 
@@ -200,8 +207,8 @@ authenticated role-home claim.
 An invalid field gives client field feedback plus server `400 INVALID_REQUEST`
 with “Check the account fields and try again.” Other transport errors retain
 the shared safe meanings. Forms disable repeat submission while pending;
-after a submitted request fails they keep email/selected role and clear the
-password. No browser or server automatically retries account operations.
+after a submitted request fails they keep email/selected role/customer name and
+clear the password. No browser or server automatically retries account operations.
 A network failure with no confirmed response displays “Unable to complete the
 request. Try again.” without claiming creation, login, cookie clearance or
 remote sign-out succeeded. The partial-profile failure cleanup is the sole
@@ -471,7 +478,10 @@ Order = {orderId: Ref, cafeId: Ref, cafeName: string, placedAt: Instant,
   pickupAt: Instant, state: "pending" | "accepted" | "ready" |
   "collected" | "rejected" | "cancelled", items: OrderItem[],
   totalCents: Count, currency: "SGD",
-  cancellationReason: "Cafe is suspended" | null}
+  cancellationReason: "Cafe is suspended" | null, rejectionReason: string | null,
+  acceptedAt: Instant | null, readyAt: Instant | null,
+  collectedAt: Instant | null, rejectedAt: Instant | null,
+  cancelledAt: Instant | null}
 ```
 
 `items` contains 1–20 distinct item references from this one café. Reject
@@ -483,14 +493,25 @@ total from current menu prices. `expectedTotalCents` confirms the displayed
 total, never supplies a price. A different server total gives
 `409 STATE_CONFLICT` without creating an order, with UI feedback to review
 current prices before submitting again. Invalid schema/grid/horizon/lead-time
-gives `400 INVALID_REQUEST`; an in-scope sold-out/removed item or slot no longer
-permitted by current hours/rules gives `409 STATE_CONFLICT`. Missing/foreign
+gives `400 INVALID_REQUEST`; an in-scope sold-out item or slot no longer
+permitted by current hours/rules gives `409 STATE_CONFLICT`. A permanently
+removed menu row is absent and gives the same `404 NOT_FOUND` as a missing
+item, including when the customer retained an earlier menu selection. Missing/foreign
 café/item references give `404 NOT_FOUND`; an ineligible café also gives that
 same record-scope failure. Source failure is `503 SOURCE_UNAVAILABLE`.
 
-New orders start in `pending`. Store café-name, item-name and unit-price
-snapshots at creation. Line total is
-quantity times unit price; total is their sum. Snapshot item arrays sort by
+New orders start in `pending`. Store café-name, customer profile name, item-name
+and unit-price snapshots at creation. Owner order reads project the immutable customer name;
+customer order responses do not expose other customers or profile references.
+Customer name is required on the protected profile, never in CreateOrder.
+Missing/invalid own profile name gives 409 STATE_CONFLICT with “Customer name
+is unavailable. Account setup must be completed before ordering.”, creates no
+order/key and never substitutes an email or invented name. Source failure is
+503. This adds no account-repair endpoint.
+Each lifecycle timestamp is initially null and set once by its successful
+transition using the database clock. Retain prior event timestamps; rejected
+orders carry the required OWN-05 reason, and other states use rejectionReason
+null. Line total is quantity times unit price; total is their sum. Snapshot item arrays sort by
 item reference. Later menu/name/price/hour/rule changes do not change an existing
 order's pickup, price or item snapshots. Reads of retained own orders do not
 require the live café to remain publicly eligible and disclose no private
@@ -527,7 +548,7 @@ orders give indistinguishable `404 NOT_FOUND`.
 | --- | --- | --- | --- |
 | Customer cancel | pending | cancelled, null cancellation reason | CUS-04 |
 | Owner accept | pending | accepted | OWN-05 |
-| Owner reject | pending | rejected | OWN-05 |
+| Owner reject | pending | rejected, required customer-visible rejection reason | OWN-05 |
 | Owner mark ready | accepted | ready | OWN-05 |
 | Owner mark collected | ready | collected | OWN-05 |
 | Admin suspension consequence | pending, accepted, ready | cancelled, fixed “Cafe is suspended” | ADM-02 applies CUS-04.5 |
@@ -605,6 +626,182 @@ Ineligible cafés are omitted from list content and pagination without deleting
 the association; restored eligibility makes them appear again at their original
 saved position. A saved reference never grants catalogue access. Removal,
 sharing, notifications and public favourite counts are outside this contract.
+
+## Owner cafe management boundary
+
+Behaviour belongs to OWN-01, OWN-02 and OWN-04. All routes require a verified
+owner/workspace, session-bound RLS and the shared strict JSON, same-origin,
+65,536-byte body, safe-error and private/no-store conventions. Caller-supplied
+owner, workspace, approval, suspension, decision or timestamp keys are invalid.
+
+```text
+CafeApplicationInput = {submissionKey: UUID, name: string, description: string, area: Area,
+  pickupAddress: string, openingHours: OpeningInterval[],
+  pickupSettings: {pickupCutoffMinutes?: integer 0..180}}
+CafeSettingsInput = {description: string, openingHours: OpeningInterval[],
+  pickupSettings: {pickupCutoffMinutes: integer 0..180}}
+OwnerCafe = {cafeId: Ref, name: string, description: string, area: Area,
+  pickupAddress: string, openingHours: OpeningInterval[],
+  pickupSettings: {pickupCutoffMinutes: integer 0..180},
+  applicationState: "pending" | "approved" | "rejected",
+  submittedAt: Instant, suspended: boolean, suspensionVersion: Count,
+  latestDecision: {decision: "approve" | "reject", reason: string,
+    decidedAt: Instant} | null,
+  suspensionReason: string | null}
+```
+
+Fields are strict strings without coercion. Trim name/address/description with
+ECMAScript trim; count normalized lengths in Unicode code points. Name is
+2–100 and address 10–200; neither can be blank. Description is 0–500 code points
+after trimming and preserves internal line breaks. Area uses the exact shared enum and a UI
+dropdown. Hours permit two intervals per starting weekday/fourteen per week;
+reject duplicates and overlaps, retaining all shared overnight/adjacency rules.
+Application pickup settings default to 15 only when its cutoff key is omitted.
+Later settings saves require the cutoff explicitly. All submitted fields save
+atomically; invalid input gives 400 and a safe message naming the field/interval
+(e.g. “openingHours[0]: intervals must not overlap.”) without reflecting values.
+The form keeps input, highlights the named field and announces the error.
+Database failure gives 500 without partial application/profile/hour/rule writes.
+
+| Method/path | Request | Success |
+| --- | --- | --- |
+| GET /api/owner/cafe | No query/body | 200 {requestId, cafe: OwnerCafe or null}; null only for no café. |
+| POST /api/owner/applications | CafeApplicationInput | 201 {requestId, cafe: OwnerCafe}; identical latest-content replay returns 200. |
+| POST /api/owner/cafe/resubmit | CafeApplicationInput plus expectedSuspensionVersion: Count | 200 {requestId, cafe: OwnerCafe}; rejected only, except identical latest submission replay. |
+| POST /api/owner/cafe/settings | CafeSettingsInput plus expectedSuspensionVersion: Count | 200 {requestId, cafe: OwnerCafe}; approved only. |
+
+Application submissionKey is a lowercase canonical UUID scoped to the verified
+owner, distinct from requestId. Store successful key/content/attempt identity
+atomically with the application. Compare normalized application content excluding
+submissionKey and the suspension precondition, including sorted hours and
+defaulted cutoff. Same key/content replays the
+existing café with 200 without changing state, settings, decision history or
+submission time; different content with that key gives 409. Failed submissions
+persist no key. Keep successful keys with application history. A new intentional
+resubmission uses a fresh key. An identical repeated creation from the same
+owner returns its existing latest application even with a fresh key and binds
+that key to the existing attempt. Different creation content for an existing
+café gives 409; rejected owners use the explicit resubmission endpoint. For explicit resubmission,
+a fresh key can create a new attempt only from rejected state, including when
+all fields are unchanged. Concurrent identical resubmissions produce one attempt;
+once pending, identical content returns it while different content gives 409.
+A key replay never resurrects a rejected or approved café.
+
+At most one pending/approved café identity exists per owner. Rejected attempts
+are retained on that identity. First creation and all resubmissions serialize
+with owner identity and Admin decisions. Distinct concurrent bodies have one
+winner and a 409 loser. Approval never permits a second café. Rejected owners
+use explicit resubmission to send another application, not another active café.
+
+Trimmed name/address pairs compare case-insensitively using Unicode lowercase,
+within a workspace, ignoring description/area. Duplicate pairs belonging to
+another café identity, including another owner, give generic 409 STATE_CONFLICT
+without identifying the other record. Workspace isolation prevents cross-kit
+duplicate queries or disclosure. The café's own identity is excluded when it
+resubmits. Duplicate-name-only cafés remain valid.
+
+Ordinary settings batches use last committed save wins; no ordinary content
+revision token or field-level merge. Approved fixed fields are absent from
+settings input and cannot be changed. Pending edits and wrong-state resubmissions give 409.
+No-café mutations give 404; reads return cafe null and pages show an application
+CTA. /owner/application displays current application/latest-decision/suspension
+context; /owner/cafe is the combined settings page. Decision reasons remain
+private and the previous rejection reason persists until a new Admin decision.
+Changing approval/suspension is never part of an owner save.
+
+Each café has suspensionVersion, starting at zero and incrementing atomically
+on every successful Admin suspend/un-suspend, never an ordinary owner edit or
+failed/no-op Admin action. Owner resubmission/settings and every menu mutation
+must include expectedSuspensionVersion from the last owner café read; it is a
+strict nonnegative safe integer. Compare inside the same transaction as the
+owner write. A mismatch returns 409 STATE_CONFLICT with “Cafe suspension status
+changed. Review the application page.” and writes nothing. The UI preserves
+unsaved input, opens /owner/application and shows current suspension status.
+If the owner write commits first it remains valid; a later suspension retains
+its usual visibility/order consequences. A subsequent explicit edit uses the
+new version and remains permitted during suspension, subject to application
+state and field restrictions. This guard grants no ability to set the version
+or suspension; it does not introduce stale rejection between ordinary saves.
+Submission-key replay precedes this guard because replay creates nothing.
+
+## Owner menu boundary
+
+OWN-03 owns this contract. Routes use the owner session/workspace and current
+parent café checks/RLS. Missing/foreign café/item targets give indistinguishable
+404; wrong role gives 403 and no session gives 401. Shared transport applies.
+
+```text
+CreateMenuItem = {name: string, drinkType: DrinkType,
+  priceCents: integer 1..1000000, soldOut?: boolean}
+SaveMenuItem = {name: string, drinkType: DrinkType,
+  priceCents: integer 1..1000000, soldOut: boolean}
+```
+
+Stored names are trimmed and 2–100 Unicode code points. Names compare for
+per-café uniqueness after removing ECMAScript whitespace
+and Unicode lowercasing. Name validation cannot accept an empty comparison key.
+New soldOut defaults to false. All edit fields are required. Each menu mutation
+additionally requires expectedSuspensionVersion: Count from GET /api/owner/cafe;
+apply the same suspension conflict and application-page feedback above.
+Names/types/prices are validated server-side; duplicate names give 409 with no partial write.
+
+| Method/path | Request | Success |
+| --- | --- | --- |
+| GET /api/owner/menu | Optional page, customer page parser | 200 Page<MenuItem>, 20 per page, name/reference ascending. |
+| POST /api/owner/menu | CreateMenuItem plus expectedSuspensionVersion: Count | 201 {requestId, item: MenuItem}. |
+| POST /api/owner/menu/{itemId} | SaveMenuItem plus expectedSuspensionVersion: Count | 200 {requestId, item: MenuItem}. |
+| POST /api/owner/menu/{itemId}/remove | Exactly {expectedSuspensionVersion: Count} | 200 {requestId, removed: true}. |
+
+Unknown/duplicate query keys and malformed fields give 400. With no café, the
+list returns an empty page; mutations give 404 and UI offers the application
+CTA. Source failures remain 503. Updates preserve item identity; removal
+permanently deletes the current menu row, never order snapshots/references.
+An update or repeat removal after deletion gives 404 and cannot upsert. A new
+same-named item has a new reference. Valid ordinary updates serialize with
+last committed save wins; uniqueness races return 409 to the loser. Removal
+also serializes with new order validation; an order committed first retains
+its snapshots, while a later order cannot use that removed item. All failure
+paths leave no partial mutation. Archiving/restoration are outside scope.
+
+## Owner order queue boundary
+
+OWN-05 owns queue presentation and actions. /owner/orders uses view=active
+(default) or view=history; filter defaults to all. Active filters are all,
+pending, accepted, ready; history filters are all, cancelled, rejected, collected.
+Exact enum spelling applies. JSON/API uses canonical states; only UI labels
+use New, Ready for pick up and Completed. Query keys view/filter/page occur at
+most once; incompatible/unknown values give 400. Page uses the customer positive
+decimal parser. Responses use {requestId, items, page, pageSize: 10, hasNextPage};
+valid beyond-last pages are empty. Sort pickupAt, placedAt and orderId ascending.
+Reads return only the owner's café/workspace purchases and snapshots.
+
+OwnerOrder extends Order with customerName: string, the immutable profile-name
+snapshot at placement. It contains no customer profile ID, email or phone.
+Lifecycle fields acceptedAt/readyAt/collectedAt/rejectedAt/cancelledAt are null
+until their successful transition, then database instants; placedAt is creation.
+Rejection reason is trimmed nonblank text of 1–100 words, splitting on one or
+more ECMAScript whitespace code points. Internal whitespace is preserved.
+The shared body ceiling also applies. Reason is customer-visible inert text,
+distinct from private Admin reasons and the fixed suspension cancellation text.
+
+| Method/path | Request | Success |
+| --- | --- | --- |
+| GET /api/owner/orders | Optional view/filter/page | 200 ten-item page of OwnerOrder. |
+| POST /api/owner/orders/{orderId}/accept | Exactly {} | 200 {requestId, order: OwnerOrder}. |
+| POST /api/owner/orders/{orderId}/reject | Exactly {reason: string} | 200 {requestId, order: OwnerOrder}. |
+| POST /api/owner/orders/{orderId}/ready | Exactly {} | 200 {requestId, order: OwnerOrder}. |
+| POST /api/owner/orders/{orderId}/collect | Exactly {} | 200 {requestId, order: OwnerOrder}. |
+
+The existing shared state/race matrix is authoritative: pending accepts/rejects,
+accepted becomes ready, ready becomes collected. Invalid rejection text gives
+400, missing/foreign targets 404, and in-scope stale/repeated actions 409 with
+no state/reason/timestamp changes. UI announces “Order changed. Refresh to see
+its current state.” and reloads the chosen queue page after a conflict. There
+is no general owner cancellation or last-save override for state transitions.
+State/reason/event timestamp commit together; transaction failure gives 500
+without partial updates. Suspension and owner collection retain the shared
+serialization rules and terminal preservation. No-café reads return empty
+pages and the UI provides an application CTA; source outages give 503.
 
 ## SoCLaaS transport
 

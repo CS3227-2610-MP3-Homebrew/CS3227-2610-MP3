@@ -12,6 +12,39 @@ café. Sold-out items remain visible to eligible Customers but cannot be newly
 ordered. Menu changes preserve existing purchases and do not approve or
 un-suspend a café. SGD money and drink-type vocabulary use the shared contract.
 
+## Item lifecycle and owner menu
+
+Owners can add, edit and permanently remove their own café's items. Editable
+fields are name, drink type, integer price cents and sold-out state; new items
+default to available when soldOut is omitted. Stored names are trimmed and
+2–100 Unicode code points. Item names within one café are
+unique after removing all ECMAScript whitespace and applying Unicode lowercase
+comparison. Description/type/price do not participate in duplicate detection.
+Renaming preserves item identity and must satisfy the same uniqueness check.
+
+Removal deletes the current menu row and immediately excludes it from later
+customer menus, drink filters and AI candidates. It never deletes or rewrites
+historical order lines: original item references and purchase snapshots survive
+as immutable values without requiring a live menu row. Creating a same-named
+item after removal produces a new identity; restoration is not supported.
+
+`/owner/menu` orders items alphabetically by name, comparing Unicode code
+points, then item reference ascending; pages contain 20 items. No-café entry
+shows an empty state with an Apply for a café CTA. Read failures remain source
+failures rather than empty menus. Ordinary concurrent mutations use the last
+committed valid outcome. An update racing a deletion cannot recreate the deleted
+item; missing items give 404, and duplicate-name races admit one valid winner.
+Each mutation is atomic and preserves current owner/workspace authorization.
+The shared expectedSuspensionVersion guard rejects a mutation overtaken by
+suspension/un-suspension, shows current status on /owner/application and permits
+a later explicit edit under the new version even while suspended.
+
+### Known limitations
+
+Drink archiving and restoration are outside MVP scope and may be considered
+as later enhancements. No inventory, automatic stock or purchase-history
+rewriting is introduced.
+
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or uses a demo-kit owner account.
@@ -29,7 +62,7 @@ un-suspend a café. SGD money and drink-type vocabulary use the shared contract.
 #### Acceptance criteria
 
 - **`OWN-03.1`:** Given an owner opens Menu for its café, when source reads succeed, then it sees only its own café's items with names, drink types, SGD prices and sold-out state, including items currently sold out.
-- **`OWN-03.2`:** Given the owner saves a menu-item change, when saving succeeds, then later own-menu reads return the saved item data and eligible Customer reads use the current menu projection; no item of another café changes.
+- **`OWN-03.2`:** Given the owner saves a menu-item change, when saving succeeds, then add/edit/remove, duplicate-name checks and last-committed valid outcome follow the item lifecycle above, later own-menu reads return the saved item data and eligible Customer reads use the current menu projection; no item of another café changes.
 - **`OWN-03.3`:** Given a menu price is saved, when it is persisted or returned as JSON, then it uses integer SGD cents between 1 and 1,000,000 inclusive under the shared money contract; displayed amounts use `S$` with exactly two decimal places and do not use floating-point dollar arithmetic for totals.
 - **`OWN-03.4`:** Given an owner changes an item's drink type, when the save succeeds, then its value is one of the shared `DrinkType` enum values; an unknown type or a fractional/out-of-range stored-cent price is not persisted.
 - **`OWN-03.5`:** Given an available own-menu item, when its owner successfully toggles sold out on, then subsequent eligible café-page reads still include it with sold-out state and CUS-03 refuses new orders containing it; toggling sold out off restores availability only subject to current café and order eligibility.
@@ -54,7 +87,7 @@ AI-applied menu changes and changing existing purchase snapshots.
 
 | Screen | What it shows | Actions | Requirement IDs |
 | --- | --- | --- | --- |
-| Menu | Own items, names/types/prices, sold-out states; empty menu, validation and source-failure states | Manage own menu-item data/prices; toggle sold out | OWN-03 |
+| Menu | Own items, names/types/prices, sold-out states; empty menu, validation and source-failure states | Add/edit/remove own items; toggle sold out; page alphabetically | OWN-03 |
 
 ## Use cases
 

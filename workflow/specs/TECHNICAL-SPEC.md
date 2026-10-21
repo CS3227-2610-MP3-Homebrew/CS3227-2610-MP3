@@ -125,8 +125,9 @@ dates and opening-hours calculations use `Asia/Singapore`.
 | Entity | Fixed data and relationships | Ownership and RLS policy intent | Dependency intentionally left to story specs |
 | --- | --- | --- | --- |
 | Workspaces | Stable workspace identity; one main workspace and one workspace per demo kit. | Actor access is limited to their own workspace; no role, including Admin, gains cross-workspace access. | None for workspace identity and isolation. |
-| Profiles | Workspace reference; Supabase Auth user reference and protected role: Customer, Café owner or Admin. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
+| Profiles | Workspace reference; Supabase Auth user reference and protected role: Customer, Café owner or Admin; Customer-only trimmed 2–100-code-point name from SYS-01, without uniqueness checking. | A user can access their own role/profile for the role UI. Untrusted writes cannot promote a role or create Admin accounts. No additional cross-profile access is granted. | Profile fields, multiple roles and later role changes: shared account stories. |
 | Cafés | Workspace and owner profile references; application/approval state supporting pending, approval and rejection; suspension state; café profile, area and pickup-rule data. Approval and suspension are independent. | Owners access/manage only their own cafés; owner writes cannot self-approve or clear suspension. Customers read only approved, non-suspended cafés. Admins read applications/cafés and perform the product's approval/rejection and suspension/un-suspension operations. | Number of cafés per owner and profile fields: OWN-01–OWN-04. Application decisions and one-way approval: [ADM-01](stories/ADM-01-cafe-applications.md); rejection resubmission is OWN-01's owner action. Suspension and effects on existing orders/access: [ADM-02](stories/ADM-02-cafe-suspension.md). |
+| Café application attempts and submission keys | Retained café reference, server submission time, normalized submitted fields, verified owner/submission-key identity and resulting attempt reference. | Submission/resubmission/key/profile/hour/rule writes commit together. Application-key replay is server-mediated for the verified owner only; keys are not public lookups or grants. Prior decisions/audit remain append-only under ADM-01. | Exact schemas/replay/state rules: OWN-01 and the owner café boundary. |
 | Menu items | Café reference; item identity, name, DrinkType, integer SGD price cents and sold-out state; customer projections follow the [catalogue boundary](INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). | Owners manage items only through their own café. Customer reads require parent eligibility and include sold-out items; new orders require available items. No extra Admin menu-write permission. | Owner edit validation, item removal/history management: OWN-03; customer eligibility/snapshots: CUS-01–CUS-03. |
 | Opening hours | Café reference; weekly Singapore-local opening/closing intervals with explicit next-day closing and café pickup-cutoff offset, projected by the [customer boundary](INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). | Owner management stays within their café. Customer reads require eligible parent; new pickup validation uses current intervals/rules. | Owner hour/rule edit contracts: OWN-02/OWN-04; Customer time/slot behaviour: CUS-01–CUS-03. |
 | Orders | Customer/café references; placed/pickup instants, fulfilment state, café-name/price snapshots, total cents and fixed public cancellation reason under [CUS-03/CUS-04 transport](INTEGRATION-SPEC.md#customer-pickup-and-order-boundary). | Customers read their own retained purchases and cancel only pending; owners access only their café queue. Mutations satisfy story transitions/RLS. No unrelated Admin order access. | Owner queue action contracts: OWN-05; Customer creation/read/races: CUS-03–CUS-04; suspension transaction: ADM-02. |
@@ -147,9 +148,10 @@ in addition to existing role/ownership rules. A kit Admin cannot access the main
 workspace or another kit. Normal sign-ups always join the main workspace;
 untrusted input cannot select or reassign a workspace.
 
-The model intentionally does not decide account/café cardinality beyond each
-café's single owner, owner edit/queue APIs, aggregate sales rules, or boost and
-runtime-settings entities before their owning story contracts exist. Optional
+OWN-01 fixes one pending/approved café per owner, with retained rejected
+application attempts and explicit resubmission. Owner profile/menu/queue APIs
+follow INTEGRATION-SPEC. Aggregate sales rules, boost and runtime-settings
+entities remain reserved to their owning contracts. Optional
 favourite data is established solely by CUS-07 and does not add an MVP entity.
 
 ### Customer contract data and integrity
@@ -164,10 +166,11 @@ original visible ratings under CUS-01's single formula; rounded display means
 never replace original ratings or determine tie order.
 
 Orders preserve their original café-name/item-name/unit-price/quantity/pickup
-snapshots after menu, price, hour and rule edits. Item references and histories
-must survive removal from the current orderable menu; no cascading deletion
-can erase a recorded purchase or its review. This does not select the owner's
-menu deletion/archive UI. Current schema relationships alone do not constitute
+snapshots after menu, price, hour and rule edits. Original item references and purchase snapshots
+survive permanent deletion of current menu rows as immutable historical values;
+live menu foreign keys must not cascade-delete purchases or prevent authorized
+removal. No order read requires joining a surviving live menu row. Archiving
+and restoration are outside OWN-03 scope. Current schema relationships alone do not constitute
 the completed customer field/state model.
 
 Relational uniqueness enforces successful Customer/submission-key identity,
@@ -193,6 +196,40 @@ exclude currently ineligible cafés; retained associations reappear when eligibl
 again. Repeated saves preserve the unique association's original timestamp.
 Neither the association nor its cached UI state grants café access. Ordinary
 role operations continue to use session-bound RLS clients.
+
+### Owner settings, menu and fulfilment integrity
+
+The [owner boundaries](INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+require database-backed uniqueness for one pending/approved café per owner and
+workspace-local case-insensitive trimmed café-name/pickup-address pairs. A café
+identity retains application attempts/submission instants, successful owner
+submission keys/normalized request identities and decision history.
+Concurrent submission, resubmission and Admin decisions serialize; an owner
+cannot write approval/suspension or overwrite a newer decision through settings.
+Profile/hour/pickup batches commit atomically, with last committed ordinary
+save winning and no partial interval/rule update. Café suspensionVersion starts
+at zero and increments only on successful suspend/un-suspend, atomically with
+the Admin transaction. Owner mutation expectedSuspensionVersion is a concurrency
+precondition, never authority to change suspension or the version; a mismatch
+rolls back that owner write and shows current application/suspension status.
+Subsequent explicit management during suspension remains available. At most two intervals per
+starting weekday/fourteen per week, no duplicates or overlaps, apply on writes.
+
+Per-café menu-name uniqueness removes ECMAScript whitespace and lowercases
+Unicode for comparison. Permanent menu deletion preserves historical item IDs
+as snapshot values and never cascades to orders/reviews. Removed items leave
+catalogue drink filters, menus and AI source selection; cache fingerprints and
+current availability checks continue to reflect these source changes.
+
+Orders additionally retain the server-derived customer profile name and null
+or once-recorded accepted/ready/collected/rejected/cancelled event timestamps.
+Owner rejection text is separate from cancellationReason, is required for a
+rejected order and visible only within ordinary own-order/own-café scope.
+State, reason and event timestamp commit atomically. No owner cross-profile
+read grant is added: the name is copied during authorized order creation.
+No source customer identity, name or rejection text enters Brew Finder context.
+Sales event selection remains OWN-06's separate decision; recording lifecycle
+timestamps does not choose an aggregate metric or grant extra order access.
 
 ### RLS and database exposure
 
