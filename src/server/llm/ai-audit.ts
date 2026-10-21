@@ -8,15 +8,20 @@ const tokens = z.object({
   output: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   total: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
 }).strict();
-const eventSchema = z.object({
+const metadataSchema = z.object({
   operationId: z.uuid(), actorId: z.uuid(), cafeId: z.uuid().optional(),
   feature: z.enum(["brew_finder", "prep_advisor", "moderation_assistant"]),
   scope: z.union([z.object({ actorId: z.uuid() }).strict(), z.object({ cafeId: z.uuid(), businessDate: z.iso.date() }).strict()]),
+}).strict();
+const validScope = (e: z.infer<typeof metadataSchema>) => e.feature === "prep_advisor"
+  ? "cafeId" in e.scope && e.cafeId === e.scope.cafeId
+  : "actorId" in e.scope && e.actorId === e.scope.actorId && e.cafeId === undefined;
+export const auditMetadataSchema = metadataSchema.refine(validScope);
+export type AiAuditMetadata = z.infer<typeof auditMetadataSchema>;
+const eventSchema = metadataSchema.extend({
   outcome: z.enum(["started", "cache", "provider_attempt", "success", "fallback", "denied"]),
   tokens: tokens.optional(),
-}).strict().refine(e => e.feature === "prep_advisor"
-  ? "cafeId" in e.scope && e.cafeId === e.scope.cafeId
-  : "actorId" in e.scope && e.actorId === e.scope.actorId && e.cafeId === undefined && !(e.feature === "moderation_assistant" && e.outcome === "cache"));
+}).refine(e => validScope(e) && !(e.feature === "moderation_assistant" && e.outcome === "cache"));
 export type AiAuditEvent = z.infer<typeof eventSchema>;
 
 /** Shared content-free AI audit, including transient Moderation Assistant use.

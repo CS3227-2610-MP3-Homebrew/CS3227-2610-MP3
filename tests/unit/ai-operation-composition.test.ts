@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { expect, test, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { createAiState, type AiCacheContext, type AiOperationContext } from "@/server/llm/ai-state";
+import { createAiAudit } from "@/server/llm/ai-audit";
+import { Fixture as DatabaseFixture, literal, successfulSql } from "../integration/schema/local-database";
 import { runLlmOperation } from "@/server/llm/operations";
 import { prompts } from "@/server/llm/prompts";
 import { limits } from "./usage/contracts";
@@ -16,7 +18,7 @@ const envelope = (data: unknown, usage: unknown = { prompt_tokens: 0, completion
   ignored_metadata: "PRIVATE_PROVIDER_CANARY",
 });
 type Fixture = Pick<Awaited<ReturnType<typeof fixture>>, "context" | "admission" | "now">;
-function setup(f: Fixture) {
+function setup(f: Fixture, changes: Partial<Parameters<typeof createAiState>[0]> = {}) {
   const config = configuration();
   f.context.model = { provider: "fake", baseUrl: config.SOCLAAS_BASE_URL, model: config.SOCLAAS_MODEL, reasoningEffort: config.SOCLAAS_REASONING_EFFORT };
   f.context.contract = { feature: f.context.feature, version: f.context.feature === "brew_finder" ? "2" : "1", systemPrompt: prompts[f.context.feature] };
@@ -25,6 +27,7 @@ function setup(f: Fixture) {
   const rpc: UsageRpc = rpcAs();
   const state = createAiState({ environment: "ci", rpc, admission: { reserve }, databaseClock: async () => f.now(),
     eligibleCafeIds: async actorId => (await queryAs("authenticated", actorId)("select id from public.cafes")).map(r => String(r.id)),
+    ...changes,
   });
   return { state, config, requests, reserve };
 }
@@ -145,4 +148,89 @@ test("standalone usage callback retains its existing success-only behavior", asy
   recordUsage.mockClear();
   expect(await runLlmOperation({ ...options, transport: async () => envelope({ suggestions: [{ invented: true }] }) })).toMatchObject({ mode: "fallback", reason: "unavailable" });
   expect(recordUsage).not.toHaveBeenCalled();
+});
+
+
+for (const feature of ["brew_finder", "prep_advisor", "moderation"] as const) test(`initially disabled ${feature} records a content-free authorized fallback without admission/cache/provider work`, async () => {
+  const f = feature === "prep_advisor" ? await prepFixture() : await fixture();
+  const calls: string[] = []; const rpc = rpcAs();
+  const s = setup(f, { rpc: async (fn,args) => { calls.push(String(args.p_action)); return rpc(fn,args); } });
+  s.config.AI_PROVIDER = "disabled";
+  const input = feature === "moderation"
+    ? { operationId: f.context.operationId, actorId: f.actors.admin, feature, scope: { actorId: f.actors.admin }, input: { reviews: [{ reviewId: "r1", text: "PRIVATE_DISABLED_CANARY" }] } }
+    : snapshot(f.context);
+  const transport = vi.fn();
+  expect(await s.state.runOperation(input, { requestId: "disabled", getConfig: () => s.config, transport })).toMatchObject({ mode: "fallback", reason: "disabled" });
+  expect(s.reserve).not.toHaveBeenCalled(); expect(transport).not.toHaveBeenCalled();
+  expect(calls).toEqual(["authorize", "audit"]);
+  const rows = audit(f.context.operationId);
+  expect(rows).toContainEqual(expect.objectContaining({ actor_id: feature === "moderation" ? f.actors.admin : f.context.actorId, outcome: "fallback", input_tokens: null, output_tokens: null }));
+  expect(JSON.stringify(rows)).not.toContain("PRIVATE_DISABLED_CANARY");
+});
+
+for (const invalid of ["model", "limit", "missing-key"] as const) test(`initial ${invalid} configuration fallback is audited without admission or cache access`, async () => {
+  const f = await fixture(); const calls: string[] = []; const rpc = rpcAs();
+  const s = setup(f, { rpc: async (fn,args) => { calls.push(String(args.p_action)); return rpc(fn,args); } });
+  if (invalid === "model") s.config.SOCLAAS_MODEL = "";
+  if (invalid === "limit") s.config.AI_GLOBAL_CALLS_PER_MINUTE = -1;
+  if (invalid === "missing-key") Object.assign(s.config, { AI_PROVIDER: "soclaas", SOCLAAS_API_KEY: "" });
+  const transport = vi.fn();
+  expect(await s.state.runOperation(snapshot(f.context), { requestId: "invalid-config", getConfig: () => s.config, transport })).toMatchObject({ mode: "fallback", reason: invalid === "missing-key" ? "disabled" : "unavailable" });
+  expect(calls).toEqual(["authorize", "audit"]);
+  expect(s.reserve).not.toHaveBeenCalled(); expect(transport).not.toHaveBeenCalled();
+  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback" }));
+});
+
+test("legacy disabled invocation audits before cache identity construction and unauthorized metadata grants no audit", async () => {
+  const f = await fixture(); const calls: string[] = []; const rpc = rpcAs();
+  const s = setup(f, { enabled: () => false, rpc: async (fn,args) => { calls.push(String(args.p_action)); return rpc(fn,args); } });
+  const provider = vi.fn();
+  expect(await s.state.invoke(f.context, { provider })).toEqual({ outcome: "fallback" });
+  expect(calls).toEqual(["authorize", "audit"]); expect(provider).not.toHaveBeenCalled(); expect(s.reserve).not.toHaveBeenCalled();
+  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback" }));
+  const forged = f.next({ actorId: f.actors.owner, scope: { actorId: f.actors.owner } });
+  expect(await s.state.invoke(forged, { provider })).toEqual({ outcome: "fallback" });
+  expect(audit(forged.operationId)).toEqual([]);
+});
+
+for (const transition of ["midnight", "suspension", "unapproval", "ownership", "role"] as const) test(`Prep terminal audit retains returned tokens after ${transition} while current cache/dispatch access remains denied`, async () => {
+  const f = await prepFixture(); const s = setup(f); const rpc = rpcAs();
+  let newOwner: string | undefined;
+  if (transition === "ownership") {
+    const workspaceId = successfulSql(`select workspace_id from public.profiles where id=${literal(f.actors.owner)}`);
+    const db = new DatabaseFixture();
+    const owner = db.profile({ table: "workspaces", values: { id: workspaceId } }, "owner");
+    successfulSql(`begin; ${db.statements.join("\n")} commit;`);
+    newOwner = String(owner.values.id);
+  }
+  const transport = vi.fn(async () => {
+    if (transition === "midnight") f.advance("2040-01-01T16:00:00.001Z");
+    if (transition === "suspension") await f.eligibility("suspended=true");
+    if (transition === "unapproval") await f.eligibility("application_state='pending'");
+    if (transition === "ownership") await f.eligibility(`owner_id=${literal(newOwner!)}`);
+    if (transition === "role") successfulSql(`update public.profiles set role='customer' where id=${literal(f.actors.owner)}`);
+    return envelope({ suggestions: [] });
+  });
+  expect(await s.state.runOperation(snapshot(f.context), { requestId: "transition", getConfig: () => s.config, transport })).toMatchObject({ mode: "fallback", reason: "unavailable" });
+  expect(transport).toHaveBeenCalledTimes(1);
+  const events = audit(f.context.operationId);
+  expect(events).toContainEqual(expect.objectContaining({ outcome: "fallback", actor_id: f.actors.owner, input_tokens: 0, output_tokens: 7, total_tokens: null }));
+  expect(JSON.stringify(events)).not.toContain("PRIVATE_PROVIDER_CANARY");
+  expect(await f.state.readCache(f.context)).toBeNull(); expect(await f.state.writeCache(f.context, f.result)).toBe(false);
+  const metadata = { operationId: f.context.operationId, actorId: f.context.actorId, cafeId: f.context.cafeId, feature: f.context.feature, scope: f.context.scope };
+  const current = await rpc("ai_state", { p_environment: "ci", p_action: "authorize", p_request: metadata, p_now: f.now() });
+  expect(current.data).toEqual([{ result: null }]);
+  const auditService = createAiAudit({ environment: "ci", rpc, databaseClock: async () => f.now() });
+  expect(await auditService.record({ ...metadata, outcome: "provider_attempt" })).toBe(false);
+  expect(await auditService.record({ ...metadata, operationId: randomUUID(), outcome: "fallback", tokens: { output: 7 } })).toBe(false);
+  expect(await auditService.record({ ...metadata, actorId: f.actors.customer, outcome: "fallback" })).toBe(false);
+  expect(await auditService.record({ ...metadata, scope: { cafeId: f.actors.cafe, businessDate: "2040-01-02" }, outcome: "fallback" })).toBe(false);
+  const denied = await rpcAs("authenticated", f.actors.owner)("ai_state", { p_environment: "ci", p_action: "audit", p_request: { ...metadata, outcome: "fallback" }, p_now: f.now() });
+  expect(denied.error).not.toBeNull();
+});
+
+test("legacy in-flight Prep eligibility loss still creates a terminal audit through its original operation binding", async () => {
+  const f = await prepFixture(); const s = setup(f);
+  expect(await s.state.invoke(f.context, { provider: async () => { f.advance("2040-01-01T16:00:00.001Z"); return f.result; } })).toEqual({ outcome: "fallback" });
+  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback", actor_id: f.actors.owner }));
 });

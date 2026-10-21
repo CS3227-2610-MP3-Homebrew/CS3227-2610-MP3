@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { createAiAudit, type AiAuditEvent } from "./ai-audit";
+import { createAiAudit, auditMetadataSchema, type AiAuditMetadata, type AiAuditEvent } from "./ai-audit";
 import { z } from "zod";
 import { brewSourceRevision, prepSourceRevision, cacheKey, canonicalJson, digest } from "./cache-identity";
 import { contextSchema, envelopeSchema, instant, validateResult, type CacheContext, type CacheResult } from "./cache-schema";
@@ -20,7 +20,7 @@ export type AiOperationContext = Omit<AiCacheContext, "model" | "contract"> | {
   scope: { actorId: string }; input: unknown;
 };
 type ModerationContext = { operationId: string; actorId: string; feature: "moderation_assistant"; scope: { actorId: string }; cafeId?: undefined };
-type AuditContext = CacheContext | ModerationContext;
+type AuditContext = AiAuditMetadata;
 export type AiOperationOptions = Pick<LlmOptions, "requestId" | "getConfig" | "transport" | "signal"> & { refresh?: boolean };
 type Envelope = Omit<z.infer<typeof envelopeSchema>, "data"> & { data: CacheResult };
 type Outcome = { outcome: "cache" | "success" | "fallback"; data?: CacheResult };
@@ -55,12 +55,18 @@ export function createAiState(options: {
     canonicalJson(input);
     if (operationPreflight) {
       const providerInput = parsed.feature === "brew_finder" ? { query: parsed.input.query, candidates: parsed.source.candidates } : parsed.source;
-    if (Buffer.byteLength(canonicalJson(providerInput), "utf8") > 65_536) throw unavailable();
+      if (Buffer.byteLength(canonicalJson(providerInput), "utf8") > 65_536) throw unavailable();
       if (!enabled()) throw unavailable();
     }
     return parsed;
   }
   const metadata = (c: AuditContext) => ({ actorId: c.actorId, ...(c.cafeId ? { cafeId: c.cafeId } : {}), operationId: c.operationId, feature: c.feature, scope: c.scope });
+  function operationMetadata(input: AiCacheContext | AiOperationContext): AuditContext {
+    return auditMetadataSchema.parse({ operationId: input.operationId, actorId: input.actorId,
+      feature: input.feature === "moderation" ? "moderation_assistant" : input.feature, scope: input.scope,
+      ...("cafeId" in input && input.cafeId ? { cafeId: input.cafeId } : {}),
+    });
+  }
   function identity(c: CacheContext) {
     const ids = { inputFingerprint: digest(c.input), sourceRevision: c.feature === "brew_finder" ? brewSourceRevision(c.source) : prepSourceRevision(c.source), modelIdentity: digest(c.model), contractIdentity: digest(c.contract) };
     return { ...metadata(c), identity: ids, key: cacheKey({ environment, feature: c.feature, scope: c.scope, ...ids }) };
@@ -109,35 +115,40 @@ export function createAiState(options: {
     },
     async invoke(input: AiCacheContext, invocation: { refresh?: boolean; provider: () => Promise<unknown> }): Promise<Outcome> {
       let c: CacheContext | undefined;
+      let m: AuditContext | undefined;
       try {
+        const initialMetadata = operationMetadata(input);
+        if (!(await authorized(initialMetadata, undefined, false))) return { outcome: "fallback" };
+        m = initialMetadata;
         c = context(input);
-        if (!(await authorized(c))) return { outcome: "fallback" };
+        if (!enabled()) { await audit(m, "fallback"); return { outcome: "fallback" }; }
         // The initial durable audit establishes storage availability before dispatch.
-        await audit(c, "started");
+        await audit(m, "started");
         const event = invocation.refresh ? "refresh" : "action";
-        if (!(await admission.reserve(request(c, event))).admitted) {
-          await audit(c, "denied"); return { outcome: "fallback" };
+        if (!(await admission.reserve(request(m, event))).admitted) {
+          await audit(m, "denied"); return { outcome: "fallback" };
         }
         if (!invocation.refresh) {
           const cached = await read(c);
           if (cached) {
-            await audit(c, "cache");
-            return await authorized(c, cached.data) ? { outcome: "cache", data: cached.data } : { outcome: "fallback" };
+            await audit(m, "cache");
+            if (!(await authorized(c, cached.data))) throw unavailable();
+            return { outcome: "cache", data: cached.data };
           }
         }
-        if (!(await authorized(c))) { await audit(c, "fallback"); return { outcome: "fallback" }; }
-        if (!(await admission.reserve(request(c, "provider_attempt"))).admitted) {
-          await audit(c, "denied"); return { outcome: "fallback" };
+        if (!(await authorized(c))) throw unavailable();
+        if (!(await admission.reserve(request(m, "provider_attempt"))).admitted) {
+          await audit(m, "denied"); return { outcome: "fallback" };
         }
-        await audit(c, "provider_attempt");
-        // One callback and one reservation. Failed/429/invalid attempts stay charged.
+        await audit(m, "provider_attempt");
         const result = await invocation.provider();
-        if (!enabled() || !(await write(c, result))) { await audit(c, "fallback"); return { outcome: "fallback" }; }
-        await audit(c, "success");
+        if (!enabled() || !(await write(c, result))) throw unavailable();
+        await audit(m, "success");
         const cached = await read(c);
-        return cached ? { outcome: "success", data: cached.data } : { outcome: "fallback" };
+        if (!cached) throw unavailable();
+        return { outcome: "success", data: cached.data };
       } catch {
-        if (c) { try { await audit(c, "fallback"); } catch { /* Fail closed without exposing storage/provider detail. */ } }
+        if (m) { try { await audit(m, "fallback"); } catch { /* Content-free fail closed. */ } }
         return { outcome: "fallback" };
       }
     },
@@ -145,11 +156,15 @@ export function createAiState(options: {
      * runLlmOperation. T-14 alone sequences stages; these callbacks do T-16 work. */
     async runOperation(input: AiOperationContext, invocation: AiOperationOptions): Promise<LlmResult> {
       const fallback = () => operationFallback(input.feature, invocation.requestId, "unavailable");
-      let c: AuditContext | undefined;
+      let c: CacheContext | ModerationContext | undefined;
+      let m: AuditContext | undefined;
       let usage: TokenUsage | undefined;
-      let started = false, denied = false;
+      let denied = false;
       try {
         const snapshot = structuredClone(input);
+        const initialMetadata = operationMetadata(snapshot);
+        if (!(await authorized(initialMetadata, undefined, false))) return fallback();
+        m = initialMetadata;
         const source = snapshot.feature === "brew_finder"
           ? { query: snapshot.input.query, candidates: snapshot.source.candidates }
           : snapshot.feature === "prep_advisor" ? snapshot.source : snapshot.input;
@@ -158,7 +173,7 @@ export function createAiState(options: {
           getConfig: invocation.getConfig, transport: invocation.transport, signal: invocation.signal,
           admit: async stage => {
             if (!c || !(await authorized(c, undefined, false))) throw unavailable();
-            if (stage === "action") { await audit(c, "started"); started = true; }
+            if (stage === "action") await audit(m!, "started");
             const event = stage !== "action" ? stage : c.feature === "moderation_assistant" ? "run" : invocation.refresh && c.feature === "prep_advisor" ? "refresh" : "action";
             if (!(await admission.reserve(request(c, event))).admitted) {
               await audit(c, "denied"); denied = true; return false;
@@ -201,15 +216,12 @@ export function createAiState(options: {
           },
         });
         if (result.mode === "fallback") {
-          if (c && !denied) {
-            if (!started && !(await authorized(c, undefined, false))) return result;
-            await audit(c, "fallback", usage);
-          }
+          if (m && !denied) await audit(m, "fallback", usage);
           return result;
         }
         return result;
       } catch {
-        if (c) { try { await audit(c, "fallback", usage); } catch { /* Content-free fail closed. */ } }
+        if (m) { try { await audit(m, "fallback", usage); } catch { /* Content-free fail closed. */ } }
         return fallback();
       }
     },
