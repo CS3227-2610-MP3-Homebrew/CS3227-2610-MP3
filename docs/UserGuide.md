@@ -3,81 +3,166 @@
 ## Table of contents
 
 - [1. Getting started](#1-getting-started)
+- [2. Navigating Homebrew](#2-navigating-homebrew)
+- [3. Your account (all roles)](#3-your-account-all-roles)
+- [4. Customer guide](#4-customer-guide)
+- [5. Café owner guide](#5-café-owner-guide)
+- [6. Admin guide](#6-admin-guide)
+- [7. AI features](#7-ai-features)
+- [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
+- [10. Troubleshooting](#10-troubleshooting)
 
 ## 1. Getting started
 
-The current home page displays the Next.js starter screen. Product instructions
-will be added here as usable features become available.
+Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
+role. The role pages currently provide headings and navigation; café browsing,
+ordering, café management and moderation tools are not yet available.
 
 ### 1.1 What you need
 
-<!-- List a browser and the app URL, including verified browser requirements. -->
+Open the app address supplied by your team. Opening `/` sends an anonymous
+visitor to Sign in and a verified signed-in user to their role's home.
 
 ### 1.2 Create an account
 
-<!-- Document customer and café owner sign-up once implemented. Explain that
-admin accounts are not created by sign-up. -->
+**Where:** Sign in → **Sign up**, or `/sign-up`.
+
+1. Enter your **Email** and **Password**.
+2. Under **Choose your role**, choose **Customer** or **Café owner**. Neither is
+   selected for you; Admin is not a sign-up option.
+3. Select **Sign up**. While the request runs, the form is disabled and shows
+   “Please wait…”.
+4. Successful registration signs you in and opens Browse cafés for a Customer,
+   or Dashboard for a Café owner.
+
+Use a valid email address, at most 254 characters after surrounding spaces are
+removed and letters converted to lowercase. A new password needs at least eight
+Unicode code points and at most 72 UTF-8 bytes; some characters use several
+bytes. Password spaces and letter case are preserved.
+
+Invalid local fields show “Enter a valid email address.”, “Use at least 8
+characters and at most 72 UTF-8 bytes.” or “Choose Customer or Café owner.”
+After a submitted failure, email and role remain, but the password clears.
+
+If creation succeeds but the initial session cannot be established, Sign in
+shows “Account created. Sign in to continue.” Use the account you just created.
 
 ### 1.3 Sign in and sign out
 
-<!-- Add verified sign-in and sign-out steps and relevant error messages. -->
+**Where:** `/sign-in`; **Sign out** is in each role's navigation.
+
+1. Enter your **Email** and **Password**, then select **Sign in**. You do not
+   choose a role or workspace.
+2. A successful sign-in opens the home for your existing account. Existing main
+   and demo-kit credentials use the same form and retain their assigned role.
+3. Select **Sign out** to end this browser's session and return to Sign in.
+   A separately signed-in browser is not deliberately signed out.
+
+Unknown email and incorrect password both show “Email or password is incorrect.”
+Invalid local sign-in passwords show “Enter your password (at most 72 UTF-8
+bytes).” While a request is pending the form is disabled; after a submitted
+failure your email remains and your password clears.
+
+A verified session can persist across browser reopening while it can still be
+refreshed. There is no Remember me option or custom idle timer. If the session
+ends, Sign in shows “Your session ended. Sign in again.”
+
+If local sign-out succeeds but remote revocation cannot be confirmed, Sign in
+shows “Signed out of this browser; session revocation could not be confirmed.”
+A failed network request instead shows “Unable to complete the request. Try
+again.” and does not confirm that sign-out succeeded.
 
 ### 1.4 Roles at a glance
 
-<!-- Summarise each role's implemented access and responsibilities. -->
+| Account role | Home | Navigation entries, plus Sign out |
+| --- | --- | --- |
+| Customer | Browse cafés (`/customer/cafes`) | Browse cafés; My orders |
+| Café owner | Dashboard (`/owner/dashboard`) | Café application; Dashboard; Order queue; Menu; Café profile |
+| Admin | Moderation queue (`/admin/moderation`) | Moderation queue; Café applications; Cafés; Audit log |
+
+These entries currently open role page headings, not the domain tools named by
+the entries.
 
 ### 1.5 Demo accounts for testers
 
-<!-- Add approved demo-account details and testing instructions when available. -->
+Existing demo-kit credentials can sign in, but this build has no Create demo kit
+control or credential display. Obtain approved test credentials through your
+team; this guide publishes no credentials.
 
 ## 2. Navigating Homebrew
 
-<!-- Describe implemented navigation, with screenshots and browser guidance. -->
+Use your role's navigation links after signing in. Opening `/`, Sign in or Sign
+up while your account is verified returns you to your role's home. Opening
+another role's page also returns you to your own home. A supplied return URL
+does not change the destination, and there is no role/workspace switcher.
+
+While account verification runs, the public loading state says “Checking
+account…”. Role navigation appears only after verification succeeds.
 
 ## 3. Your account (all roles)
 
-<!-- Document account features shared by all roles as they ship. -->
+If you see “Account access is unavailable. Sign out and try again.”, use the
+**Sign out** button. This state does not offer a new role choice or automatically
+repair the account.
+
+If you see “Account service is temporarily unavailable. Try again.”, try again
+explicitly after the service recovers. On the standalone failure screen, **Try
+again** reloads the page; on a form, submit again when ready. There is no
+automatic resubmission.
 
 ## 4. Customer guide
 
-<!-- Add one subsection per customer feature as it ships, with verified steps. -->
-
 ### 4.1 Customer features at a glance
 
-<!-- Summarise implemented customer features and link to their subsections. -->
+Customer navigation is available as listed above. Catalogue results, café
+details, pickup ordering and reviews are not yet implemented on these pages.
 
 ## 5. Café owner guide
 
-<!-- Add one subsection per café owner feature as it ships, with verified steps. -->
-
 ### 5.1 Café owner features at a glance
 
-<!-- Summarise implemented café owner features and link to their subsections. -->
+**Where:** **Dashboard** → **Café application**.
+
+1. Sign in as a Café owner and open Dashboard.
+2. If your account has no café, it shows “You do not have a café yet.”
+3. Select **Café application** to open the application entry page at
+   `/owner/application`.
+
+The entry page currently contains a heading; it does not submit an application.
+Sales, order queue, menu and café profile tools are not yet implemented here.
 
 ## 6. Admin guide
 
-<!-- Add one subsection per admin feature as it ships, with verified steps. -->
-
 ### 6.1 Admin features at a glance
 
-<!-- Summarise implemented admin features and link to their subsections. -->
+Existing Admin accounts can sign in and use Admin navigation. The moderation,
+application, café and audit pages currently contain headings without domain
+records or actions.
 
 ## 7. AI features
 
-<!-- For each feature as it ships, explain what it does, its limits and what
-happens when it is unavailable. -->
+No AI feature screen is available in this build.
 
 ## 8. Reference
 
-<!-- Add verified reference information, such as input limits and order statuses. -->
+Sign-in accepts an existing nonempty password up to 72 UTF-8 bytes, without
+applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Sign-up, sign-in, sign-out, role navigation and customer, café owner, admin or AI
-screens are not available in the current build. Local demonstration accounts
-require separate developer setup; there is no demo-kit creation screen.
+Role pages are entry shells. Demo-kit creation, account password/email changes,
+password reset, account deletion, role/workspace switching and all-device
+sign-out are not available in the current account UI.
 
 ## 10. Troubleshooting
 
-<!-- Add observed problems, their causes and verified recovery steps. -->
+| Message | What to do |
+| --- | --- |
+| “Unable to create account. Try signing in.” | Try Sign in rather than assuming a new account was created. |
+| “Unable to complete account setup. Try again.” | Retry sign-up explicitly when ready. |
+| “Account setup could not be completed. Try signing in; account access is unavailable until setup is resolved.” | Try Sign in; access may remain unavailable until setup is resolved. |
+| “Too many attempts. Try again later.” | Wait before trying again. |
+| “An account is already signed in.” | Use that account or sign out before signing in to another. |
+| “Check the account fields and try again.” | Review the email, password and sign-up role, then submit again. |
+| “Unable to complete the request. Try again.” | Check connectivity and retry explicitly; the message does not confirm success. |
