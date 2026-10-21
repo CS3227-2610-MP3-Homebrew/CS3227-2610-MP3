@@ -332,8 +332,11 @@ private data, quota or human control.
   or newly suspended/unapproved café cannot reuse an ineligible result. Ordinary
   clients cannot forge, read or update infrastructure cache/admission rows.
 - **SEC-07.2:** A failed refresh leaves the earlier valid entry unchanged but
-  returns the fallback for that refresh; later reuse still performs every
-  eligibility check. Invalid results are never stored as successes, and
+  returns the fallback for that refresh. A refresh commits when its validated
+  result is durably stored: authorization, audit or storage failures before
+  the commit leave the earlier entry unchanged, while a disable or cancellation
+  observed after it suppresses only that response. Later reuse still performs
+  every eligibility check. Invalid results are never stored as successes, and
   personalized responses are absent from shared public caches.
 
 ### SEC-08 — Disable precedence and bounded failure
