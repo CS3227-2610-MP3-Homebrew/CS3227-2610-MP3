@@ -1094,7 +1094,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] Every listed ADM criterion has named deterministic tests and recorded failing-first evidence, including races, rollback, main/kit isolation and customer eligibility.
   - [ ] Café audit persistence and later T-31 display assertions preserve the criterion ownership above; unresolved contract/surface prerequisites are recorded.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded with local Supabase only; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#58](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/58)
 
 ### T-29: Implement café applications and suspension
@@ -1110,7 +1110,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] T-28's owned state, HTTP, reason, access, concurrency, rollback and preservation cases pass; audit-display acceptance is evidenced when T-31 is available.
   - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or generic order/menu-edit permission is added; suspension cancellation is only the defined system consequence.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass locally; the issue-scoped [handoff](templates/handoff.md) records actual evidence and remaining external surfaces.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#59](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/59)
 
 ### T-30: Test moderation queue and Admin audit log
