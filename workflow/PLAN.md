@@ -305,7 +305,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Each malformed boundary rejects before effects/results; all three operations/fallbacks have deterministic tests.
   - [ ] Evidence traces exact cases to approved contracts; no live SoCLaaS call.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#44](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/44)
 
 ### T-14: Implement validated LLM operations and fallbacks
@@ -320,7 +320,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Shared boundary/provider/operation/fallback tests pass with fake transports.
   - [ ] `bun run verify` passes; no live verification call or story screen is added.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#45](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/45)
 
 ### T-15: Test AI caches, catalogue eligibility, accounting and audit
