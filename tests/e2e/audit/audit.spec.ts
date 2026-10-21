@@ -55,9 +55,12 @@ test("ADM-03.10 ADM-03.11 ADM-03.14: audit excludes other workspaces review text
   const foreign = scenario(); const target = foreign.review(); auditFixture(foreign, "hide", target, submitted, "FOREIGN AUDIT SECRET");
   localSql(`insert into private.ai_audit_events(environment,operation_id,actor_id,feature,outcome,created_at) values ('local',gen_random_uuid(),${q(f.admin.id)},'moderation_assistant','fallback',now());`);
   await login(page.request, f.admin); await page.goto("/admin/audit");
+  await expect(page.getByRole("row").filter({ hasText: f.admin.email })).toBeVisible();
   const content = await page.locator("body").innerText(); expect(content).not.toContain(text); expect(content).not.toContain("FOREIGN AUDIT SECRET"); expect(content).not.toMatch(/moderation_assistant|provider_attempt|ai_audit_events/);
   expect(content).toContain(f.admin.email); expect(content).not.toContain(foreign.admin.email);
-  await page.goto("/admin/moderation"); expect(await page.locator("body").innerText()).not.toContain(foreign.name);
+  await page.goto("/admin/moderation");
+  await expect(page.getByRole("row").filter({ hasText: text.trim() })).toBeVisible();
+  expect(await page.locator("body").innerText()).not.toContain(foreign.name);
 });
 test("ADM-03.12 ADM-03.15: later successful actions retain every previous immutable audit entry", async ({ request }) => {
   const f = scenario(); const id = f.review(); await login(request, f.admin);
