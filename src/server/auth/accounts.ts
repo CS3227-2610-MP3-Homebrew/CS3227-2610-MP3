@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { accountMessages, roleHomes, signInFields, signUpFields } from "@/lib/accounts/fields";
+import { BodyOverflow, readBounded, privateResponses, checkOrigin, checkJsonContentType } from "@/server/http/json";
 import { validRetryAfter } from "./account-transport";
 
 export const accountActor = z.object({ id: z.uuid(), workspaceId: z.uuid(), role: z.enum(["customer", "owner", "admin"]) });
@@ -27,9 +28,7 @@ export class AccountOperationError extends Error {
 
 export function createAccountHandlers(deps: AccountDependencies) {
   async function handle(operation: AccountOperation, request: Request): Promise<Response> {
-    const requestId = crypto.randomUUID();
-    const json = (body: object, status = 200, headers: Record<string, string> = {}) => Response.json({ requestId, ...body }, { status, headers: { "Cache-Control": "private, no-store", ...headers } });
-    const error = (status: number, code: string, message: string, headers?: Record<string, string>) => json({ error: { code, message } }, status, headers);
+    const { json, error } = privateResponses();
     const success = (redirectTo: string) => json({ redirectTo });
     const fault = (value: AccountFault) => {
       if (value.kind === "credentials") return error(401, "UNAUTHENTICATED", "Email or password is incorrect.");
@@ -41,24 +40,17 @@ export function createAccountHandlers(deps: AccountDependencies) {
     };
     const invalid = () => error(400, "INVALID_REQUEST", "Check the account fields and try again.");
     if (request.method !== "POST") return error(405, "METHOD_NOT_ALLOWED", "Method not allowed.", { Allow: "POST" });
-    if (request.headers.get("origin") !== deps.trustedOrigin) return error(403, "FORBIDDEN", "Request origin is not allowed.");
-    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return error(415, "UNSUPPORTED_MEDIA_TYPE", "Use application/json.");
+    const originError = checkOrigin(request.headers.get("origin"), deps.trustedOrigin, error);
+    if (originError) return originError;
+    const mediaError = checkJsonContentType(request, error);
+    if (mediaError) return mediaError;
     // Count actual streamed bytes rather than trusting Content-Length or buffering an unbounded body.
     let body: unknown;
     try {
-      const reader = request.body?.getReader();
-      const chunks: Uint8Array[] = []; let size = 0;
-      if (reader) while (true) {
-        const part = await reader.read();
-        if (part.done) break;
-        size += part.value.byteLength;
-        if (size > 65_536) { await reader.cancel(); return error(413, "PAYLOAD_TOO_LARGE", "Request body is too large."); }
-        chunks.push(part.value);
-      }
-      const bytes = new Uint8Array(size); let offset = 0;
-      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-      body = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-    } catch { return invalid(); }
+      body = JSON.parse(await readBounded(request.body, undefined, "overflow-only"));
+    } catch (failure) {
+      return failure instanceof BodyOverflow ? error(413, "PAYLOAD_TOO_LARGE", "Request body is too large.") : invalid();
+    }
     const fields = operation === "signUp" ? signUpFields.safeParse(body) : operation === "signIn" ? signInFields.safeParse(body) : z.strictObject({}).safeParse(body);
     if (!fields.success) return invalid();
     let provisional = false;

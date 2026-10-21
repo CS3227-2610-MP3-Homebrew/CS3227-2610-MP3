@@ -10,6 +10,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
   - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
+  - [Café applications and suspension](#café-applications-and-suspension)
 - [Authentication and authorization](#authentication-and-authorization)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
@@ -60,6 +61,11 @@ Supabase client, bounded JSON reader and trusted-origin helper (internal code
 reuse). Its request-time Suspense pattern follows the installed Next.js guidance
 (idea reuse); quick-pick literals implement the internal ADM-04 contract as is.
 No external snippet or workflow file was added by this pair; MP2 totals remain unchanged.
+
+Café eligibility reuses those same session/RLS, transport, audit and Suspense
+patterns (internal code/idea reuse), including the existing moderation Admin
+lookup and audit ledger. No external snippet, dependency or workflow was added;
+the MP2 reuse totals are unchanged.
 
 ## Setting up, getting started
 
@@ -435,10 +441,68 @@ body, Ref and strict action/reason-only Zod validation; all responses are
 `private, no-store`. Missing and foreign targets share the same not-found error.
 See the [shared transport and field contracts](../workflow/specs/INTEGRATION-SPEC.md#authorization-and-transport).
 
-The audit screen supports all seven recorded action types, including café
-entries, without implementing café mutations. Fixed editable quick-pick reasons
+The audit screen supports all seven recorded action types, including the café
+entries supplied by the implementation below. Café and review target references
+are displayed alongside the café name. Fixed editable quick-pick reasons
 and explicit per-review confirmation are application controls; AI triage and its
 endpoint are not available.
+
+### Café applications and suspension
+
+The [ADM-01 application](../workflow/specs/stories/ADM-01-cafe-applications.md)
+and [ADM-02 suspension](../workflow/specs/stories/ADM-02-cafe-suspension.md)
+contracts are implemented by `/admin/applications`, `/admin/cafes`, the two
+`POST /api/admin/cafes/{cafeId}/decision` and `/suspension` handlers, and
+`src/server/cafes/admin.ts`, with shared HTTP primitives from
+`src/server/http/json.ts`. Shared `cafe-queue.tsx` authenticates at request time
+behind Suspense and calls `admin_cafe_queue` with the session-bound client.
+Pending applications sort by submission time/reference; approved cafés sort by
+name/reference. Each page exposes 20 rows and URL `page` navigation. Application
+details include profile, weekly Singapore hours and pickup cutoff. Static
+loading output contains no records. Empty lists, source failure and current-state
+conflicts have distinct messages.
+
+`20261022000000_cafe_eligibility.sql` adds the café profile/submission/cutoff
+fields and `suspension_version`, weekly-hour fields and canonical order `state`,
+`cancellation_reason` and `cancelled_at`. It consumes the merged owner/order
+contracts; it does not supply Owner submission/settings/fulfilment writers or
+Customer ordering screens. Those writers must use the café lock and current
+state/version contracts in the
+[shared boundaries](../workflow/specs/INTEGRATION-SPEC.md#owner-cafe-management-boundary).
+
+`decide_cafe` permits only pending→approved/rejected. `set_cafe_suspension`
+permits a changed boolean only on an approved café and increments its version
+once. Both independently derive the Admin/workspace from `auth.uid()` and lock
+the in-scope café before changing state. Suspension locks outstanding orders
+in reference order, cancels only pending/accepted/ready with the fixed public
+reason “Cafe is suspended”, and retains all terminal orders and snapshots.
+Un-suspension never revives orders. Each action, private latest reason and one
+existing append-only Admin audit entry commit together; any failure rolls back
+the transaction. Existing customer RLS eligibility follows approval/suspension;
+owner record access remains independent of suspension.
+
+Private reasons live in `public.cafe_admin_reasons`, not customer-readable café
+rows. Its primary/foreign key is `cafe_id`; workspace is inherited from the café.
+RLS allows only the café owner and workspace Admins to SELECT; ordinary callers
+cannot insert/update/delete reasons. The definer mutation RPCs have an empty
+search path, explicit execute grants and repeated role/workspace/current-state
+checks; they grant no generic order/menu editing. Reasons are preserved exactly
+and rendered through React text nodes. The HTTP boundary uses strict Zod bodies,
+Unicode Ref/reason bounds, the existing 65,536-byte reader, exact trusted Origin,
+independent session/Admin checks and private/no-store safe JSON responses.
+Unavailable database transport/gateways return `503 SOURCE_UNAVAILABLE`;
+transaction failures return `500 INTERNAL_ERROR`, without raw SDK/SQL details.
+No new configuration or LLM/provider path is involved.
+
+The 132 Playwright cases in `tests/e2e/cafe-eligibility/` cover queue ordering and
+ties, URL pagination, confirmations/conflicts, HTTP/role/scope/Unicode boundaries,
+concurrent transitions, injected audit/cancellation failures, retention, privacy
+and suspension effects. Eleven Vitest cases under
+`tests/integration/cafe-eligibility/` cover actual handlers and local database
+audit/RLS controls. Five supplementary cases in `tests/unit/cafe-admin-http.test.ts`
+distinguish source unavailability from transaction failure and check safe errors.
+Cross-story resubmission/collection states are local fixtures;
+Owner endpoints are not prerequisites for this acceptance evidence.
 
 ## Authentication and authorization
 
@@ -536,10 +600,15 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
 - `src/lib/accounts/fields.ts` supplies shared strict field schemas, safe text,
   fixed notices and role homes. Client forms disable repeat submissions, clear
   submitted passwords on failure and use only allowlisted response destinations.
-- `src/server/auth/accounts.ts` owns POST/method, exact Origin, JSON media,
-  strict fields and a streamed 65,536-byte UTF-8 body ceiling. Responses are
-  private/no-store JSON with opaque request IDs and safe errors. Sign-out takes
-  exactly `{}`; sign-in takes email/password; sign-up adds only Customer/owner.
+- `src/server/http/json.ts` supplies private/no-store JSON/error responses with
+  opaque request IDs, exact Origin and JSON media checks, and the streamed
+  65,536-byte UTF-8 body reader shared by accounts, moderation, café actions
+  and LLM operations. The reader preserves account overflow-only awaited
+  cancellation and the Admin/LLM abortable cancellation and lock cleanup.
+- `src/server/auth/accounts.ts` retains POST/method admission, strict account
+  fields, account-specific errors and session orchestration. Handlers retain
+  their existing method → Origin → media → body → fields → identity order.
+  Sign-out takes exactly `{}`; sign-in takes email/password; sign-up adds only Customer/owner.
 - `src/server/auth/account-adapter.ts` lazily creates a request-local SSR client
   after admission. It stages provisional cookies, persists only after protected
   profile verification, preserves active-account conflicts, and clears failed
@@ -1004,9 +1073,10 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation and the read-only audit screen are available. Other
-role domain pages remain entry headings, with the owner no-café state; café
-mutations, AI screens, demo-kit creation, maintenance provisioning, scheduled
+Manual Admin moderation, café decisions/suspension and the read-only audit screen
+are available. Customer/owner domain pages remain entry headings, with the owner
+no-café state; Owner application/settings/fulfilment and Customer order writers,
+AI screens, demo-kit creation, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally, without an AI feature
 endpoint or UI. Live provider compatibility and model

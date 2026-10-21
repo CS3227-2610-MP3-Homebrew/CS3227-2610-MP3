@@ -29,7 +29,7 @@ export function column(schema: string, table: string, aliases: string[]) {
 export function insert(table: string, record: Record<string, unknown>) {
   localSql(`insert into ${table} (${Object.keys(record).map(ident).join(",")}) values (${Object.values(record).map(q).join(",")});`);
 }
-function account(role: "customer" | "owner", workspace: string) {
+export function account(role: "customer" | "owner", workspace: string) {
   const id = randomUUID(); const email = `t60-${id}@example.com`; const password = "synthetic-t60-password";
   localSql(`begin;
     insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,recovery_token,email_change_token_new,email_change)
