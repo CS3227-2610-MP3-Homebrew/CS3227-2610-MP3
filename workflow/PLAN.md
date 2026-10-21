@@ -696,7 +696,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] All T-40 criteria pass, including clickable closed cards, exact labels, current eligibility and review confidentiality.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#72](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/72)
 
 ### T-42: Test customer pickup orders and cancellation display
