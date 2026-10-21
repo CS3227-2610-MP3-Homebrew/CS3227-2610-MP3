@@ -39,7 +39,7 @@ OWN-04/OWN-05; this story defines no owner endpoint or sales aggregation.
 - **`CUS-03.2`:** Given the café's hours and pickup rules, when slots are offered or a new order commits, then pickup follows the canonical 15-minute grid, at least 15-minute lead time, today-plus-six-date Singapore horizon and inclusive-opening/exclusive-closing overnight rules; the configured 0–180-minute last-pickup offset (default 15) permits equality at cutoff but never pickup at closing. Invalid or stale options create no order and use the canonical invalid-input/state-conflict boundary.
 - **`CUS-03.3`:** Given a café has become suspended or is not approved before order submission, when a Customer attempts to pre-order, then no new order is created even if an earlier café page or Brew Finder suggestion was eligible.
 - **`CUS-03.4`:** Given a submission with a café or menu item outside the Customer's workspace, an item belonging to another café, or an attempt to attach an item to another customer's order, when the server checks scope and relational ownership, then the request creates no order or order-item association and discloses no protected foreign record.
-- **`CUS-03.5`:** Given an authenticated Customer, when an order is created, then the customer identity is derived from its verified session; a caller-supplied actor or workspace cannot create an order for someone else.
+- **`CUS-03.5`:** Given an authenticated Customer, when an order is created, then the customer identity is derived from its verified session; a caller-supplied actor or workspace cannot create an order for someone else. The server also snapshots the verified profile customer name for the owner queue, never a caller-selected identity or a later live profile lookup.
 - **`CUS-03.6`:** Given a pre-order request, when its total is confirmed, then the server calculates current prices and snapshots in integer SGD cents and compares the submitted expected total; a mismatch gives `409 STATE_CONFLICT` and requires review/resubmission without creation. Successful orders display unit, line and overall totals as dollars to exactly two decimal places, retain those snapshots after menu/price/hour changes, and require payment only at pickup with no online payment/card/provider action.
 - **`CUS-03.7`:** Given no valid session or a Café owner/Admin session, when customer order creation is requested through an application-owned JSON endpoint, then the shared `401 UNAUTHENTICATED` or `403 FORBIDDEN` response applies, respectively, with no created order or order items.
 - **`CUS-03.8`:** Given a JSON submission that violates shared method, origin, media-type, body-size or strict-validation rules, when the request is checked, then the shared error response applies and no order or order items are created; browser controls alone do not enforce these checks.
@@ -54,9 +54,11 @@ under [CUS-04.5](CUS-04-my-orders.md#acceptance-criteria) and
 [ADM-02](ADM-02-cafe-suspension.md#acceptance-criteria); it does not permit new
 orders for a suspended café or change already collected orders.
 
-Sold-out/removed in-scope items cause `409 STATE_CONFLICT`, invalid quantities or
+Sold-out in-scope items cause `409 STATE_CONFLICT`, invalid quantities or
 duplicate item references cause `400 INVALID_REQUEST`, and foreign/missing
-records keep the shared indistinguishable 404. New creation serializes with
+records keep the shared indistinguishable 404. Permanent menu removal makes
+the live item absent, so a stale selection of that item also gives 404 without
+creating an order; no archived item is required to answer the request. New creation serializes with
 suspension: a prior creation is cancelled by suspension; creation after it is
 denied. Successful replay returns the retained own order without changing its
 state even if current catalogue eligibility has changed. Transaction failure

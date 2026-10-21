@@ -10,6 +10,17 @@ Approval is one-way; suspension is the reversible control for approved cafés.
 Customer catalogue eligibility remains owned by [SYS-05.3](../TECHNICAL-SPEC.md#sys-05--streaming-authentication-and-catalogue-access).
 Pending and rejected cafés are never customer-visible.
 
+## Owner submission reconciliation
+
+OWN-01 retains one café identity per owner with at most one pending/approved
+café. Rejected applications permit a fresh attempt with all fields editable
+and no required field change; the café reference and prior decision audit
+remain intact. Each fresh attempt receives a new submission timestamp for this
+story's oldest-first pending queue. Latest decision reason remains visible
+to its owner until a later approval or rejection replaces it. Application
+details are name, description, area, pickup address, weekly hours and pickup
+settings under the strict owner café boundary; these do not expand Admin writes.
+
 ## Access
 
 - **How a user gets the role:** Maintenance creates the main Admin; demo-kit creation creates kit Admins. Sign-up never grants Admin.

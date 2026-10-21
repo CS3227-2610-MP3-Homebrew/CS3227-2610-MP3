@@ -51,8 +51,9 @@ Changed criteria and new tasks require their governing specs on master before ex
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
 - CUS-01–CUS-07, OWN-01–OWN-08 and ADM-01–ADM-04 story files exist.
-  T-52/T-55/T-58/T-61/T-64 specify the missing owner-domain contracts; dependent
-  tasks name those prerequisites rather than choosing behavior. New file scopes
+  T-52/T-55/T-58 own the application/settings/menu/queue contracts; T-61/T-64
+  retain the sales/advice/boost decisions. Dependent tasks require their
+  governing contracts on master. New file scopes
   below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
@@ -63,7 +64,7 @@ Changed criteria and new tasks require their governing specs on master before ex
   than duplicating it. Testing owns tests/fixtures/mocks; implementation owns
   application/configuration/migration code.
 - `todo` means specified queued work subject to its explicit prerequisites;
-  `blocked` means a named missing contract or required screen prevents execution;
+  `blocked` means a required contract, reviewed merge or screen prevents execution;
   `awaiting-decision` means a human or spec decision is required; `done` means
   the task has completion evidence. Only Requirements fields allocate criteria:
   each has one testing and one implementation owner. Spec tasks replace neither.
@@ -535,7 +536,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Define the shared account inputs, session outcomes and role navigation needed by customer screens, preserving the technical role/workspace boundaries.
 - **Work:** Specify account fields/validation, sign-in/sign-out and redirect/session failure contracts in one story file per Shared story; preserve Customer/owner sign-up only, main-workspace assignment, kit sign-in and seed-only Admins. Link existing SYS-05/SYS-06 contracts instead of redefining them. Identify the separate future test/implementation owners for these Shared stories without assigning their criteria to a Customer pair.
 - **File scope:** Proposed story files `workflow/specs/stories/SYS-01-sign-up.md`, `SYS-02-sign-in-out.md`, `SYS-03-role-navigation.md`; relevant shared account contract sections in `workflow/specs/INTEGRATION-SPEC.md`; own handoff only.
-- **Prerequisite:** Source stories and technical role/session boundaries exist; account field/redirect/session-error decisions and their human approval are required.
+- **Prerequisite:** Source stories and technical role/session boundaries exists; account field/redirect/session-error decisions and their human approval are required. 
 - **Acceptance criteria:**
   - [ ] All three source IDs have authoritative story/HTTP/navigation contracts with no invented account lifecycle or permission.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -600,7 +601,7 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Complete deterministic browse, rating and café-detail contracts while retaining the specified unfiltered closed-café and closing-soon behaviour.
 - **Work:** Resolve strict filter fields/values/normalization/combination/reset, Singapore date/time and opening-interval boundaries/overnight rules, and sold-out-only drink matches with the owning hours/menu contracts. Define one authoritative rating formula, unrated handling, ties, display precision and catalogue/review ordering/pagination. Specify customer-visible profile/menu/review fields, reviewer disclosure, money representation, customer page paths and read schemas. Retain CUS-01.9/CUS-01.10 labels, greyed but clickable closed cards and exactly-30-minute closing-soon inclusion; resolve absent next-opening schedules and opening-time text formatting without inventing a time. Amend integration/cache source inputs only from those decisions.
 - **File scope:** Existing CUS-01/CUS-02 story files; customer catalogue/detail sections in `workflow/specs/INTEGRATION-SPEC.md` and relevant `TECHNICAL-SPEC.md` data-model references; own handoff. OWN-02/OWN-03 hours/menu definitions are required owning-role inputs, not application work in this task.
-- **Prerequisite:** Relevant OWN-02/OWN-03 hours/menu contracts and T-34 Shared account/navigation contracts, consistent with the [Customer catalogue boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). Owner contract completion is assigned to T-52 (hours/profile) and T-55 (menu/history); T-34 retains Shared navigation ownership. This task reconciles existing Customer contracts after those inputs, not owner editing behavior.
+- **Prerequisite:** T-34 Customer-name amendment, T-52 profile/hours and T-55 menu contracts require reviewed merge evidence on master. Catalogue/hour/menu reconciliation is defined in the canonical boundaries; no owner runtime screen is required.
 - **Acceptance criteria:**
   - [ ] Catalogue filters, card states, next-opening failure cases, ratings and café-page responses are testable and have one authoritative owner.
 - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -615,7 +616,7 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Complete the shared order lifecycle needed by Customer ordering and Admin suspension without weakening the confirmed all-uncollected cancellation rule.
 - **Work:** Resolve pickup representations/intervals/horizon/past and boundary rules, quantities, sold-out eligibility, price snapshots/totals, duplicate submissions, customer order paths/read/write schemas and display ordering. Reconcile authoritative order state names/transitions with OWN-04/OWN-05 and later menu/hour changes with OWN-02/OWN-03. Define acceptance/cancellation and collection/suspension races, already terminal-order treatment and transactional failure responses. Preserve automatic suspension cancellation of every outstanding uncollected order including accepted/ready, fixed customer reason, unchanged collected purchases and no revival on un-suspension; separate this fixed reason from the private Admin reason. Keep suspension mutation/transaction ownership with T-28/T-29 and Customer display/actions with T-42/T-43.
 - **File scope:** Existing CUS-03/CUS-04 and only the related ADM-02 suspension clauses; corresponding order/API/data-model sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff. Missing OWN-02–OWN-05 source contracts remain explicit owning-role inputs.
-- **Prerequisite:** Owning OWN-02–OWN-05 menu/hour/pickup/queue contracts, consistent with the [Customer order boundary and race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary); fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9. Owner contract completion is assigned to T-52 (profile/hours/pickup), T-55 (menu/history) and T-58 (queue/actions); their local fixtures avoid a dependency on owner or Customer runtime screens.
+- **Prerequisite:** T-52/T-55/T-58 governing owner contracts and corresponding Customer amendments require reviewed merge evidence on master. The canonical order boundary includes customer-name snapshots, customer-visible rejection reasons and lifecycle timestamps alongside existing order/suspension races. Local fixtures suffice; no owner runtime dependency is introduced.
 - **Acceptance criteria:**
   - [ ] Order/pickup schemas, complete state/race/error matrix and suspension rollback/visibility responsibilities agree across the owning specs.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -630,7 +631,7 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Define a valid review payload and public submission/read contract, retaining own-collected-once-only and ADM-03 immutability/post-moderation.
 - **Work:** Resolve rating scale/type, text requiredness/length/normalization, duplicate submission outcomes, input feedback and customer review paths/schemas. Clarify review creation after café suspension while preserving collected purchases. Keep pending/kept/hidden visibility and immutable text/rating owned by ADM-03; integration Label/Reason bounds are not customer input limits. Make the canonical field contract sufficient for contract-derived local moderation fixtures without requiring a Customer review screen first.
 - **File scope:** Existing `workflow/specs/stories/CUS-05-review-order.md`; corresponding review sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff only.
-- **Prerequisite:** T-36 and OWN-05 collection-state ownership, consistent with the [Customer review field/submission boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary). OWN-05 owner queue/source completion is assigned to T-58; T-36 retains the shared Customer order reconciliation and local collected-order fixtures suffice.
+- **Prerequisite:** Reviewed T-36/T-58 order and collection-state contracts on master. Existing review fields, post-suspension eligibility and once-only rules remain settled; local collected-order fixtures suffice.
 - **Acceptance criteria:**
   - [ ] Valid/invalid review payloads, source eligibility and duplicate outcomes are explicit and do not conflict with ADM-03.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -645,7 +646,7 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Resolve the remaining feature-specific source/result decisions while preserving the fixed integration prompt, one-call sequence and security controls.
 - **Work:** Define candidate selection/size/order, item availability rules, recommendation count, and customer/envelope treatment of an empty model suggestions array from a nonempty source. Preserve CUS-06's explicit-submit/loading interaction. Reconcile CatalogueFilters, rating fallback and source fingerprint inputs with T-35 and update only affected canonical integration/cache contracts; never invent a fallback reason or infer model quality from schema validity.
 - **File scope:** Existing CUS-06 story; Brew Finder and matching cache-source sections of `workflow/specs/INTEGRATION-SPEC.md`; own handoff only.
-- **Prerequisite:** T-35 catalogue/hour/menu contract ownership, consistent with the [Brew Finder selection/count/empty-result boundary](specs/INTEGRATION-SPEC.md#brew-finder--cus-06) and CUS-06's explicit-submit/loading interaction.
+- **Prerequisite:** Reviewed T-35 catalogue/menu/hour contracts on master. Candidate caps, availability, explicit-submit/loading and empty-result semantics remain established in the canonical Brew boundary.
 - **Acceptance criteria:**
   - [ ] Candidate/result/empty-source versus empty-model cases and UI triggers are independently testable with unchanged security limits.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -660,7 +661,7 @@ then consume its suspension effect without a dependency cycle.
 - **Description:** Define optional favourite saving and return access without adding an MVP entity or granting broader catalogue access.
 - **Work:** Resolve personal storage/RLS, strict save/read schemas and endpoint paths, repeat-save outcomes, persistence and ineligible/re-eligible café handling. Preserve CUS-07 placement in existing customer contexts and exclusion of removal; any removal scope amendment follows the source-story change process. Keep favourite reads personal and current café eligibility independently enforced.
 - **File scope:** Existing CUS-07 story and matching stretch data/API sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`; PRODUCT-SPEC only if a human-approved scope amendment is needed; own handoff.
-- **Prerequisite:** T-35 customer catalogue contract ownership, consistent with the [optional favourite boundary](specs/INTEGRATION-SPEC.md#stretch-favourite-boundary) and CUS-07's Browse/Café page placement.
+- **Prerequisite:** Reviewed T-35 catalogue contracts on master. Persistent personal saving, repeated-save success, ineligible omission/reappearance and no-removal scope remain established; stretch scope does not block MVP pairs.
 - **Acceptance criteria:**
   - [ ] The optional favourite schema, ownership and return behaviour are testable without inventing removal/sharing/payment behaviour.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -849,11 +850,11 @@ implementation also requires the paired failing-first evidence.
 - **Description:** Complete the owner setup contracts reserved by the [integration dependency map](specs/INTEGRATION-SPEC.md#contract-dependencies), preserving approval/suspension independence and the existing Customer hours/pickup vocabulary.
 - **Work:** Resolve café cardinality, application/profile editable fields and validation, first/duplicate submission, rejected-application editing/resubmission and submission ordering. Define current-state/concurrent-save behavior, exact owner read/save/resubmit paths and strict request/success/error schemas. Specify owner no-café states, application/latest-decision display and suspension/reason surfaces without exposing private Admin reasons to Customers. Retain established Singapore weekly/overnight intervals, empty hours, cutoff bounds/default, unchanged order snapshots and owner management during suspension. Put domain behavior in its owning story, API contracts in INTEGRATION-SPEC and data/RLS constraints in TECHNICAL-SPEC; do not resolve decisions in PLAN.
 - **File scope:** Existing OWN-01/OWN-02/OWN-04 story files and their owning sections of `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own numbered spec handoff. No application, tests or unrelated story changes.
-- **Prerequisite:** Human decisions on the missing fields/cardinality/lifecycle/edit contracts; source role, Customer read/slot and ADM-01/ADM-02 contracts already exist. Accepted risk ratings do not supply the unspecified behavior.
+- **Prerequisite:** Application/profile/hour/cutoff choices, atomic save schemas and suspension-race feedback are defined in OWN-01/OWN-02/OWN-04 and the owner café boundary. Governing amendments require reviewed merge evidence on master; no unresolved product choice remains.
 - **Acceptance criteria:**
   - [ ] Application/profile/hour/cutoff boundaries are deterministic, preserve source IDs and have no unresolved behavioral assumptions; any changed criteria remain in their owning files.
   - [ ] Reviewed governing contracts are on master before dependent testing/implementation; `bun run check:specs` and `bun run check:traceability` results and remaining decisions are recorded in the spec handoff.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#108](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/108)
 
 ### T-53: Test owner café application, profile, hours and pickup rules
@@ -894,11 +895,11 @@ implementation also requires the paired failing-first evidence.
 - **Description:** Complete OWN-03 menu edit/history contracts while preserving the [shared money/type and Customer menu boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
 - **Work:** Resolve add/edit/remove actions, names/validation/normalization/duplicates, initial sold-out state, removal/history retention and source identity after rename/removal. Define owner list ordering/pagination, no-café behavior, concurrency and exact read/mutation request/success/error schemas. Preserve integer SGD cents, shared DrinkType values, sold-out inclusion in Customer views, unavailable-item refusal for new orders and historical purchase snapshots. Record data/RLS and transport in their canonical shared specs; do not introduce inventory, payment or new Admin write access.
 - **File scope:** Existing OWN-03 story; owner-menu sections in `workflow/specs/INTEGRATION-SPEC.md` and menu/history/RLS sections in `TECHNICAL-SPEC.md`; own spec handoff. No code/tests.
-- **Prerequisite:** Human decisions on the missing menu lifecycle/validation/API contracts; Customer money/menu/order snapshot contracts already exist. Coordinate shared café identity with T-52 without coupling independent drafting.
+- **Prerequisite:** Menu lifecycle, 2–100-code-point names, duplicate normalization, permanent removal, alphabetical pages and last-valid-commit concurrency are defined in OWN-03 and the owner menu boundary. Governing amendments require reviewed merge evidence on master; customer reads/snapshots must remain consistent.
 - **Acceptance criteria:**
   - [ ] One authoritative menu lifecycle/edit contract covers ordinary and failure/concurrent paths without rewriting purchases or broadening access.
   - [ ] Reviewed contracts are on master before dependent execution; spec/traceability checks and decisions are recorded in the spec handoff.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#111](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/111)
 
 ### T-56: Test owner menu prices, items and sold-out state
@@ -933,17 +934,17 @@ implementation also requires the paired failing-first evidence.
 
 ### T-58: Finalize owner order queue read and action contracts
 
-- **Depends on:** None
+- **Depends on:** T-34
 - **Owner role:** spec
 - **Requirements:** OWN-05 — [OWN-05](specs/stories/OWN-05-order-queue.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
 - **Description:** Complete OWN-05 queue presentation/transport without changing the established [order transition/race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
 - **Work:** Resolve queue state filters, ordering/pagination, displayed purchase/customer fields, rejection-reason policy, no-café and stale-action feedback. Define exact owner read/action paths, strict request/success/error schemas and transaction concurrency rules. Preserve pending→accepted/rejected, accepted→ready, ready→collected, terminal-state conflicts, acceptance/cancellation race and collection/suspension serialization. Any source timestamp needed by subsequent sales decisions is an explicit canonical contract amendment, not an implementation inference. Queue scope grants no general Customer-profile access, new payment operation or invented order audit.
 - **File scope:** Existing OWN-05 and owning order sections of `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own spec handoff. Other story behavior changes require its owning specification scope; no application/tests.
-- **Prerequisite:** Human queue field/UI/API decisions; the shared Customer state/snapshot and ADM-02 suspension contracts already exist. Does not require T-43 Customer implementation or T-29 Admin implementation.
+- **Prerequisite:** Queue filters, 10-item ordering, customer-name snapshots, required customer-visible rejection reasons and timestamps are defined in OWN-05 and the owner queue boundary; SYS-01 defines Customer name at registration. Governing amendments require reviewed merge evidence on master. No T-29/T-43 implementation prerequisite is introduced.
 - **Acceptance criteria:**
   - [ ] Owner queue contracts are exact and consistent with every current shared state/race outcome and minimum necessary Customer disclosure.
   - [ ] Governing reviewed contracts are on master before dependent execution; spec/traceability results and unresolved decisions are recorded.
-- **Status:** awaiting-decision
+- **Status:** blocked
 - **Issue:** [#114](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/114)
 
 ### T-59: Test owner order queue and fulfilment races
