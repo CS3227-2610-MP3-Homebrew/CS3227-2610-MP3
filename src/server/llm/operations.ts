@@ -3,7 +3,8 @@ import { getConfiguration } from "../config";
 import { prompts } from "./prompts";
 import { brewInput, prepInput, moderationInput, canonical, requestSchema, providerEnvelope, validateResult, parseTokenUsage,
   type Feature, type FeatureData, type TokenUsage, type BrewInput } from "./schemas";
-import { BYTE_LIMIT, BodyOverflow, readBounded, operationSettings, soclaasTransport, fakeResponse, type Transport } from "./transport";
+import { BYTE_LIMIT, BodyOverflow, readBounded } from "@/server/http/json";
+import { operationSettings, soclaasTransport, fakeResponse, type Transport } from "./transport";
 
 export type { Feature, BrewInput, PrepInput, ModerationInput, BrewResult, PrepResult, ModerationResult, TokenUsage } from "./schemas";
 type Reason = "disabled" | "usage_limited" | "unavailable" | "no_source_data";

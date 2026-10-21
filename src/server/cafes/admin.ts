@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getVerifiedActor } from "@/server/auth/session";
 import { trustedOrigin } from "@/server/auth/account-adapter";
 import { createSessionClient } from "@/server/supabase/session-client";
-import { BodyOverflow, readBounded } from "@/server/llm/transport";
+import { BodyOverflow, readBounded, privateResponses, checkOrigin, checkJsonContentType } from "@/server/http/json";
 
 const ref = z.string().refine(value => [...value].length >= 1 && [...value].length <= 128);
 const reason = z.string().refine(value => value.trim().length > 0 && [...value].length <= 300);
@@ -17,13 +17,13 @@ const outcome = z.union([
 ]);
 
 export async function handleCafeAction(request: Request, cafeId: string, operation: "decision" | "suspension") {
-  const requestId = crypto.randomUUID();
-  const json = (body: object, status = 200, headers = {}) => Response.json({ requestId, ...body }, { status, headers: { "Cache-Control": "private, no-store", ...headers } });
-  const error = (status: number, code: string, message: string, headers = {}) => json({ error: { code, message } }, status, headers);
+  const { json, error } = privateResponses();
   if (request.method !== "POST") return error(405, "METHOD_NOT_ALLOWED", "Method not allowed.", { Allow: "POST" });
   try {
-    if (request.headers.get("origin") !== trustedOrigin()) return error(403, "FORBIDDEN", "Request origin is not allowed.");
-    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return error(415, "UNSUPPORTED_MEDIA_TYPE", "Use application/json.");
+    const originError = checkOrigin(request.headers.get("origin"), trustedOrigin(), error);
+    if (originError) return originError;
+    const mediaError = checkJsonContentType(request, error);
+    if (mediaError) return mediaError;
     let body: unknown;
     try { body = JSON.parse(await readBounded(request.body, request.signal)); }
     catch (failure) {
