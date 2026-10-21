@@ -6,6 +6,8 @@
 - [2. Navigating Homebrew](#2-navigating-homebrew)
 - [3. Your account (all roles)](#3-your-account-all-roles)
 - [4. Customer guide](#4-customer-guide)
+  - [4.1 Browse cafés](#41-browse-cafés)
+  - [4.2 Inspect a café](#42-inspect-a-café)
 - [5. Café owner guide](#5-café-owner-guide)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
@@ -19,7 +21,8 @@
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
 role. Admins can manually moderate reviews and inspect their workspace’s audit log.
-Café browsing, ordering and café management tools are not yet available.
+Customers can browse cafés and inspect menus, opening hours and public reviews.
+Ordering and café management tools are not yet available.
 
 ### 1.1 What you need
 
@@ -83,8 +86,9 @@ again.” and does not confirm that sign-out succeeded.
 | Café owner | Dashboard (`/owner/dashboard`) | Café application; Dashboard; Order queue; Menu; Café profile |
 | Admin | Moderation queue (`/admin/moderation`) | Moderation queue; Café applications; Cafés; Audit log |
 
-Moderation queue and Audit log provide the Admin tools described in section 6.
-The other entries currently open role page headings.
+Browse cafés provides the Customer tools in section 4; Moderation queue and
+Audit log provide the Admin tools in section 6. The other entries currently
+open role page headings.
 
 ### 1.5 Demo accounts for testers
 
@@ -115,10 +119,76 @@ automatic resubmission.
 
 ## 4. Customer guide
 
-### 4.1 Customer features at a glance
+### 4.1 Browse cafés
 
-Customer navigation is available as listed above. Catalogue results, café
-details, pickup ordering and reviews are not yet implemented on these pages.
+Signed-in Customers can browse approved, non-suspended cafés in their own
+workspace, including closed cafés.
+
+**Where:** Customer navigation → **Browse cafés**, or `/customer/cafes`.
+
+1. Read café cards showing name, area, average rating and visible review count.
+   Results show 20 cafés per page; use **Previous page** and **Next page**.
+2. Choose **Opening time**: **All opening times**, **Open now**, or **Open at**.
+   For Open at, enter **Date (Singapore)** and **Time**, then select **Apply**.
+   The chosen time uses Singapore time regardless of your browser's timezone.
+3. Optionally choose **Drink type** (coffee, matcha, tea, chocolate, juice or
+   other) and **Area** (Central, North, South, East or West). All active filters
+   must match. A drink type matches even if its menu item is sold out.
+   Changing area, drink type or an opening mode other than Open at applies it
+   immediately; completing Open at requires its date and time.
+4. Select a card to inspect the café. Closed cards are greyed out but clickable.
+   Select **All opening times** to remove the time filter, or **Reset** to clear
+   every filter and return to the first page.
+
+Ratings use the original ratings of pending and kept reviews, excluding hidden
+reviews. The average displays one decimal place, rounding halves upward. Cafés
+sort by the unrounded average, then more visible reviews, then café reference;
+cafés without reviews appear last and show “No reviews yet”.
+
+Card status describes the current time, even when Open at filters a future time.
+Open cafés show “Open now”, or “closing soon” during the final 30 minutes,
+including exactly 30 minutes before closing. Opening time is included and
+closing time excluded; adjoining opening intervals remain continuous. Closed
+cards show “Cafe opens at 24 Oct 2026, 9:00 AM SGT” (with the actual next opening)
+or “No opening hours scheduled”.
+
+No matches shows “No cafés match these filters.” Invalid URL filters show
+“Invalid filters. Reset filters to try again.” with **Reset filters**. A source
+failure shows “Cafés are temporarily unavailable. Try again.” rather than an
+empty result; retry the page explicitly when ready.
+
+### 4.2 Inspect a café
+
+Customers can read the café's public information without placing an order.
+
+**Where:** **Browse cafés** → select a café card, or `/customer/cafes/{cafeId}`.
+
+1. Read the café name, area, description, **Pickup** address and rating summary.
+2. Under **Menu**, read item names, drink types and SGD prices shown as `S$`
+   amounts with exactly two decimal places. Items are ordered by name, then
+   item reference; sold-out items remain visible with **Sold out**.
+3. Read **Opening hours (SGT)**, ordered Monday to Sunday and by opening time.
+   Overnight intervals include “(next day)”; these times use Singapore time.
+4. Under **Reviews**, read original review text, rating out of five and Singapore
+   submission time. The page labels each author **Verified customer**. Its public
+   review response omits reviewer account names, emails and account identifiers.
+   Only pending and kept reviews appear, newest first, with review reference
+   breaking exact submission-time ties. Use **Previous reviews** and **Next
+   reviews** for 20-review pages.
+5. Select **Browse cafés** to return to the catalogue.
+
+An empty menu shows “No menu items available.”; absent hours show “No opening
+hours scheduled”; no visible reviews shows “No reviews yet”. Café, menu and
+review content displays as text, including any HTML-like wording.
+
+Each page read rechecks current eligibility. A closed café remains readable,
+but a missing, unapproved, suspended or other-workspace café shows a not-found
+page. A later read reflects reviews hidden or restored by an Admin without
+rewriting their original text or rating. Invalid review pagination shows
+“Invalid review page.” A source failure shows “Café information is temporarily
+unavailable. Try again.”; retry explicitly when ready.
+
+Pickup ordering and writing reviews are not available in this build.
 
 ## 5. Café owner guide
 
@@ -205,7 +275,8 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Customer and Café owner domain tools and Admin café actions remain entry shells.
+Customer ordering, order tracking, review writing and favourites, Café owner
+domain tools and Admin café actions remain entry shells or unavailable.
 Demo-kit creation, account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
