@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { localSql, provisionAccount } from "../accounts/local";
 import { insert, q, stored } from "../../integration/moderation/fixtures";
 import { base, detail, failure, fixture, list, login } from "./fixtures";
@@ -82,13 +82,17 @@ test("CUS-01.6 CUS-02.6 CUS-02.7: direct and stale reads repeat indistinguishabl
   for (const id of ids) for (const suffix of ["", "/reviews"]) await failure(await request.get(`${base}/${id}${suffix}`), 404, "NOT_FOUND");
   expect((await list(request)).items).toEqual([]);
 });
-for (const type of ["coffee", "matcha", "tea", "chocolate", "juice", "other"]) test(`CUS-01.4 CUS-01.5: exact ${type} sold-out match combines with area/time by AND`, async ({ request }) => {
+for (const type of ["coffee", "matcha", "tea", "chocolate", "juice", "other"]) {
+  const check = async ({ request }: { request: APIRequestContext }) => {
   const f = fixture(); f.fields(); f.menu(type, true); await login(request, f.customer);
   expect((await list(request, `?drinkType=${type}&area=Central`)).items.map(c => c.cafeId)).toEqual([f.cafe]);
   expect((await list(request, `?drinkType=${type}&area=West`)).items).toEqual([]);
   expect((await list(request, `?drinkType=${type}&timeMode=now`)).items).toEqual([]);
   expect((await list(request, `?drinkType=${type === "coffee" ? "tea" : "coffee"}`)).items).toEqual([]);
-});
+  };
+  if (type === "coffee") test("CUS-01.4 CUS-01.5: exact coffee sold-out match combines with area/time by AND", check);
+  else test(`CUS-01.4 CUS-01.5: exact ${type} sold-out match combines with area/time by AND`, check);
+}
 for (const area of ["Central", "North", "South", "East", "West"]) test(`CUS-01.5: exact area ${area} matches only its workspace records`, async ({ request }) => {
   const f = fixture(); f.fields(f.cafe, area); await login(request, f.customer); expect((await list(request, `?area=${area}`)).items.map(c => c.cafeId)).toEqual([f.cafe]);
 });
