@@ -54,6 +54,8 @@ export async function runOperationWithLifecycle(options: Options, lifecycle?: {
   bindIdentity: (identity: OperationIdentity) => void;
   providerUsage?: (usage: TokenUsage) => void;
   beforeReturn?: (result: Extract<Result, { mode: "ai" }>) => Promise<void>;
+  /** Internal durable publication after all fallible readiness work. */
+  publish?: () => Promise<void>;
 }): Promise<Result> {
   const { feature, requestId } = options;
   const fallback = (reason: Reason) => operationFallback(feature, requestId, reason);
@@ -80,6 +82,15 @@ export async function runOperationWithLifecycle(options: Options, lifecycle?: {
       await lifecycle.beforeReturn(result);
       const failure = stateFailure();
       if (failure) return fallback(failure);
+    }
+    if (source === "provider" && lifecycle?.publish) {
+      await lifecycle.publish();
+      // Publication is committed. Configuration invalidation and later scope
+      // changes cannot undo it; only observed disable/cancel suppress delivery.
+      let disabled = false;
+      try { disabled = operationSettings((options.getConfig ?? liveConfiguration)()).state === "disabled"; } catch { /* No new post-commit failure. */ }
+      if (disabled) return fallback("disabled");
+      if (options.signal?.aborted) return fallback("unavailable");
     }
     return result;
   };

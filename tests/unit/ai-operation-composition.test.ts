@@ -42,7 +42,7 @@ test("composed Brew operation reserves each stage once, persists provider tokens
   expect(await s.state.runOperation(snapshot(f.context), { requestId: "first", getConfig: () => s.config, transport })).toMatchObject({ mode: "ai", source: "provider", data: f.result });
   expect(s.requests.map(r => r.event)).toEqual(["action", "provider_attempt"]);
   expect(admissions(f.context.operationId)).toEqual(["action", "provider_attempt"]);
-  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "success", input_tokens: 0, output_tokens: 7, total_tokens: null }));
+  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "ready", input_tokens: 0, output_tokens: 7, total_tokens: null }));
   const serialized = JSON.stringify(audit(f.context.operationId));
   for (const canary of ["PRIVATE_QUERY_CANARY", "PRIVATE_PROVIDER_CANARY", "Synthetic result"]) expect(serialized).not.toContain(canary);
   expect(await f.state.readCache(f.context)).toMatchObject({ data: f.result });
@@ -66,7 +66,7 @@ test("composed Prep refresh reserves refresh and provider once and shares model 
   expect(s.requests.map(r => r.event)).toEqual(["refresh", "provider_attempt"]);
   expect(transport).toHaveBeenCalledTimes(1);
   expect((await f.state.readCache(next))!.data).toEqual(f.result);
-  expect(audit(next.operationId)).toContainEqual(expect.objectContaining({ outcome: "success", output_tokens: 7 }));
+  expect(audit(next.operationId)).toContainEqual(expect.objectContaining({ outcome: "ready", output_tokens: 7 }));
 });
 
 for (const failure of ["429", "invalid", "denied"] as const) test(`composed ${failure} refresh preserves the earlier envelope and records the durable outcome`, async () => {
@@ -97,7 +97,7 @@ test("composed moderation has one stage admission and durable token audit withou
   expect(await state.runOperation(input, { requestId: "moderation", getConfig: () => s.config, transport })).toMatchObject({ mode: "ai", feature: "moderation", data });
   expect(admissions(operationId)).toEqual(["provider_attempt", "run"]);
   expect(rpcCalls).not.toContain("read"); expect(rpcCalls).not.toContain("write");
-  expect(audit(operationId)).toContainEqual(expect.objectContaining({ feature: "moderation_assistant", outcome: "success", output_tokens: 7 }));
+  expect(audit(operationId)).toContainEqual(expect.objectContaining({ feature: "moderation_assistant", outcome: "ready", output_tokens: 7 }));
   expect(JSON.stringify(audit(operationId))).not.toContain("PRIVATE_REVIEW_CANARY");
   expect(transport).toHaveBeenCalledTimes(1);
 });
@@ -121,7 +121,7 @@ test("composed audit failure prevents transport and final audit disable retains 
     rpc: async (fn,args) => {
       if (args.p_action === "audit") {
         if (unavailable) return { data: null, error: { message: "PRIVATE_STORAGE_CANARY" } };
-        if ((args.p_request as Record<string,unknown>).outcome === "success") s.config.AI_PROVIDER = "disabled";
+        if ((args.p_request as Record<string,unknown>).outcome === "ready") s.config.AI_PROVIDER = "disabled";
       }
       return rpc(fn,args);
     },
@@ -233,4 +233,102 @@ test("legacy in-flight Prep eligibility loss still creates a terminal audit thro
   const f = await prepFixture(); const s = setup(f);
   expect(await s.state.invoke(f.context, { provider: async () => { f.advance("2040-01-01T16:00:00.001Z"); return f.result; } })).toEqual({ outcome: "fallback" });
   expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback", actor_id: f.actors.owner }));
+});
+
+for (const phase of ["audit-failure", "disable-before", "cancel-before", "storage-failure", "disable-after", "cancel-after", "lost-ack"] as const) test(`refresh ${phase} respects durable publication and never audits suppressed delivery as success`, async () => {
+  const f = await prepFixture(); const base = setup(f);
+  await base.state.runOperation(snapshot(f.context), { requestId: "seed", getConfig: () => base.config, transport: async () => envelope({ suggestions: [] }) });
+  const before = await f.state.readCache(f.context);
+  f.advance("2040-01-01T15:51:00.000Z");
+  const next = f.next(); const controller = new AbortController(); const rpc = rpcAs();
+  const s = setup(f, { rpc: async (fn, args) => {
+    const request = args.p_request as Record<string, unknown>;
+    if (args.p_action === "audit" && request.outcome === "ready") {
+      if (phase === "audit-failure") return { data: null, error: { message: "unavailable" } };
+      if (phase === "disable-before") s.config.AI_PROVIDER = "disabled";
+      if (phase === "cancel-before") controller.abort();
+    }
+    if (args.p_action === "write") {
+      if (phase === "storage-failure") return { data: null, error: { message: "unavailable" } };
+      const response = await rpc(fn, args);
+      if (phase === "disable-after") s.config.AI_PROVIDER = "disabled";
+      if (phase === "cancel-after") controller.abort();
+      if (phase === "lost-ack") return { data: null, error: { message: "unavailable" } };
+      return response;
+    }
+    return rpc(fn, args);
+  } });
+  const suggestion = f.result.suggestions[0];
+  const response = await s.state.runOperation(snapshot(next), { requestId: phase, refresh: true, signal: controller.signal, getConfig: () => s.config,
+    transport: async () => envelope({ suggestions: [{ itemId: suggestion.itemId, weekday: suggestion.weekday, direction: suggestion.direction, evidenceIds: suggestion.evidence.map(e => e.aggregateId) }] }),
+  });
+  expect(response).toMatchObject({ mode: "fallback" });
+  const after = await f.state.readCache(next);
+  if (["disable-after", "cancel-after", "lost-ack"].includes(phase)) {
+    expect(after!.data).toEqual(f.result); expect(after!.createdAt).not.toEqual(before!.createdAt);
+  } else expect(after).toEqual(before);
+  expect(audit(next.operationId)).not.toContainEqual(expect.objectContaining({ outcome: "success" }));
+  expect(audit(next.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback", input_tokens: 0, output_tokens: 7 }));
+  expect(admissions(next.operationId)).toEqual(["provider_attempt", "refresh"]);
+});
+
+for (const phase of ["audit-failure", "disable-after", "cancel-after"] as const) test(`legacy refresh ${phase} shares publication and truthful audit semantics`, async () => {
+  const f = await prepFixture(); await f.state.writeCache(f.context, { suggestions: [] });
+  const before = await f.state.readCache(f.context); f.advance("2040-01-01T15:51:00.000Z");
+  const controller = new AbortController(); let enabled = true; const rpc = rpcAs();
+  const s = setup(f, { enabled: () => enabled, rpc: async (fn, args) => {
+    if (args.p_action === "audit" && (args.p_request as Record<string, unknown>).outcome === "ready" && phase === "audit-failure") return { data: null, error: { message: "unavailable" } };
+    const response = await rpc(fn, args);
+    if (args.p_action === "write") { if (phase === "disable-after") enabled = false; if (phase === "cancel-after") controller.abort(); }
+    return response;
+  } });
+  const next = f.next();
+  // setup binds the same model identity used by the composed entrypoint.
+  await f.state.writeCache(f.context, { suggestions: [] });
+  const seeded = await f.state.readCache(f.context);
+  expect(await s.state.invoke(next, { refresh: true, signal: controller.signal, provider: async () => f.result })).toEqual({ outcome: "fallback" });
+  const after = await f.state.readCache(next);
+  if (phase === "audit-failure") expect(after).toEqual(seeded); else expect(after!.data).toEqual(f.result);
+  expect(before).not.toBeNull();
+  expect(audit(next.operationId)).not.toContainEqual(expect.objectContaining({ outcome: "success" }));
+  expect(audit(next.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback" }));
+  expect(admissions(next.operationId)).toEqual(["provider_attempt", "refresh"]);
+});
+
+
+test("a suppressed committed refresh never restores stale data over a concurrent publication", async () => {
+  const f = await prepFixture(); const base = setup(f);
+  await base.state.writeCache(f.context, f.result);
+  const next = f.next(); const rpc = rpcAs();
+  const s = setup(f, { rpc: async (fn, args) => {
+    const response = await rpc(fn, args);
+    if (args.p_action === "write") {
+      // A different successful publisher wins after this request's commit.
+      f.advance("2040-01-01T15:52:00.000Z");
+      expect(await base.state.writeCache(f.next(), f.result)).toBe(true);
+      s.config.AI_PROVIDER = "disabled";
+    }
+    return response;
+  } });
+  expect(await s.state.runOperation(snapshot(next), { requestId: "concurrent", refresh: true, getConfig: () => s.config,
+    transport: async () => envelope({ suggestions: [] }),
+  })).toMatchObject({ mode: "fallback", reason: "disabled" });
+  expect(await base.state.readCache(next)).toMatchObject({ data: f.result, createdAt: "2040-01-01T15:52:00.000Z" });
+  expect(audit(next.operationId)).not.toContainEqual(expect.objectContaining({ outcome: "success" }));
+  expect(audit(next.operationId)).toContainEqual(expect.objectContaining({ outcome: "fallback", output_tokens: 7 }));
+  expect(admissions(next.operationId)).toEqual(["provider_attempt", "refresh"]);
+});
+
+for (const entrypoint of ["composed", "legacy"] as const) test(`${entrypoint} ignores a broken configuration callback after acknowledged publication`, async () => {
+  const f = await prepFixture(); let committed = false; const rpc = rpcAs();
+  const s = setup(f, { enabled: () => { if (committed) throw new Error("configuration unavailable"); return true; }, rpc: async (fn, args) => {
+    const response = await rpc(fn, args); if (args.p_action === "write") committed = true; return response;
+  } });
+  if (entrypoint === "composed") expect(await s.state.runOperation(snapshot(f.context), { requestId: "post-commit-config", getConfig: () => {
+    if (committed) throw new Error("configuration unavailable"); return s.config;
+  }, transport: async () => envelope({ suggestions: [] }) })).toMatchObject({ mode: "ai", source: "provider" });
+  else expect(await s.state.invoke(f.context, { provider: async () => ({ suggestions: [] }) })).toMatchObject({ outcome: "success" });
+  expect(await f.state.readCache(f.context)).toMatchObject({ data: { suggestions: [] } });
+  expect(audit(f.context.operationId)).toContainEqual(expect.objectContaining({ outcome: "ready" }));
+  expect(audit(f.context.operationId)).not.toContainEqual(expect.objectContaining({ outcome: "fallback" }));
 });

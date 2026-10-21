@@ -19,7 +19,7 @@ const validScope = (e: z.infer<typeof metadataSchema>) => e.feature === "prep_ad
 export const auditMetadataSchema = metadataSchema.refine(validScope);
 export type AiAuditMetadata = z.infer<typeof auditMetadataSchema>;
 const eventSchema = metadataSchema.extend({
-  outcome: z.enum(["started", "cache", "provider_attempt", "success", "fallback", "denied"]),
+  outcome: z.enum(["started", "cache", "provider_attempt", "ready", "success", "fallback", "denied"]),
   tokens: tokens.optional(),
 }).refine(e => validScope(e) && !(e.feature === "moderation_assistant" && e.outcome === "cache"));
 export type AiAuditEvent = z.infer<typeof eventSchema>;

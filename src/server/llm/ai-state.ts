@@ -113,7 +113,7 @@ export function createAiState(options: {
     async writeCache(input: AiCacheContext, result: unknown): Promise<boolean> {
       try { return await write(context(input), result); } catch { return false; }
     },
-    async invoke(input: AiCacheContext, invocation: { refresh?: boolean; provider: () => Promise<unknown> }): Promise<Outcome> {
+    async invoke(input: AiCacheContext, invocation: { refresh?: boolean; signal?: AbortSignal; provider: () => Promise<unknown> }): Promise<Outcome> {
       let c: CacheContext | undefined;
       let m: AuditContext | undefined;
       try {
@@ -142,11 +142,18 @@ export function createAiState(options: {
         }
         await audit(m, "provider_attempt");
         const result = await invocation.provider();
-        if (!enabled() || !(await write(c, result))) throw unavailable();
-        await audit(m, "success");
-        const cached = await read(c);
-        if (!cached) throw unavailable();
-        return { outcome: "success", data: cached.data };
+        const data = validateResult(c, result);
+        if (!data || Buffer.byteLength(canonicalJson(data), "utf8") > 65_536 || !(await authorized(c, data))) throw unavailable();
+        await audit(m, "ready");
+        if (!(await authorized(c, data)) || invocation.signal?.aborted || !enabled()) throw unavailable();
+        // The RPC performs current database authorization and an atomic write.
+        // A lost acknowledgement may leave a committed entry; never roll it back.
+        const stored = await call("write", { ...identity(c), data });
+        if (!envelopeSchema.safeParse(stored).success) throw unavailable();
+        let disabled = false;
+        try { disabled = !enabled(); } catch { /* No new post-commit failure. */ }
+        if (disabled || invocation.signal?.aborted) throw unavailable();
+        return { outcome: "success", data };
       } catch {
         if (m) { try { await audit(m, "fallback"); } catch { /* Content-free fail closed. */ } }
         return { outcome: "fallback" };
@@ -160,6 +167,7 @@ export function createAiState(options: {
       let m: AuditContext | undefined;
       let usage: TokenUsage | undefined;
       let denied = false;
+      let candidate: CacheResult | undefined;
       try {
         const snapshot = structuredClone(input);
         const initialMetadata = operationMetadata(snapshot);
@@ -187,7 +195,10 @@ export function createAiState(options: {
               return invocation.refresh ? null : (await read(c, false))?.data ?? null;
             },
             write: async data => {
-              if (!c || c.feature === "moderation_assistant" || !(await write(c, data, false))) throw unavailable();
+              if (!c || c.feature === "moderation_assistant") throw unavailable();
+              const validated = validateResult(c, data);
+              if (!validated || Buffer.byteLength(canonicalJson(validated), "utf8") > 65_536) throw unavailable();
+              candidate = validated;
             },
           },
         }, {
@@ -196,8 +207,13 @@ export function createAiState(options: {
           providerUsage: tokens => { usage = { ...tokens }; },
           beforeReturn: async result => {
             if (!c || !(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
-            await audit(c, result.source === "cache" ? "cache" : "success", usage);
+            await audit(c, result.source === "cache" ? "cache" : "ready", usage);
             if (!(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
+          },
+          publish: snapshot.feature === "moderation" ? undefined : async () => {
+            if (!c || c.feature === "moderation_assistant" || !candidate) throw unavailable();
+            const stored = await call("write", { ...identity(c), data: candidate });
+            if (!envelopeSchema.safeParse(stored).success) throw unavailable();
           },
           bindIdentity: identity => {
             if (identity.environment !== environment) throw unavailable();
@@ -216,7 +232,7 @@ export function createAiState(options: {
           },
         });
         if (result.mode === "fallback") {
-          if (m && !denied) await audit(m, "fallback", usage);
+          if (m && !denied) { try { await audit(m, "fallback", usage); } catch { /* Suppression retains its original reason. */ } }
           return result;
         }
         return result;

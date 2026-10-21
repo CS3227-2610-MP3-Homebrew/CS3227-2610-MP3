@@ -12,7 +12,7 @@ create table private.ai_audit_events (
   operation_id uuid not null,
   actor_id uuid not null references public.profiles(id),
   feature text not null check (feature in ('brew_finder', 'prep_advisor', 'moderation_assistant')),
-  outcome text not null check (outcome in ('started', 'cache', 'provider_attempt', 'success', 'fallback', 'denied')),
+  outcome text not null check (outcome in ('started', 'cache', 'provider_attempt', 'ready', 'success', 'fallback', 'denied')),
   created_at timestamptz not null,
   input_tokens bigint check (input_tokens between 0 and 9007199254740991),
   output_tokens bigint check (output_tokens between 0 and 9007199254740991),
@@ -24,6 +24,19 @@ revoke all on private.ai_result_caches from public, anon, authenticated, service
 revoke all on private.ai_audit_events from public, anon, authenticated, service_role;
 create index ai_result_caches_expiry on private.ai_result_caches(environment, expires_at);
 create index ai_audit_events_retention on private.ai_audit_events(environment, created_at);
+
+-- Content-free historical authorization for terminal audit only. No cache,
+-- source or dispatch permission follows from a stored binding.
+create table private.ai_audit_bindings (
+  environment text not null check (environment in ('local','ci','dev','prod')),
+  operation_id uuid not null,
+  metadata jsonb not null check (jsonb_typeof(metadata)='object'),
+  authorized_at timestamptz not null,
+  primary key(environment,operation_id)
+);
+alter table private.ai_audit_bindings enable row level security;
+revoke all on private.ai_audit_bindings from public,anon,authenticated,service_role;
+create index ai_audit_bindings_retention on private.ai_audit_bindings(environment,authorized_at);
 
 -- This RPC is an infrastructure capability, not an ordinary domain-query API.
 -- Only the server secret-key adapter can execute it. p_now is a construction-only
@@ -47,11 +60,15 @@ declare
   v_key text;
   v_suggestion jsonb;
   v_created timestamptz;
+  v_operation uuid;
+  v_meta jsonb;
+  v_bound jsonb;
+  v_historical boolean;
 begin
   if p_environment is null or p_environment not in ('local','ci','dev','prod')
     or (p_now is not null and p_environment not in ('local','ci'))
     or jsonb_typeof(p_request) is distinct from 'object'
-    or p_action not in ('authorize','read','write','audit','cleanup') then
+    or p_action is null or p_action not in ('authorize','read','write','audit','cleanup') then
     return query select null::jsonb; return;
   end if;
   v_now := coalesce(p_now, pg_catalog.clock_timestamp());
@@ -64,6 +81,7 @@ begin
     perform pg_catalog.pg_advisory_xact_lock(42009, case p_environment when 'local' then 1 when 'ci' then 2 when 'dev' then 3 else 4 end);
     delete from private.ai_result_caches c where c.environment=p_environment and c.expires_at <= v_now;
     delete from private.ai_audit_events a where a.environment=p_environment and a.created_at <= v_now - interval '30 days';
+    delete from private.ai_audit_bindings b where b.environment=p_environment and b.authorized_at <= v_now - interval '30 days';
     delete from private.ai_usage_admissions a where a.environment=p_environment and a.window_end <= v_now - interval '7 days';
     delete from private.ai_usage_operations o where o.environment=p_environment and o.window_end <= v_now - interval '7 days'
       and not exists (select 1 from private.ai_usage_admissions a where a.environment=o.environment and a.operation_id=o.operation_id);
@@ -75,37 +93,53 @@ begin
     return query select null::jsonb; return;
   end if;
   v_actor := (p_request->>'actorId')::uuid;
+  v_operation := (p_request->>'operationId')::uuid;
   v_cafe := (p_request->>'cafeId')::uuid;
   v_feature := p_request->>'feature';
   v_scope := p_request->'scope';
   if v_actor is null or (p_request->>'operationId')::uuid is null or v_feature is null
     or v_feature not in ('brew_finder','prep_advisor','moderation_assistant') then return query select null::jsonb; return; end if;
-  select p.workspace_id,p.role into v_workspace,v_role from public.profiles p where p.id=v_actor for share;
-  if not found then return query select null::jsonb; return; end if;
-  if v_feature='brew_finder' then
-    if v_role <> 'customer' or v_cafe is not null or v_scope is distinct from jsonb_build_object('actorId',v_actor) then
-      return query select null::jsonb; return;
-    end if;
-  elsif v_feature='moderation_assistant' then
-    if v_role <> 'admin' or v_cafe is not null or v_scope is distinct from jsonb_build_object('actorId',v_actor)
-      or p_action not in ('authorize','audit') or p_request->>'outcome'='cache' then
-      return query select null::jsonb; return;
-    end if;
-  else
-    if v_role <> 'owner' or v_cafe is null
-      or v_scope is distinct from jsonb_build_object('cafeId',v_cafe,'businessDate',p_request->'scope'->>'businessDate')
-      or (v_scope->>'businessDate') is distinct from to_char(v_now at time zone 'Asia/Singapore','YYYY-MM-DD') then
-      return query select null::jsonb; return;
-    end if;
-    perform 1 from public.cafes c where c.id=v_cafe and c.owner_id=v_actor and c.workspace_id=v_workspace
-      and c.application_state='approved' and not c.suspended for share;
+  v_meta := jsonb_build_object('operationId',v_operation,'actorId',v_actor,'feature',v_feature,'scope',v_scope);
+  if v_cafe is not null then v_meta := v_meta || jsonb_build_object('cafeId',v_cafe); end if;
+  select b.metadata into v_bound from private.ai_audit_bindings b where b.environment=p_environment and b.operation_id=v_operation;
+  if v_bound is not null and v_bound <> v_meta then return query select null::jsonb; return; end if;
+  v_historical := coalesce(p_action='audit' and v_bound is not null and p_request->>'outcome' in ('fallback','denied','success','cache'),false);
+  if v_feature='moderation_assistant' and p_request->>'outcome'='cache' then return query select null::jsonb; return; end if;
+  if not v_historical then
+    select p.workspace_id,p.role into v_workspace,v_role from public.profiles p where p.id=v_actor for share;
     if not found then return query select null::jsonb; return; end if;
+    if v_feature='brew_finder' then
+      if v_role <> 'customer' or v_cafe is not null or v_scope is distinct from jsonb_build_object('actorId',v_actor) then
+        return query select null::jsonb; return;
+      end if;
+    elsif v_feature='moderation_assistant' then
+      if v_role <> 'admin' or v_cafe is not null or v_scope is distinct from jsonb_build_object('actorId',v_actor)
+        or p_action not in ('authorize','audit') or p_request->>'outcome'='cache' then
+        return query select null::jsonb; return;
+      end if;
+    else
+      if v_role <> 'owner' or v_cafe is null
+        or v_scope is distinct from jsonb_build_object('cafeId',v_cafe,'businessDate',p_request->'scope'->>'businessDate')
+        or (v_scope->>'businessDate') is distinct from to_char(v_now at time zone 'Asia/Singapore','YYYY-MM-DD') then
+        return query select null::jsonb; return;
+      end if;
+      perform 1 from public.cafes c where c.id=v_cafe and c.owner_id=v_actor and c.workspace_id=v_workspace
+        and c.application_state='approved' and not c.suspended for share;
+      if not found then return query select null::jsonb; return; end if;
+    end if;
+  end if;
+  if p_action in ('authorize','audit') then
+    insert into private.ai_audit_bindings(environment,operation_id,metadata,authorized_at)
+      values(p_environment,v_operation,v_meta,v_now) on conflict do nothing;
+    select b.metadata into v_bound from private.ai_audit_bindings b where b.environment=p_environment and b.operation_id=v_operation;
+    if v_bound <> v_meta then raise exception using message='AI operation unavailable'; end if;
   end if;
   if p_action='authorize' then
     return query select jsonb_build_object('now',to_char(v_now at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')); return;
   end if;
   if p_action='audit' then
-    if p_request->>'outcome' is null or p_request->>'outcome' not in ('started','cache','provider_attempt','success','fallback','denied') then
+    if exists(select 1 from jsonb_object_keys(p_request) k(key) where key not in ('actorId','cafeId','operationId','feature','scope','outcome','tokens'))
+      or p_request->>'outcome' is null or p_request->>'outcome' not in ('started','cache','provider_attempt','ready','success','fallback','denied') then
       return query select null::jsonb; return;
     end if;
     if p_request ? 'tokens' then
@@ -163,6 +197,8 @@ begin
     end loop;
   end if;
   if p_action='write' then
+    -- A validated result commits at this atomic upsert. No earlier response
+    -- readiness/audit failure mutates the previous envelope.
     insert into private.ai_result_caches as c(environment,cache_key,envelope,expires_at)
       values(p_environment,v_key,v_envelope,v_expires)
       on conflict(environment,cache_key) do update set envelope=excluded.envelope,expires_at=excluded.expires_at;
