@@ -4,6 +4,9 @@ import { getConfiguration } from "@/server/config";
 
 /** Refresh transport only: protected operations independently authorize callers. */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
+  // Account routes own admission and their isolated provisional-cookie buffer.
+  // Transport denials and active-account conflicts must have no refresh effects.
+  if (request.nextUrl.pathname.startsWith("/api/auth/")) return NextResponse.next();
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
   const responseHeaders = new Headers();
@@ -25,7 +28,19 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       },
     },
   );
-  await client.auth.getUser();
+  const originalCookies = request.headers.get("cookie");
+  try {
+    const result = await client.auth.getUser();
+    // Retain expired-session evidence for the request-time account gate even
+    // when Auth schedules browser cookie deletion. Outages resolve at that gate.
+    if (!result.data.user || result.error) {
+      if (originalCookies === null) request.headers.delete("cookie");
+      else request.headers.set("cookie", originalCookies);
+    }
+  } catch {
+    if (originalCookies === null) request.headers.delete("cookie");
+    else request.headers.set("cookie", originalCookies);
+  }
 
   // Forward the changed Cookie header, retaining unrelated request headers and
   // cookies. Browser Set-Cookie alone would leave this render on the old token.
