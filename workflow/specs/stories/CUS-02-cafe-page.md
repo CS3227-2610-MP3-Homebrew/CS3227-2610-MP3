@@ -19,6 +19,17 @@ rating/count. Menus show name, drink type, price and sold-out state. Public
 reviews show original rating/text, submitted time and “Verified customer”,
 without account names, IDs or emails. Owner editing remains OWN-02/OWN-03.
 
+## Related domain contracts
+
+Current profile/hours come from the [owner café contract](../INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+and menu data from the [owner menu contract](../INTEGRATION-SPEC.md#owner-menu-boundary).
+Approved café name, area and public pickup address are fixed for the MVP;
+description, hours and pickup settings may change without renewed approval.
+Permanently removed menu rows disappear on subsequent reads; sold-out live items
+remain visible. Owner editing and private application/suspension reasons are
+never exposed as Customer permissions or public fields. Customer profile names
+used for order fulfilment do not replace the anonymous public review label.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.

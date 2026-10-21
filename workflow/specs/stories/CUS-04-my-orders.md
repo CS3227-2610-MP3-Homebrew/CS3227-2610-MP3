@@ -27,6 +27,19 @@ and keep it separate from the fixed “Cafe is suspended” cancellation reason.
 Only the owning customer and authorized café owner can read that order's reason;
 this adds no public review, private Admin reason or cross-order access.
 
+## Related domain contracts
+
+The [owner queue contract](../INTEGRATION-SPEC.md#owner-order-queue-boundary)
+uses the same stored order states. Its labels New, Ready for pick up and
+Completed map to pending, ready and collected, without adding states or Customer
+actions. Own-order responses include acceptedAt, readyAt, collectedAt,
+rejectedAt and cancelledAt, each null until its successful server transition;
+prior timestamps and purchase snapshots remain retained. Owner queue pagination
+is separate from My orders, which remains 20 per page in newest-placement order.
+Owner rejection requires a nonblank, trimmed reason of at most 100
+whitespace-delimited words; display it only on the owning customer's order,
+separately from the fixed suspension reason and private Admin explanation.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.
