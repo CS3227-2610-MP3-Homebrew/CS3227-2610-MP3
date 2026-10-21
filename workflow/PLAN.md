@@ -549,7 +549,7 @@ existing owners; Shared supplies account forms and role shells/entry points.
   - [ ] All 28 listed criteria have deterministic named tests and recorded failing-first evidence, including partial provisioning, cookie/session/source failures, transport denials, main/kit role navigation and fixed destinations.
   - [ ] Tests preserve foundation SYS/SEC and role-domain criterion ownership, use local Supabase/synthetic faults only and distinguish shell evidence from later demo-control/domain integration evidence.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded; the issue-scoped report follows the [handoff conventions](handoffs/README.md) and [template](templates/handoff.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#99](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/99)
 
 ### T-51: Implement Shared sign-up, sessions and role navigation
@@ -565,7 +565,7 @@ existing owners; Shared supplies account forms and role shells/entry points.
   - [ ] T-50's 28-criterion suite passes, including exact account/cookie outcomes, safe partial creation and source failures, fixed homes and role-only navigation. The Create demo kit control is SYS-12.4's evidence under T-24/T-25.
   - [ ] Existing role/workspace/RLS/session protections and domain ownership remain intact; no unapproved role/workspace assignment, caller-selected redirect, secret response/log data, automatic retry or fabricated domain data is introduced.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase only; the issue-scoped [handoff](templates/handoff.md) records actual checks and integration evidence.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#100](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/100)
 
 ## Customer
