@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { localSql, provisionAccount } from "../accounts/local";
-import { stored } from "../../integration/moderation/fixtures";
+import { q, stored } from "../../integration/moderation/fixtures";
 import { attack, base, detail, fixture, list, login } from "./fixtures";
 
 test.use({ timezoneId: "America/Los_Angeles" });
@@ -60,13 +60,29 @@ test("CUS-02.1 CUS-02.4: empty menu/review collections stay empty on a closed el
   const r = await request.get(`${base}/${f.cafe}/reviews`); expect(r.status()).toBe(200); expect((await r.json()).items).toEqual([]);
 });
 for (const role of [null, "owner", "admin"] as const) test(`CUS-01.8 CUS-02.9: ${role ?? "anonymous"} receives no protected page or static shell data`, async ({ page }) => {
-  const f = fixture(); if (role) await login(page.request, provisionAccount(role, true));
+  const f = fixture(); f.fields();
+  const description = `PROTECTED DESCRIPTION ${f.cafe}`;
+  const address = `PROTECTED PICKUP ADDRESS ${f.cafe}`;
+  const menuName = `PROTECTED MENU ${f.cafe}`;
+  const reviewText = `PROTECTED REVIEW ${f.cafe}`;
+  const hiddenText = `HIDDEN REVIEW ${f.cafe}`;
+  localSql(`update public.cafes set description=${q(description)},pickup_address=${q(address)} where id=${q(f.cafe)};`);
+  const menu = f.menu("coffee", false, menuName);
+  const review = f.review("pending", { [f.reviewText]: reviewText });
+  const hiddenReview = f.review("hidden", { [f.reviewText]: hiddenText });
+  const forbidden = [f.name, description, address, menuName, reviewText, hiddenText,
+    menu, review, hiddenReview, f.customer.id, f.customer.email, f.owner.id, f.owner.email, f.customer.workspaceId];
+  if (role) await login(page.request, provisionAccount(role, true));
   for (const path of ["/customer/cafes", `/customer/cafes/${f.cafe}`]) {
     // A streamed auth redirect can navigate Chromium away before its response
     // body is read. The context request shares browser cookies and retains the
     // complete raw HTTP shell independently of that navigation.
     const response = await page.request.get(path); const html = await response.text();
-    expect(html).not.toContain(f.name); expect(html).not.toContain(f.cafe);
-    await page.goto(path); await expect(page.getByText(f.name)).toHaveCount(0);
+    // The cafeId in the requested URL can appear in framework routing metadata;
+    // it is caller input, not a disclosed record. Stored content and identities
+    // that the visitor did not supply must be absent from both HTML and the DOM.
+    for (const marker of forbidden) expect(html).not.toContain(marker);
+    await page.goto(path);
+    for (const marker of forbidden) await expect(page.getByText(marker, { exact: false })).toHaveCount(0);
   }
 });
