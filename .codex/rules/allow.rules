@@ -73,3 +73,25 @@ prefix_rule(
     match = ["bun install --frozen-lockfile"],
     not_match = ["bun install", "bun add zod", "bun add -d yaml"],
 )
+
+prefix_rule(
+    pattern = ["bun", "run", ["lint", "typecheck", "check:specs", "check:traceability"]],
+    decision = "allow",
+    justification = "Read-only subsets of the already-allowed `bun run verify`; allowed so an escalation request for them never needs a prompt.",
+    match = ["bun run lint", "bun run typecheck", "bun run check:specs", "bun run check:traceability"],
+    not_match = [
+        "bun run build",
+        "bun run dev",
+        "bun run lint:fix",
+        "bun add zod",
+        "bun install",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "status"],
+    decision = "allow",
+    justification = "Read-only working-tree inspection with no option that writes files or runs commands. `git diff`, `git log` and `git show` stay unlisted because `--output` writes a file anywhere outside the sandbox; agents run them inside it.",
+    match = ["git status", "git status --porcelain --untracked-files=all"],
+    not_match = ["git diff", "git log --oneline", "git show HEAD", "git stash", "git fetch upstream"],
+)

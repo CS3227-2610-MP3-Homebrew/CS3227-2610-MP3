@@ -40,8 +40,9 @@ inspect installed tooling before assuming availability.
 | `bun run check:specs` | Spec/PLAN coverage, IDs, fields, links, test titles and guide inventory. |
 | `bun run verify` | Lint, typecheck, tests, traceability, spec check and build, in order. |
 
-Run `bun run verify` exactly as written before reporting `completed`. The
-exception is the testing agent's documented failing-first run. Report results and checks not reached; never claim failed or unrun checks passed.
+Testing and implementation agents run `bun run verify` exactly as written before
+reporting `completed`; the testing agent's failing-first run is expected to fail.
+Other agents run the checks their instructions name. Report results and checks not reached; never claim failed or unrun checks passed.
 
 ## Workflow and approvals
 
@@ -55,7 +56,8 @@ named after the testing issue. A pair covers up to three related stories of one
 role; an owner may request one story. The spec agent reports the pair count and
 reconciles statuses from handoff evidence on every PLAN update. The session
 running the pair sets both tasks to `done` after the latest completed/pass
-reviewer report, then reruns `bun run verify`. Statuses are `todo`, `blocked`,
+reviewer report, then runs `bun run check:traceability` and `bun run check:specs`;
+the PR's required `verify` check reruns the full suite. Statuses are `todo`, `blocked`,
 `awaiting-decision`, `done`; reviewer-evidence reconciliation has no CI enforcement.
 Keep dates and workflow-state commentary out of specs, PLAN and spec templates;
 task Status fields are PLAN's state metadata.
@@ -70,6 +72,9 @@ escalated execution, without an allow rule.
 
 Run allow-listed commands bare: output redirection, environment-variable prefixes
 or `cd … &&` stop them matching `.codex/rules` and force an approval prompt.
+Run read-only `git diff`, `git log` and `git show` inside the sandbox and never
+request escalation for them; escalate only for git commands that write `.git/`
+or use the network.
 
 Humans approve specs, review diffs, commit, open PRs and merge. The branch ruleset
 requires `verify`; a listed reviewer approves production deploys. Agents leave a

@@ -61,7 +61,8 @@ from verify, or disable features merely to make verification pass.
 
 After initial implementation, run the required checks. Allow at most three
 repair cycles per agent run: each cycle is one focused code-fix attempt followed
-by re-running affected tests and `bun run verify`. Count attempts across the
+by re-running the affected tests. Run `bun run verify` once the affected tests
+pass; a failing verify starts the next cycle. Count attempts across the
 whole run; do not restart the counter for a new error. If the caller assigns
 fixes from a later review, apply the same per-run repair limit to that assignment. Stop earlier when a failure needs a spec/test change,
 an unavailable prerequisite, or the same failure recurs with no new actionable
