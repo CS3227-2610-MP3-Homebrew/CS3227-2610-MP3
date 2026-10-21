@@ -7,8 +7,8 @@ const origin = "http://127.0.0.1:3100";
 test.beforeEach(() => {
   expect(existsSync("src/app/api/auth/sign-in/route.ts"), "Missing implementation: public account route handlers").toBe(true);
 });
-for (const role of ["customer", "owner"] as const) {
-  test(`SYS-01.3 SYS-01.4 SYS-01.8 SYS-02.10: real ${role} signup sets cookies and cannot replace the active account`, async ({ request, browser }) => {
+for (const role of ["customer", "owner"] as const) test.describe(role, () => {
+  test(`SYS-01.3 SYS-01.4 SYS-01.8 SYS-02.10: real signup sets cookies and cannot replace the active account`, async ({ request, browser }) => {
     const email = `t50-signup-${randomUUID()}@example.com`;
     const body = { email, password: "synthetic-t50-password", role };
     try {
@@ -39,9 +39,9 @@ for (const role of ["customer", "owner"] as const) {
       localSql(`begin; delete from public.profiles where id in (select id from auth.users where email='${email}'); delete from auth.users where email='${email}'; commit;`);
     }
   });
-}
-for (const route of ["sign-up", "sign-in", "sign-out"]) {
-  test(`SYS-01.9 SYS-02.11: actual ${route} route rejects invalid transport without session cookies`, async ({ request }) => {
+});
+for (const route of ["sign-up", "sign-in", "sign-out"]) test.describe(`${route} route`, () => {
+  test(`SYS-01.9 SYS-02.11: actual route rejects invalid transport without session cookies`, async ({ request }) => {
     const path = `/api/auth/${route}`;
     const cases: { method: string; headers: Record<string, string>; data?: string; status: number; code: string }[] = [
       { method: "GET", headers: { origin }, status: 405, code: "METHOD_NOT_ALLOWED" },
@@ -62,4 +62,4 @@ for (const route of ["sign-up", "sign-in", "sign-out"]) {
       expect(response.headers()["set-cookie"]).toBeUndefined();
     }
   });
-}
+});

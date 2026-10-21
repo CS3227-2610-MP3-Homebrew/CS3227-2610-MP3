@@ -20,8 +20,8 @@ test("SYS-02.1: sign-in minimal fields and sign-up entry", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Sign up", exact: true })).toHaveAttribute("href", "/sign-up");
   await expect(page.getByLabel(/role|workspace|remember/i)).toHaveCount(0);
 });
-for (const kind of ["sign-up", "sign-in"] as const) {
-  test(`SYS-01.2 SYS-02.2: ${kind} invalid local fields show feedback before a network submission`, async ({ page }) => {
+for (const kind of ["sign-up", "sign-in"] as const) test.describe(kind, () => {
+  test(`SYS-01.2 SYS-02.2: invalid local fields show feedback before a network submission`, async ({ page }) => {
     let requests = 0;
     await page.route(`**/api/auth/${kind}`, async (route) => { requests++; await route.abort(); });
     await page.goto(`/${kind}`);
@@ -31,7 +31,7 @@ for (const kind of ["sign-up", "sign-in"] as const) {
     expect(requests).toBe(0);
     expect(await page.locator("input:invalid, [aria-invalid='true'], [role='alert']").count()).toBeGreaterThan(0);
   });
-  test(`SYS-01.7 SYS-02.4: ${kind} disables pending repeats and retains email/role but clears failed password`, async ({ page }) => {
+  test(`SYS-01.7 SYS-02.4: disables pending repeats and retains email/role but clears failed password`, async ({ page }) => {
     let release!: () => void;
     const pending = new Promise<void>((resolve) => { release = resolve; });
     let calls = 0;
@@ -53,7 +53,7 @@ for (const kind of ["sign-up", "sign-in"] as const) {
     if (kind === "sign-up") await expect(page.getByRole("radio", { name: "Café owner", exact: true })).toBeChecked();
     expect(calls).toBe(1);
   });
-  test(`SYS-01.7 SYS-02.4: ${kind} network failure gives safe feedback and no automatic retry`, async ({ page }) => {
+  test(`SYS-01.7 SYS-02.4: network failure gives safe feedback and no automatic retry`, async ({ page }) => {
     let calls = 0;
     await page.route(`**/api/auth/${kind}`, async (route) => { calls++; await route.abort("failed"); });
     await page.goto(`/${kind}`);
@@ -66,19 +66,19 @@ for (const kind of ["sign-up", "sign-in"] as const) {
     expect(calls).toBe(1);
     await expect(page).toHaveURL(new RegExp(`/${kind}$`));
   });
-}
+});
 const notices = {
   "account-created": "Account created. Sign in to continue.",
   "session-ended": "Your session ended. Sign in again.",
   "sign-out-unconfirmed": "Signed out of this browser; session revocation could not be confirmed.",
 };
-for (const [notice, text] of Object.entries(notices)) {
-  test(`SYS-01.6 SYS-02.6 SYS-02.9 SYS-03.7: fixed ${notice} notice is plain text with ordinary form`, async ({ page }) => {
+for (const [notice, text] of Object.entries(notices)) test.describe(`${notice} notice`, () => {
+  test(`SYS-01.6 SYS-02.6 SYS-02.9 SYS-03.7: fixed notice is plain text with ordinary form`, async ({ page }) => {
     await page.goto(`/sign-in?notice=${notice}`);
     await expect(page.getByText(text, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   });
-}
+});
 test("SYS-03.7: unknown notice/external return destination cannot execute or redirect", async ({ page }) => {
   const payload = "<img src=x onerror=alert(1)>";
   let dialog = false; page.on("dialog", async (event) => { dialog = true; await event.dismiss(); });

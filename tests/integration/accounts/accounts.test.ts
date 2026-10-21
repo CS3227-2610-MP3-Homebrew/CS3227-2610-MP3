@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { accountsModule, actor, fields, homes, origin, request, type AccountDependencies, type AccountHandlers, type Role } from "./contracts";
 
 vi.mock("server-only", () => ({}));
@@ -124,15 +124,15 @@ test.each(["a", " ", "😀".repeat(18)])("SYS-02.2: existing short/whitespace pa
   success(await invoke("signIn", { ...fields, email: " FIXTURE@EXAMPLE.COM ", password }), homes.customer);
   expect(effects.signIn).toHaveBeenCalledExactlyOnceWith({ ...fields, password });
 });
-for (const workspace of [actor.workspaceId, "00000000-0000-4000-8000-000000000002"]) {
-  test.each(["customer", "owner", "admin"] as Role[])(`SYS-02.3 SYS-03.1: ${workspace} %s credentials resolve protected role/home and persist session`, async (role) => {
+for (const workspace of [actor.workspaceId, "00000000-0000-4000-8000-000000000002"]) describe(workspace, () => {
+  test.each(["customer", "owner", "admin"] as Role[])(`SYS-02.3 SYS-03.1: %s credentials resolve protected role/home and persist session`, async (role) => {
     vi.mocked(effects.readProfile).mockResolvedValue({ data: { ...actor, workspaceId: workspace, role } });
     success(await invoke("signIn", fields), homes[role]);
     expect(effects.readProfile).toHaveBeenCalledWith(actor.id);
     expect(effects.persistSession).toHaveBeenCalledTimes(1);
     expect(effects.createProfile).not.toHaveBeenCalled();
   });
-}
+});
 test.each(["unknown-email", "wrong-password"])("SYS-02.4: %s yields the same safe credential failure", async () => {
   vi.mocked(effects.signIn).mockResolvedValue({ error: { kind: "credentials" } });
   error(await invoke("signIn", fields), 401, "UNAUTHENTICATED", "Email or password is incorrect.");
@@ -151,8 +151,8 @@ test("SYS-02.5: profile-source outage is distinct from missing profile and clear
   expect(effects.clearSession).toHaveBeenCalledTimes(1);
   expect(effects.persistSession).not.toHaveBeenCalled();
 });
-for (const operation of ["signUp", "signIn"] as const) {
-  test.each([undefined, "12", "invalid", "-1"])(`SYS-01.7 SYS-02.4: ${operation} Auth throttle handles retry delay %# without retry/detail`, async (retryAfter) => {
+for (const operation of ["signUp", "signIn"] as const) describe(operation, () => {
+  test.each([undefined, "12", "invalid", "-1"])(`SYS-01.7 SYS-02.4: Auth throttle handles retry delay %# without retry/detail`, async (retryAfter) => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const effect = operation === "signUp" ? effects.createIdentity : effects.signIn;
     vi.mocked(effect).mockResolvedValue({ error: { kind: "throttled", retryAfter } });
@@ -162,14 +162,14 @@ for (const operation of ["signUp", "signIn"] as const) {
     expect(effect).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/fixture@example|example password|provider-private/);
   });
-  test(`SYS-01.7 SYS-02.4: ${operation} provider source/exception failures stay content-free`, async () => {
+  test(`SYS-01.7 SYS-02.4: provider source/exception failures stay content-free`, async () => {
     const effect = operation === "signUp" ? effects.createIdentity : effects.signIn;
     vi.mocked(effect).mockResolvedValue({ error: { kind: "unavailable" } });
     error(await invoke(operation, operation === "signUp" ? { ...fields, role: "customer" } : fields), 503, "SOURCE_UNAVAILABLE", "Account service is temporarily unavailable. Try again.");
     vi.mocked(effect).mockRejectedValue(new Error(`provider-private ${fields.email} ${fields.password}`));
     error(await invoke(operation, operation === "signUp" ? { ...fields, role: "customer" } : fields), 500, "INTERNAL_ERROR", "Unable to complete the request. Try again.");
   });
-}
+});
 test("SYS-02.8: sign-out revokes local scope only and clears browser session", async () => {
   vi.mocked(effects.currentIdentity).mockResolvedValue(actor.id);
   success(await invoke("signOut", {}), "/sign-in");
@@ -187,28 +187,28 @@ test("SYS-02.10: absent-session sign-out succeeds idempotently and clears residu
   expect(effects.clearSession).toHaveBeenCalledTimes(1);
 });
 
-for (const operation of ["signUp", "signIn", "signOut"] as const) {
+for (const operation of ["signUp", "signIn", "signOut"] as const) describe(operation, () => {
   const validBody = operation === "signUp" ? { ...fields, role: "customer" } : operation === "signIn" ? fields : {};
-  for (const method of ["GET", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) {
-    test(`SYS-01.9 SYS-02.11: ${operation} ${method} is private JSON 405 with Allow POST`, async () => {
+  for (const method of ["GET", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) describe(method, () => {
+    test(`SYS-01.9 SYS-02.11: method is private JSON 405 with Allow POST`, async () => {
       const result = await invoke(operation, validBody, { method, body: undefined });
       error(result, 405, "METHOD_NOT_ALLOWED"); expect(result.response.headers.get("allow")).toBe("POST"); noMutation();
     });
-  }
-  test.each([undefined, "null", "not-an-origin", "https://evil.example", `${origin}.evil.example`, `${origin}/path`])(`SYS-01.9 SYS-02.11: ${operation} rejects Origin %# despite forged host headers`, async (value) => {
+  });
+  test.each([undefined, "null", "not-an-origin", "https://evil.example", `${origin}.evil.example`, `${origin}/path`])(`SYS-01.9 SYS-02.11: rejects Origin %# despite forged host headers`, async (value) => {
     const headers: Record<string, string> = { "content-type": "application/json", host: "evil.example", "x-forwarded-host": "evil.example" };
     if (value !== undefined) headers.origin = value;
     error(await invoke(operation, validBody, { headers }), 403, "FORBIDDEN"); noMutation();
   });
-  test.each(["text/plain", "application/x-www-form-urlencoded"])(`SYS-01.9 SYS-02.11: ${operation} rejects media %s`, async (media) => {
+  test.each(["text/plain", "application/x-www-form-urlencoded"])(`SYS-01.9 SYS-02.11: rejects media %s`, async (media) => {
     error(await invoke(operation, validBody, { headers: { origin, "content-type": media } }), 415, "UNSUPPORTED_MEDIA_TYPE"); noMutation();
   });
-  test(`SYS-01.9 SYS-02.11: ${operation} rejects malformed JSON and UTF-8 overflow without effects`, async () => {
+  test(`SYS-01.9 SYS-02.11: rejects malformed JSON and UTF-8 overflow without effects`, async () => {
     error(await invoke(operation, validBody, { body: "{" }), 400, "INVALID_REQUEST");
     error(await invoke(operation, validBody, { body: JSON.stringify({ content: "😀".repeat(16384) }) }), 413, "PAYLOAD_TOO_LARGE");
     noMutation();
   });
-  test(`SYS-01.9 SYS-02.11: ${operation} body exactly 65536 bytes reaches validation, one more is oversized`, async () => {
+  test(`SYS-01.9 SYS-02.11: body exactly 65536 bytes reaches validation, one more is oversized`, async () => {
     const base = JSON.stringify(validBody);
     error(await invoke(operation, validBody, { body: `${base}${" ".repeat(65537 - Buffer.byteLength(base))}` }), 413, "PAYLOAD_TOO_LARGE");
     noMutation();
@@ -216,7 +216,7 @@ for (const operation of ["signUp", "signIn", "signOut"] as const) {
     expect(result.response.status).not.toBe(413);
     expect(result.response.status).toBe(200);
   });
-}
+});
 test.each([null, [], { role: "admin" }, { returnTo: "https://evil.example" }])("SYS-02.11: sign-out requires exactly an empty object %#", async (body) => {
   error(await invoke("signOut", body), 400, "INVALID_REQUEST"); noMutation();
 });

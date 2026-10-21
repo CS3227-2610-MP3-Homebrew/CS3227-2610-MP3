@@ -12,8 +12,8 @@ const links: Record<Role, string[]> = {
   owner: ["Café application", "Dashboard", "Order queue", "Menu", "Café profile"],
   admin: ["Moderation queue", "Café applications", "Cafés", "Audit log"],
 };
-for (const kit of [false, true]) for (const role of ["customer", "owner", "admin"] as const) {
-  test(`SYS-02.3 SYS-02.7 SYS-03.1 SYS-03.2 SYS-03.3 SYS-03.4 SYS-03.5 SYS-03.6 SYS-03.7: ${kit ? "kit" : "main"} ${role} uses persistent own-role homes/navigation`, async ({ page, context, browser }) => {
+for (const kit of [false, true]) for (const role of ["customer", "owner", "admin"] as const) test.describe(`${kit ? "kit" : "main"} ${role}`, () => {
+  test(`SYS-02.3 SYS-02.7 SYS-03.1 SYS-03.2 SYS-03.3 SYS-03.4 SYS-03.5 SYS-03.6 SYS-03.7: uses persistent own-role homes/navigation`, async ({ page, context, browser }) => {
     const fixture = provisionAccount(role, kit);
     try {
       await page.goto("/sign-in?returnTo=https://evil.example&next=/admin/applications");
@@ -63,7 +63,7 @@ for (const kit of [false, true]) for (const role of ["customer", "owner", "admin
       await page.goto(homes[role]); await expect(page).toHaveURL(`${origin}/sign-in`);
     } finally { fixture.cleanup(); }
   });
-}
+});
 test("SYS-03.2 SYS-02.6: anonymous root/role navigation reaches ordinary sign-in without role shell", async ({ page }) => {
   for (const path of ["/", ...Object.values(homes)]) {
     await page.goto(path); await expect(page).toHaveURL(`${origin}/sign-in`);
