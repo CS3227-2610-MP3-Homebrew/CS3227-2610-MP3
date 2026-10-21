@@ -3,43 +3,6 @@ import { z } from "zod";
 import { parseUsageLimits } from "./usage";
 import { type Feature, type Input, type BrewInput, type ModerationInput } from "./schemas";
 
-export const BYTE_LIMIT = 65_536;
-export class BodyOverflow extends Error {}
-
-/** Bounds bytes as they arrive. Cancellation never waits for a remote stream. */
-export async function readBounded(body: ReadableStream<Uint8Array> | null, signal?: AbortSignal): Promise<string> {
-  if (!body) throw new Error("Missing body.");
-  const reader = body.getReader();
-  let size = 0;
-  const chunks: Uint8Array[] = [];
-  const cancel = () => { void reader.cancel().catch(() => {}); };
-  let onAbort: () => void = () => {};
-  const aborted = new Promise<never>((_, reject) => {
-    onAbort = () => { cancel(); reject(new Error("Cancelled.")); };
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
-  try {
-    if (signal?.aborted) throw new Error("Cancelled.");
-    while (true) {
-      const { done, value } = await Promise.race([reader.read(), aborted]);
-      if (done) break;
-      size += value.byteLength;
-      if (size > BYTE_LIMIT) throw new BodyOverflow();
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch (error) {
-    cancel();
-    throw error;
-  } finally {
-    signal?.removeEventListener("abort", onAbort);
-    reader.releaseLock();
-  }
-}
-
 const settingsSchema = z.object({
   APP_ENV: z.enum(["local", "ci", "dev", "prod"]),
   AI_PROVIDER: z.enum(["fake", "soclaas", "disabled"]),

@@ -12,6 +12,8 @@
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
+  - [6.3 Decide a café application](#63-decide-a-café-application)
+  - [6.4 Suspend or un-suspend a café](#64-suspend-or-un-suspend-a-café)
 - [7. AI features](#7-ai-features)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
@@ -20,7 +22,10 @@
 ## 1. Getting started
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
-role. Admins can manually moderate reviews and inspect their workspace’s audit log.
+role.
+Ordering and café management tools are not yet available.
+role. Admins can decide café applications, suspend or un-suspend approved cafés,
+manually moderate reviews and inspect their workspace’s audit log. 
 Customers can browse cafés and inspect menus, opening hours and public reviews.
 Ordering and café management tools are not yet available.
 
@@ -251,8 +256,8 @@ The read-only audit log shows Admin actions in your workspace.
    **hide** or **restore**. These filters display recorded actions; they do not
    perform café actions.
 2. Read **Time (Singapore)**, **Admin** (the acting Admin’s email), **Action**,
-   **Target** and **Reason**. Café targets show the café name; review targets
-   also show the review reference. Review text and internal AI-use events do
+   **Target** and **Reason**. Targets show the café name and the café or review
+   reference. Review text and internal AI-use events do
    not appear here. Reasons display as plain text.
 3. Use **Previous** and **Next** for 50-entry pages, newest first with entry
    reference breaking ties. Filter and page remain in the URL.
@@ -262,7 +267,56 @@ shows “Loading audit…”. A failure shows “Unable to load audit entries.�
 **Try again**. Earlier entries remain when a later action changes the same
 review; the screen offers no history editing or deletion.
 
-Café applications and Cafés currently remain heading-only pages.
+### 6.3 Decide a café application
+
+Admins can approve or reject pending applications in their own workspace.
+Main and demo-kit Admins use the same controls within their own workspace.
+
+**Where:** Admin navigation → **Café applications**, or `/admin/applications`.
+
+1. Read the pending applications, oldest submission first. Each shows the café
+   name, description, area, pickup address, weekly Singapore hours, pickup cutoff
+   and submission time. Use **Previous** and **Next** for 20-row pages; the page
+   stays in the URL.
+2. Choose **Approve** or **Reject**, enter a nonblank reason of at most 300
+   characters, then select **Confirm Approve** or **Confirm Reject**. **Cancel**
+   closes the controls without saving.
+3. After success, the application leaves the pending list and its action appears
+   in **Audit log**. Approved, non-suspended cafés become eligible for customer
+   access; rejected cafés remain hidden. Approval cannot be reversed here.
+
+Reasons retain their submitted text and spacing. They are private to that café's
+owner and Admins in its workspace. The audit log displays them as plain text.
+An empty queue shows “No pending applications.” Loading shows “Loading cafés…”.
+
+### 6.4 Suspend or un-suspend a café
+
+Admins can change the suspension state of approved cafés in their own workspace.
+
+**Where:** Admin navigation → **Cafés**, or `/admin/cafes` (heading **Approved cafés**).
+
+1. Find the café in the alphabetical list and read **Suspension state**. Use
+   **Previous** and **Next** for 20-row pages. Pending/rejected applications do
+   not appear in this list.
+2. Choose **Suspend** or **Un-suspend**, enter a nonblank reason of at most 300
+   characters, then select the corresponding **Confirm** button.
+3. The row shows its new state and opposite action, and **Audit log** records
+   the change. Suspension hides the café from customer access and cancels its
+   outstanding pending, accepted and ready orders with “Cafe is suspended”.
+   Collected purchases and existing menu/hour/review records remain unchanged.
+   Un-suspension restores eligibility without reviving cancelled orders.
+
+The Admin reason remains private; the fixed cancellation reason does not reveal
+it. Owner access to retained café records remains available. Owner management
+screens and Customer order displays are still outside this build.
+An empty list shows “No approved cafés.” Loading shows “Loading cafés…”.
+
+Both café screens show “Enter a reason of 1–300 characters.” for an invalid
+reason. A stale confirmation reports the current state, for example “Café record
+changed. Current state: rejected.”, and refreshes the list. A failed save shows “Unable to
+save. Check your reason and try again.” or “Unable to save. Try again.” A list
+source failure shows “Unable to load cafés.” with **Try again**; it is not an
+empty-list result. Failed actions do not leave a partial state change or audit.
 
 ## 7. AI features
 

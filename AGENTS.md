@@ -76,6 +76,13 @@ Run read-only `git diff`, `git log` and `git show` inside the sandbox and never
 request escalation for them; escalate only for git commands that write `.git/`
 or use the network.
 
+The human chooses each pair's mode before it starts: the multi-agent loop, or
+single-agent mode, where the coordinating session writes the tests,
+implementation, self-review and docs itself. Both follow
+`.agents/skills/sdd-orchestrate/SKILL.md`; in single-agent mode, its completed
+`NN-implementation.md` with a `## Self-review` section and passing verify
+replaces the reviewer report as close-out evidence.
+
 Humans approve specs, review diffs, commit, open PRs and merge. The branch ruleset
 requires `verify`; a listed reviewer approves production deploys. Agents leave a
 reviewable local diff.

@@ -11,6 +11,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Data model and database schema](#data-model-and-database-schema)
   - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
+  - [Café applications and suspension](#café-applications-and-suspension)
 - [Authentication and authorization](#authentication-and-authorization)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
@@ -67,6 +68,10 @@ account access resolver and streamed role shell (internal code reuse). Its
 request-time rendering and original-query proxy integration use installed
 Next.js guidance as idea reuse; no external snippet or new workflow file was
 added. The five-file MP2 reuse totals remain unchanged.
+Café eligibility reuses those same session/RLS, transport, audit and Suspense
+patterns (internal code/idea reuse), including the existing moderation Admin
+lookup and audit ledger. No external snippet, dependency or workflow was added;
+the MP2 reuse totals are unchanged.
 
 ## Setting up, getting started
 
@@ -215,6 +220,11 @@ task Status fields are PLAN's state metadata.
 Minor changes (copy, styling or documentation fixes with no change in behaviour)
 may skip the testing, review and docs steps.
 
+In single-agent mode, chosen per pair by the human, one session follows steps
+4–8 itself: it writes and stops for the commit of the failing tests, implements,
+reviews its own diff, updates the guides and closes out with one implementation
+report that includes its self-review.
+
 The human's coordinating session uses the `sdd-orchestrate` skill to check each
 stage's gate evidence (merged spec, issues, clean write scope, report status)
 before the next agent starts, and to prepare that agent's prompt. It stops for
@@ -248,7 +258,8 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
 | The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
-| The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
+| The full loop applies to every issue except minor changes and pairs the human runs in single-agent mode. | Consistent evidence across features without six agent runs for small fixes. |
+| Before each pair, the human chooses the multi-agent loop or single-agent mode, where the coordinating session writes tests, implementation, a self-review and docs itself (see the `sdd-orchestrate` skill). Tests are still committed before implementation, and specs, PLAN content and human gates are unchanged. The human may add one `review.sh` round or security review. | The T-15/T-16 pair took too long and used much of the Codex budget, and most Customer, Owner and Admin features were still unbuilt days before the deadline; a complete product mattered more than running every agent everywhere. Trade-off: no independent reviewer by default, so the session grades its own work; the report and PR say so, and earlier pairs keep their independent evidence. |
 | Per-pair cost limits: full `verify` runs only for testing's failing-first evidence, implementation's final code, each `review.sh` round and CI; the security review runs once, on the first review round's code, and its findings share one fix round; the coordinating session stops only to commit tests, for the final commits, or on a failed gate or decision. | In the T-15/T-16 pair, seven local `verify` runs each took up to 7 minutes as database tests grew, and the loop stopped for a human commit after every round. Trade-offs: implementation rounds are no longer separate commits, so a review report's `Reviewed HEAD` names the test commit rather than the reviewed code; security fixes are checked by the reviewer, not a second security review; docs and close-out rely on the latest verify plus CI. |
 | Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. For foundation pairs (SYS-04 or later, or SEC IDs), stage 0 checks each requirement heading in TECHNICAL-SPEC.md or AI-SECURITY-SPEC.md on the selected review base (fetched when the branch is cut), no open assumptions beyond permitted unverifiable facts (currently TECHNICAL-SPEC ASM-01), and a passing `bun run check:specs`; no story file is required. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | `bun run check:specs` runs inside `verify`. It checks that each criterion is defined once in its owning spec, that PLAN.md references and coverage are valid, that test titles name only defined criteria, that links and anchors resolve, and that this guide lists every workflow file. | Earlier plan validation was a one-off command whose results were lost, while specs, the plan and this guide drifted apart. A CI check gates structural consistency; reviewer-evidence reconciliation stays with the pair session and spec agent. Specs, PLAN and spec templates omit dates and workflow-state commentary. |
@@ -436,8 +447,9 @@ body, Ref and strict action/reason-only Zod validation; all responses are
 `private, no-store`. Missing and foreign targets share the same not-found error.
 See the [shared transport and field contracts](../workflow/specs/INTEGRATION-SPEC.md#authorization-and-transport).
 
-The audit screen supports all seven recorded action types, including café
-entries, without implementing café mutations. Fixed editable quick-pick reasons
+The audit screen supports all seven recorded action types, including the café
+entries supplied by the implementation below. Café and review target references
+are displayed alongside the café name. Fixed editable quick-pick reasons
 and explicit per-review confirmation are application controls; AI triage and its
 endpoint are not available.
 
@@ -498,6 +510,62 @@ visibility, current eligibility, role denial and main/kit isolation. The paired
 suites can be selected with `bun run test -- tests/unit/catalogue tests/integration/catalogue`
 and `bun run test:e2e -- tests/e2e/catalogue`; local database-mutating suites run
 serially. These commands do not replace the full verification gate.
+### Café applications and suspension
+
+The [ADM-01 application](../workflow/specs/stories/ADM-01-cafe-applications.md)
+and [ADM-02 suspension](../workflow/specs/stories/ADM-02-cafe-suspension.md)
+contracts are implemented by `/admin/applications`, `/admin/cafes`, the two
+`POST /api/admin/cafes/{cafeId}/decision` and `/suspension` handlers, and
+`src/server/cafes/admin.ts`, with shared HTTP primitives from
+`src/server/http/json.ts`. Shared `cafe-queue.tsx` authenticates at request time
+behind Suspense and calls `admin_cafe_queue` with the session-bound client.
+Pending applications sort by submission time/reference; approved cafés sort by
+name/reference. Each page exposes 20 rows and URL `page` navigation. Application
+details include profile, weekly Singapore hours and pickup cutoff. Static
+loading output contains no records. Empty lists, source failure and current-state
+conflicts have distinct messages.
+
+`20261022000000_cafe_eligibility.sql` adds the café profile/submission/cutoff
+fields and `suspension_version`, weekly-hour fields and canonical order `state`,
+`cancellation_reason` and `cancelled_at`. It consumes the merged owner/order
+contracts; it does not supply Owner submission/settings/fulfilment writers or
+Customer ordering screens. Those writers must use the café lock and current
+state/version contracts in the
+[shared boundaries](../workflow/specs/INTEGRATION-SPEC.md#owner-cafe-management-boundary).
+
+`decide_cafe` permits only pending→approved/rejected. `set_cafe_suspension`
+permits a changed boolean only on an approved café and increments its version
+once. Both independently derive the Admin/workspace from `auth.uid()` and lock
+the in-scope café before changing state. Suspension locks outstanding orders
+in reference order, cancels only pending/accepted/ready with the fixed public
+reason “Cafe is suspended”, and retains all terminal orders and snapshots.
+Un-suspension never revives orders. Each action, private latest reason and one
+existing append-only Admin audit entry commit together; any failure rolls back
+the transaction. Existing customer RLS eligibility follows approval/suspension;
+owner record access remains independent of suspension.
+
+Private reasons live in `public.cafe_admin_reasons`, not customer-readable café
+rows. Its primary/foreign key is `cafe_id`; workspace is inherited from the café.
+RLS allows only the café owner and workspace Admins to SELECT; ordinary callers
+cannot insert/update/delete reasons. The definer mutation RPCs have an empty
+search path, explicit execute grants and repeated role/workspace/current-state
+checks; they grant no generic order/menu editing. Reasons are preserved exactly
+and rendered through React text nodes. The HTTP boundary uses strict Zod bodies,
+Unicode Ref/reason bounds, the existing 65,536-byte reader, exact trusted Origin,
+independent session/Admin checks and private/no-store safe JSON responses.
+Unavailable database transport/gateways return `503 SOURCE_UNAVAILABLE`;
+transaction failures return `500 INTERNAL_ERROR`, without raw SDK/SQL details.
+No new configuration or LLM/provider path is involved.
+
+The 132 Playwright cases in `tests/e2e/cafe-eligibility/` cover queue ordering and
+ties, URL pagination, confirmations/conflicts, HTTP/role/scope/Unicode boundaries,
+concurrent transitions, injected audit/cancellation failures, retention, privacy
+and suspension effects. Eleven Vitest cases under
+`tests/integration/cafe-eligibility/` cover actual handlers and local database
+audit/RLS controls. Five supplementary cases in `tests/unit/cafe-admin-http.test.ts`
+distinguish source unavailability from transaction failure and check safe errors.
+Cross-story resubmission/collection states are local fixtures;
+Owner endpoints are not prerequisites for this acceptance evidence.
 
 ## Authentication and authorization
 
@@ -595,10 +663,15 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
 - `src/lib/accounts/fields.ts` supplies shared strict field schemas, safe text,
   fixed notices and role homes. Client forms disable repeat submissions, clear
   submitted passwords on failure and use only allowlisted response destinations.
-- `src/server/auth/accounts.ts` owns POST/method, exact Origin, JSON media,
-  strict fields and a streamed 65,536-byte UTF-8 body ceiling. Responses are
-  private/no-store JSON with opaque request IDs and safe errors. Sign-out takes
-  exactly `{}`; sign-in takes email/password; sign-up adds only Customer/owner.
+- `src/server/http/json.ts` supplies private/no-store JSON/error responses with
+  opaque request IDs, exact Origin and JSON media checks, and the streamed
+  65,536-byte UTF-8 body reader shared by accounts, moderation, café actions
+  and LLM operations. The reader preserves account overflow-only awaited
+  cancellation and the Admin/LLM abortable cancellation and lock cleanup.
+- `src/server/auth/accounts.ts` retains POST/method admission, strict account
+  fields, account-specific errors and session orchestration. Handlers retain
+  their existing method → Origin → media → body → fields → identity order.
+  Sign-out takes exactly `{}`; sign-in takes email/password; sign-up adds only Customer/owner.
 - `src/server/auth/account-adapter.ts` lazily creates a request-local SSR client
   after admission. It stages provisional cookies, persists only after protected
   profile verification, preserves active-account conflicts, and clears failed

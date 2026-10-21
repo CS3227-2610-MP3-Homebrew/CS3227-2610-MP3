@@ -13,11 +13,16 @@ export function localAuthConfiguration() {
   return { url: endpoint.origin, publicKey: value.PUBLISHABLE_KEY, secretKey: value.SECRET_KEY };
 }
 export function localSql(statement: string) {
+  const result = localSqlResult(statement);
+  if (result.status !== 0) throw new Error("Local account fixture SQL failed; details omitted.");
+  return result.stdout;
+}
+/** Raw local result lets permission tests distinguish SQLSTATE 42501 from broken tooling. */
+export function localSqlResult(statement: string) {
   const project = readFileSync("supabase/config.toml", "utf8").match(/^project_id\s*=\s*"([A-Za-z0-9_-]+)"\s*$/m)?.[1];
   if (!project) throw new Error("Local project ID unavailable.");
-  const result = spawnSync("docker", ["exec", "-i", `supabase_db_${project}`, "psql", "-X", "-q", "-A", "-t", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1"], { input: statement, encoding: "utf8", timeout: 30_000 });
-  if (result.status !== 0) throw new Error("Local account fixture SQL failed; details omitted.");
-  return result.stdout.trim();
+  const result = spawnSync("docker", ["exec", "-i", `supabase_db_${project}`, "psql", "-X", "-q", "-A", "-t", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose"], { input: statement, encoding: "utf8", timeout: 30_000 });
+  return { status: result.status, stdout: result.stdout?.trim() ?? "", stderr: result.stderr?.trim() ?? "" };
 }
 export type Role = "customer" | "owner" | "admin";
 export const homes: Record<Role, string> = { customer: "/customer/cafes", owner: "/owner/dashboard", admin: "/admin/moderation" };

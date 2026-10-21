@@ -10,7 +10,7 @@ the evidence at each gate, prepare the next agent's prompt and stop when a gate
 fails. Read AGENTS.md first; its rules bind you too.
 
 - Never write specs, code, tests or docs yourself; those belong to the
-  agents. In PLAN.md, change only the pair's two Status lines at close-out.
+  agents, except in single-agent mode (below), which the human chooses. In PLAN.md, change only the pair's two Status lines at close-out.
   Never commit, push, open PRs or deploy; tell the human what to run.
 - Delegate to a named agent only when the human asks you to; otherwise give
   them the prompt.
@@ -80,6 +80,44 @@ assert.deepStrictEqual(after, before);
 
 Minor changes (copy, styling or documentation fixes with no behaviour change)
 skip stages 2, 4 and 6, but still need `bun run verify` and a reviewed PR.
+
+## Single-agent mode
+
+The human chooses each pair's mode before it starts: the multi-agent loop
+above, or single-agent mode, where this session does the testing,
+implementation, self-review and docs work itself instead of delegating.
+Specs and PLAN content stay with the spec agent. Stages 0 and 1 are unchanged.
+Then:
+
+1. **Tests.** Follow `workflow/agents/testing.md` and the `sdd-test` skill,
+   with stage 2's scope and manifest checks. Write `NN-testing.md`. Stop for
+   the human to read and commit the tests (`test(<ID>): …`, trailer
+   `Agent: Codex`).
+2. **Implementation.** Follow `workflow/agents/implementation.md` and the
+   `sdd-implement` skill, with stage 3's scope checks. Committed tests stay
+   untouched, except a test that contradicts its spec criterion: fix only that
+   test, cite the criterion in the report, and the human commits it separately
+   as `test(<ID>): …`.
+3. **Self-review.** Review the diff against the selected base using
+   `workflow/agents/reviewer.md` and the `sdd-review` skill's criteria, without
+   `review.sh`. For tasks with SEC criteria or AI endpoints, also apply
+   `workflow/agents/security-reviewer.md`'s baseline checks. Fix what you find
+   and rerun the affected tests.
+4. **Docs.** Follow the `sdd-docs` skill for `docs/UserGuide.md`,
+   `docs/DeveloperGuide.md` and `README.md`. Reflections stay untouched.
+5. **Close-out.** Run `bun run verify` once on the final tree. Write one
+   `NN-implementation.md` covering implementation, a `## Self-review` section
+   (each finding and its fix), docs changes and the final verify result; its
+   Summary starts with `Single-agent mode`. When it is `completed` with verify
+   passing and no open P0/P1 finding, set both Status lines to `done`, run
+   stage 7's checks, then stop for the final commits: `feat(<ID>)`, then
+   `docs(<ID>)`, then the Status-line close-out, each with `Agent: Codex`.
+
+The human may add an independent `review.sh` round or one security-reviewer
+run on the final tree (prompts below). Either report then joins the
+completion evidence, and its P0/P1 findings get one fix round. Single-agent
+mode trades independent review for speed; the PR's Evidence section says
+`Review rounds: self-review in NN-implementation.md`.
 
 ## Prompts
 

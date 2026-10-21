@@ -1,1 +1,2 @@
-export default function Page() { return <h1 className="text-2xl font-semibold">Café applications</h1>; }
+import { CafeQueue, type CafeQuery } from "../cafes/cafe-queue";
+export default function Page(props: CafeQuery) { return <CafeQueue {...props} applications />; }
