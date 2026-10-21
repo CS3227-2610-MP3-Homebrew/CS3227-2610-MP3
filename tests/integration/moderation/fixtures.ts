@@ -14,8 +14,12 @@ export const submitted = "2026-01-01T20:30:00.000Z";
 export const origin = "http://127.0.0.1:3100";
 export const route = (id: string) => `/api/admin/reviews/${encodeURIComponent(id)}/moderation`;
 
+// Schema is fixed for a test process; each uncached lookup is a docker exec.
+const columnCache = new Map<string, string[]>();
 export function columns(schema: string, table: string) {
-  return rows(`select column_name from information_schema.columns where table_schema=${q(schema)} and table_name=${q(table)}`).map(r => String(r.column_name));
+  const key = `${schema}.${table}`; const cached = columnCache.get(key); if (cached) return cached;
+  const found = rows(`select column_name from information_schema.columns where table_schema=${q(schema)} and table_name=${q(table)}`).map(r => String(r.column_name));
+  columnCache.set(key, found); return found;
 }
 export function column(schema: string, table: string, aliases: string[]) {
   const available = columns(schema, table); const found = aliases.find(name => available.includes(name));

@@ -97,6 +97,8 @@ None.
 
 Criterion-ID test titles are literal strings without `${…}`. Variable contexts live in `describe`/`test.describe`; no criterion-title interpolation is used.
 
+After this report, Claude (orchestrator) cached the fixtures' schema lookups (`columns()` and `auditTable()`) per test process. Each uncached lookup was a separate `docker exec psql`, so the 52-entry audit pagination case needed about 430 of them, against Playwright's 30-second default timeout. Assertions and titles are unchanged.
+
 ## Review responses
 
 None; this is the initial testing report.

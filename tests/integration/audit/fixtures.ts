@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import { column, ident, insert, q, rows, type Scenario } from "../moderation/fixtures";
 
 export const auditActions = ["approve", "reject", "suspend", "un-suspend", "keep", "hide", "restore"] as const;
+let discovered: ReturnType<typeof discoverAuditTable> | undefined;
+export function auditTable() { return discovered ??= discoverAuditTable(); }
 /** Discover the domain audit table by its required content, excluding AI metadata. */
-export function auditTable() {
+function discoverAuditTable() {
   const candidates = rows(`select table_schema,table_name from information_schema.columns where table_schema in ('public','private') group by table_schema,table_name having bool_or(column_name='action') and bool_or(column_name='reason')`);
   if (candidates.length !== 1) throw new Error("Missing implementation: exactly one Admin-action audit table with action and reason");
   const schema = String(candidates[0].table_schema); const name = String(candidates[0].table_name);
