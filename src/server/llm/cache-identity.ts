@@ -2,14 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { brewSourceSchema, prepSourceSchema } from "./cache-schema";
 
-export const compareCodePoints = (a: string, b: string): number => {
-  const left = Array.from(a), right = Array.from(b);
-  for (let i = 0; i < Math.min(left.length, right.length); i++) {
-    const delta = left[i].codePointAt(0)! - right[i].codePointAt(0)!;
-    if (delta) return delta;
-  }
-  return left.length - right.length;
-};
+import { compareCodePoints } from "./schemas";
+export { compareCodePoints } from "./schemas";
 
 /** JSON identities preserve decoded strings exactly; unsupported JS values fail closed. */
 export function canonicalJson(value: unknown): string {

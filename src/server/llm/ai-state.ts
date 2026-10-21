@@ -4,6 +4,8 @@ import { createAiAudit, type AiAuditEvent } from "./ai-audit";
 import { z } from "zod";
 import { brewSourceRevision, prepSourceRevision, cacheKey, canonicalJson, digest } from "./cache-identity";
 import { contextSchema, envelopeSchema, instant, validateResult, type CacheContext, type CacheResult } from "./cache-schema";
+import { runOperationWithLifecycle, operationFallback, type Options as LlmOptions, type Result as LlmResult } from "./operations";
+import type { TokenUsage } from "./schemas";
 import type { UsageAdmission, UsageEnvironment, UsageRequest, UsageRpc } from "./usage";
 
 export type AiCacheContext = {
@@ -12,6 +14,14 @@ export type AiCacheContext = {
   input: Record<string, unknown>; source: Record<string, unknown>;
   model: Record<string, unknown>; contract: Record<string, unknown>;
 };
+/** Composed operations derive model/prompt identities from T-14 configuration. */
+export type AiOperationContext = Omit<AiCacheContext, "model" | "contract"> | {
+  operationId: string; actorId: string; feature: "moderation";
+  scope: { actorId: string }; input: unknown;
+};
+type ModerationContext = { operationId: string; actorId: string; feature: "moderation_assistant"; scope: { actorId: string }; cafeId?: undefined };
+type AuditContext = CacheContext | ModerationContext;
+export type AiOperationOptions = Pick<LlmOptions, "requestId" | "getConfig" | "transport" | "signal"> & { refresh?: boolean };
 type Envelope = Omit<z.infer<typeof envelopeSchema>, "data"> & { data: CacheResult };
 type Outcome = { outcome: "cache" | "success" | "fallback"; data?: CacheResult };
 const unavailable = () => new Error("AI state unavailable.");
@@ -38,30 +48,33 @@ export function createAiState(options: {
     if (response.error || !parsed.success) throw unavailable();
     return parsed.data[0].result;
   }
-  function context(input: AiCacheContext): CacheContext {
+  function context(input: AiCacheContext, operationPreflight = true): CacheContext {
     // Validation clones the data, preventing caller mutation while work is in flight.
     const parsed = contextSchema.parse(input);
     // Ensure every identity component is canonical JSON, with no ignored undefined values.
     canonicalJson(input);
-    const providerInput = parsed.feature === "brew_finder" ? { query: parsed.input.query, candidates: parsed.source.candidates } : parsed.source;
+    if (operationPreflight) {
+      const providerInput = parsed.feature === "brew_finder" ? { query: parsed.input.query, candidates: parsed.source.candidates } : parsed.source;
     if (Buffer.byteLength(canonicalJson(providerInput), "utf8") > 65_536) throw unavailable();
-    if (!enabled()) throw unavailable();
+      if (!enabled()) throw unavailable();
+    }
     return parsed;
   }
-  const metadata = (c: CacheContext) => ({ actorId: c.actorId, ...(c.cafeId ? { cafeId: c.cafeId } : {}), operationId: c.operationId, feature: c.feature, scope: c.scope });
+  const metadata = (c: AuditContext) => ({ actorId: c.actorId, ...(c.cafeId ? { cafeId: c.cafeId } : {}), operationId: c.operationId, feature: c.feature, scope: c.scope });
   function identity(c: CacheContext) {
     const ids = { inputFingerprint: digest(c.input), sourceRevision: c.feature === "brew_finder" ? brewSourceRevision(c.source) : prepSourceRevision(c.source), modelIdentity: digest(c.model), contractIdentity: digest(c.contract) };
     return { ...metadata(c), identity: ids, key: cacheKey({ environment, feature: c.feature, scope: c.scope, ...ids }) };
   }
-  async function authorized(c: CacheContext, data?: CacheResult) {
-    if (!enabled()) return false;
+  async function authorized(c: AuditContext, data?: CacheResult, checkEnabled = true) {
+    if (checkEnabled && !enabled()) return false;
     const auth = z.object({ now: instant }).strict().safeParse(await call("authorize", metadata(c)));
     if (!auth.success) return false;
     const ids = z.array(z.uuid()).parse(await eligibleCafeIds(c.actorId));
+    if (c.feature === "moderation_assistant") return true;
     if (c.feature === "prep_advisor") return ids.includes(c.cafeId!);
     return !data || data.suggestions.every(s => "cafeId" in s && ids.includes(s.cafeId));
   }
-  async function read(c: CacheContext): Promise<Envelope | null> {
+  async function read(c: CacheContext, checkEnabled = true): Promise<Envelope | null> {
     const key = identity(c);
     const stored = await call("read", key);
     if (stored === null) return null;
@@ -74,19 +87,19 @@ export function createAiState(options: {
     const expected = c.feature === "brew_finder" ? created + 600_000 : Math.floor((created + 28_800_000) / 86_400_000) * 86_400_000 + 57_600_000;
     if (!(created < expires) || expires !== expected) return null;
     const data = validateResult(c, envelope.data);
-    if (!data || !(await authorized(c, data))) return null;
+    if (!data || !(await authorized(c, data, checkEnabled))) return null;
     return { ...envelope, data };
   }
-  async function write(c: CacheContext, candidate: unknown): Promise<boolean> {
+  async function write(c: CacheContext, candidate: unknown, checkEnabled = true): Promise<boolean> {
     const data = validateResult(c, candidate);
-    if (!data || Buffer.byteLength(canonicalJson(data), "utf8") > 65_536 || !(await authorized(c, data))) return false;
+    if (!data || Buffer.byteLength(canonicalJson(data), "utf8") > 65_536 || !(await authorized(c, data, checkEnabled))) return false;
     const stored = await call("write", { ...identity(c), data });
     return envelopeSchema.safeParse(stored).success;
   }
-  async function audit(c: CacheContext, outcome: AiAuditEvent["outcome"]) {
-    if (!(await aiAudit.record({ ...metadata(c), outcome }))) throw unavailable();
+  async function audit(c: AuditContext, outcome: AiAuditEvent["outcome"], tokens?: TokenUsage) {
+    if (!(await aiAudit.record({ ...metadata(c), outcome, ...(tokens ? { tokens } : {}) }))) throw unavailable();
   }
-  const request = (c: CacheContext, event: UsageRequest["event"]): UsageRequest => ({ admissionId: randomUUID(), operationId: c.operationId, actorId: c.actorId, cafeId: c.cafeId, feature: c.feature === "brew_finder" ? "brew-finder" : "prep-advisor", event });
+  const request = (c: AuditContext, event: UsageRequest["event"]): UsageRequest => ({ admissionId: randomUUID(), operationId: c.operationId, actorId: c.actorId, cafeId: c.cafeId, feature: c.feature === "brew_finder" ? "brew-finder" : c.feature === "prep_advisor" ? "prep-advisor" : "moderation-assistant", event });
   return {
     async readCache(input: AiCacheContext): Promise<Envelope | null> {
       try { return await read(context(input)); } catch { return null; }
@@ -126,6 +139,78 @@ export function createAiState(options: {
       } catch {
         if (c) { try { await audit(c, "fallback"); } catch { /* Fail closed without exposing storage/provider detail. */ } }
         return { outcome: "fallback" };
+      }
+    },
+    /** Future feature routes use this entrypoint instead of nesting invoke and
+     * runLlmOperation. T-14 alone sequences stages; these callbacks do T-16 work. */
+    async runOperation(input: AiOperationContext, invocation: AiOperationOptions): Promise<LlmResult> {
+      const fallback = () => operationFallback(input.feature, invocation.requestId, "unavailable");
+      let c: AuditContext | undefined;
+      let usage: TokenUsage | undefined;
+      let started = false, denied = false;
+      try {
+        const snapshot = structuredClone(input);
+        const source = snapshot.feature === "brew_finder"
+          ? { query: snapshot.input.query, candidates: snapshot.source.candidates }
+          : snapshot.feature === "prep_advisor" ? snapshot.source : snapshot.input;
+        const result = await runOperationWithLifecycle({
+          feature: snapshot.feature, input: source, requestId: invocation.requestId,
+          getConfig: invocation.getConfig, transport: invocation.transport, signal: invocation.signal,
+          admit: async stage => {
+            if (!c || !(await authorized(c, undefined, false))) throw unavailable();
+            if (stage === "action") { await audit(c, "started"); started = true; }
+            const event = stage !== "action" ? stage : c.feature === "moderation_assistant" ? "run" : invocation.refresh && c.feature === "prep_advisor" ? "refresh" : "action";
+            if (!(await admission.reserve(request(c, event))).admitted) {
+              await audit(c, "denied"); denied = true; return false;
+            }
+            if (stage === "provider_attempt") await audit(c, "provider_attempt");
+            return true;
+          },
+          cache: snapshot.feature === "moderation" ? undefined : {
+            read: async () => {
+              if (!c || c.feature === "moderation_assistant") throw unavailable();
+              return invocation.refresh ? null : (await read(c, false))?.data ?? null;
+            },
+            write: async data => {
+              if (!c || c.feature === "moderation_assistant" || !(await write(c, data, false))) throw unavailable();
+            },
+          },
+        }, {
+          // Only sanitized counts cross this seam, including valid envelope usage
+          // accompanying a rejected feature result. The public T-14 callback is unchanged.
+          providerUsage: tokens => { usage = { ...tokens }; },
+          beforeReturn: async result => {
+            if (!c || !(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
+            await audit(c, result.source === "cache" ? "cache" : "success", usage);
+            if (!(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
+          },
+          bindIdentity: identity => {
+            if (identity.environment !== environment) throw unavailable();
+            if (snapshot.feature === "moderation") {
+              const parsed = z.object({ operationId: z.uuid(), actorId: z.uuid(), feature: z.literal("moderation"),
+                scope: z.object({ actorId: z.uuid() }).strict(), input: z.unknown() }).strict().parse(snapshot);
+              if (parsed.actorId !== parsed.scope.actorId) throw unavailable();
+              c = { operationId: parsed.operationId, actorId: parsed.actorId, scope: parsed.scope, feature: "moderation_assistant" };
+            } else {
+              const next = context({ ...snapshot, model: identity.model, contract: identity.contract }, false);
+              // Configuration changes during an awaited stage must not write or
+              // return results under an earlier model/prompt cache identity.
+              if (c && (c.feature === "moderation_assistant" || digest(c.model) !== digest(next.model) || digest(c.contract) !== digest(next.contract))) throw unavailable();
+              c = next;
+            }
+          },
+        });
+        if (result.mode === "fallback") {
+          if (c && !denied) {
+            if (!started && !(await authorized(c, undefined, false))) return result;
+            await audit(c, "fallback", usage);
+          }
+          return result;
+        }
+        return result;
+      } catch {
+        if (c) { try { await audit(c, "fallback", usage); } catch { /* Content-free fail closed. */ } }
+        return fallback();
       }
     },
     async cleanup(): Promise<void> {

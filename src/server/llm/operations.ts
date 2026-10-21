@@ -37,15 +37,51 @@ function liveConfiguration(): Record<string, unknown> {
  * grants authority. Endpoints must recheck current eligibility before delivery.
  */
 export async function runLlmOperation(options: Options): Promise<Result> {
+  return runOperationWithLifecycle(options);
+}
+
+/** Internal composition observer: exposes validated identity only, never secrets.
+ * The standalone entrypoint keeps exactly the same behavior without a lifecycle. */
+export type OperationIdentity = {
+  environment: string;
+  model: { provider: "fake" | "soclaas"; baseUrl: string; model: string; reasoningEffort: string };
+  contract: { feature: Feature; version: string; systemPrompt: string };
+};
+export function operationFallback(feature: Feature, requestId: string, reason: Reason): Result {
+  return { requestId, feature, mode: "fallback", reason, fallback: fallbacks[feature] } as Result;
+}
+export async function runOperationWithLifecycle(options: Options, lifecycle?: {
+  bindIdentity: (identity: OperationIdentity) => void;
+  providerUsage?: (usage: TokenUsage) => void;
+  beforeReturn?: (result: Extract<Result, { mode: "ai" }>) => Promise<void>;
+}): Promise<Result> {
   const { feature, requestId } = options;
-  const fallback = (reason: Reason) => ({ requestId, feature, mode: "fallback", reason, fallback: fallbacks[feature] }) as Result;
+  const fallback = (reason: Reason) => operationFallback(feature, requestId, reason);
   const ai = (source: "provider" | "cache", data: FeatureData[Feature]) => ({ requestId, feature, mode: "ai", source, data }) as Result;
-  const current = () => operationSettings((options.getConfig ?? liveConfiguration)());
+  const current = () => {
+    const config = operationSettings((options.getConfig ?? liveConfiguration)());
+    if (config.state === "enabled" && lifecycle) lifecycle.bindIdentity({
+      environment: config.settings.APP_ENV,
+      model: { provider: config.settings.AI_PROVIDER as "fake" | "soclaas", baseUrl: config.settings.SOCLAAS_BASE_URL,
+        model: config.settings.SOCLAAS_MODEL, reasoningEffort: config.settings.SOCLAAS_REASONING_EFFORT },
+      contract: { feature, version: feature === "brew_finder" ? "2" : "1", systemPrompt: prompts[feature] },
+    });
+    return config;
+  };
   const stateFailure = () => {
     const config = current();
     if (config.state !== "enabled") return config.state;
     if (options.signal?.aborted) return "unavailable";
     return null;
+  };
+  const deliver = async (source: "provider" | "cache", data: FeatureData[Feature]): Promise<Result> => {
+    const result = ai(source, data) as Extract<Result, { mode: "ai" }>;
+    if (lifecycle?.beforeReturn) {
+      await lifecycle.beforeReturn(result);
+      const failure = stateFailure();
+      if (failure) return fallback(failure);
+    }
+    return result;
   };
   try {
     const config = current();
@@ -64,7 +100,7 @@ export async function runLlmOperation(options: Options): Promise<Result> {
       const cached = await options.cache.read();
       failure = stateFailure();
       if (failure) return fallback(failure);
-      if (cached !== null) return ai("cache", validateResult(feature, cached, source, true));
+      if (cached !== null) return await deliver("cache", validateResult(feature, cached, source, true));
     }
     if (!(await options.admit("provider_attempt"))) return fallback(stateFailure() ?? "usage_limited");
     failure = stateFailure();
@@ -100,6 +136,7 @@ export async function runLlmOperation(options: Options): Promise<Result> {
       }
       const body = await Promise.race([readBounded(response.body, controller.signal), aborted]);
       const envelope = providerEnvelope.parse(JSON.parse(body));
+      lifecycle?.providerUsage?.(parseTokenUsage(envelope.usage));
       const data = validateResult(feature, JSON.parse(envelope.choices[0].message.content), source, false);
       failure = stateFailure();
       if (failure) return fallback(failure);
@@ -109,7 +146,7 @@ export async function runLlmOperation(options: Options): Promise<Result> {
         failure = stateFailure();
         if (failure) return fallback(failure);
       }
-      return ai("provider", data);
+      return await deliver("provider", data);
     } finally {
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", cancel);
