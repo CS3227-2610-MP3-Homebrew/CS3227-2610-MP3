@@ -9,6 +9,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Local demonstration data](#local-demonstration-data)
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
+  - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
 - [Authentication and authorization](#authentication-and-authorization)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
@@ -53,6 +54,12 @@ external application code. Installed Next.js request-time authentication guidanc
 informed its `connection()`/Suspense boundaries (idea reuse). Account field,
 message and destination constants implement the internal Shared contracts;
 these additions do not change the MP2 reuse totals.
+
+Manual moderation reuses the existing session/workspace guards, session-bound
+Supabase client, bounded JSON reader and trusted-origin helper (internal code
+reuse). Its request-time Suspense pattern follows the installed Next.js guidance
+(idea reuse); quick-pick literals implement the internal ADM-04 contract as is.
+No external snippet or workflow file was added by this pair; MP2 totals remain unchanged.
 
 ## Setting up, getting started
 
@@ -102,6 +109,14 @@ origin (scheme, host and optional port, without a trailing slash/path). Otherwis
 `http://127.0.0.1:${PORT}` with port 3000 when `PORT` is absent. For local use,
 either open <http://127.0.0.1:3000> or explicitly configure `APP_ORIGIN` for
 <http://localhost:3000>. Request Host/forwarding headers do not establish trust.
+Manual moderation also requires server-only `AI_MODERATION_REVIEWS_PER_CALL`
+in local development, even with `AI_PROVIDER=disabled`. Set it to a digit string
+representing an integer from 1 through 20 (leading zeros are accepted). The
+server-only Zod reader in `src/server/reviews/queue-config.ts` rejects missing,
+malformed or out-of-range values; the queue fails closed with “Unable to load
+reviews.” rather than choosing a default. Correct the setting and use **Try
+again** after restarting the app with the corrected environment. This setting controls manual queue page size; it does not enable AI.
+
 Run `bun run dev`; `/` resolves to Sign in or the verified role home.
 
 ### Local demonstration data
@@ -381,8 +396,43 @@ count. `private.ai_usage_admissions` retains successful single-use admission
 identities and timestamps, referencing their operation. All three tables enable
 RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
 
-Demo-kit creation, remaining story fields and lifecycle transitions, feature
-caches, AI audit persistence and retention cleanup remain later work.
+Demo-kit creation and remaining story fields/lifecycle transitions remain later
+work. Internal AI caches/audit and callable retention cleanup are implemented as
+[described below](#ai-caches-eligibility-and-audit); cleanup is not scheduled.
+
+### Manual moderation and Admin audit
+
+The [ADM-03 contract](../workflow/specs/stories/ADM-03-review-moderation.md)
+is implemented by `/admin/moderation`, `/admin/audit`, the ordinary
+`POST /api/admin/reviews/{reviewId}/moderation` route and server-only
+`src/server/reviews/` modules. Request-time reads stream behind Suspense after
+session/Admin checks, using the session-bound Supabase client. The queue uses
+`state`/`page` URL parameters, configured 1–20-row pages and oldest-submission /
+reference order. Audit uses `action`/`page`, 50 rows and newest-time / reference
+order. Both render React text nodes and Singapore timestamps.
+
+`20261021000002_review_moderation.sql` adds café name and review rating, text and
+submission time; `public.admin_audit_entries` stores workspace, acting Admin,
+action, target type/reference, exact reason and server time. Queue/audit RPCs
+derive role and workspace from `auth.uid()`; the audit projection exposes the
+acting Admin email only for in-scope entries. The table grants authenticated
+clients only scoped SELECT. Triggers reject review content changes/deletion and
+audit updates/deletion; Admin history remains outside AI retention cleanup.
+
+`moderate_review` locks the in-scope row and commits a permitted state transition
+and one audit insert in the same transaction. Audit-write failure rolls back
+both. Pending Keep yields kept; pending/kept Hide yields hidden; hidden Restore
+yields kept. Stale/invalid transitions return conflict without writes. Valid
+nonblank reasons of at most 300 Unicode code points are preserved exactly.
+The route repeats session/role checks, exact trusted Origin, POST/JSON, bounded
+body, Ref and strict action/reason-only Zod validation; all responses are
+`private, no-store`. Missing and foreign targets share the same not-found error.
+See the [shared transport and field contracts](../workflow/specs/INTEGRATION-SPEC.md#authorization-and-transport).
+
+The audit screen supports all seven recorded action types, including café
+entries, without implementing café mutations. Fixed editable quick-pick reasons
+and explicit per-review confirmation are application controls; AI triage and its
+endpoint are not available.
 
 ## Authentication and authorization
 
@@ -404,9 +454,10 @@ by their own authenticated user, with no ordinary profile writes.
 The eligible cafés in the review row are approved and non-suspended. Parent
 checks do not expose another Customer's underlying order when reading a review.
 Column grants plus row `USING`/`WITH CHECK` policies constrain owner updates.
-Generic inserts/deletes, approval/suspension/moderation changes, role escalation
-and ownership/parent reassignment remain denied. Story-owned transactions are
-not implemented by these policies.
+Direct generic inserts/deletes, approval/suspension/moderation updates, role
+escalation and ownership/parent reassignment remain denied. Authorized review
+moderation uses the narrowly scoped transactional RPC described under
+[Manual moderation and Admin audit](#manual-moderation-and-admin-audit).
 
 `src/server/auth/signup.ts` validates selected `customer`/`owner` roles and a
 trusted main-workspace identity with Zod; other metadata contributes no protected
@@ -667,8 +718,9 @@ authorization; that binding grants no cache access or new dispatch.
 
 Storage is three private, RLS-enabled tables with all privileges revoked,
 reached only through the security-definer `public.ai_state` RPC that only
-service_role may execute. Admin audit entries are separate and belong to the
-moderation pair.
+service_role may execute. Admin audit entries are stored separately in
+`public.admin_audit_entries`, as described under
+[Manual moderation and Admin audit](#manual-moderation-and-admin-audit).
 
 ## Security
 
@@ -698,6 +750,15 @@ need human review. Forbidden rules match command text, so they are a guardrail
 rather than a complete block. -->
 
 ## How to test
+
+Manual moderation/audit acceptance cases live in
+`tests/integration/{moderation,audit}/` and `tests/e2e/{moderation,audit}/`.
+They cover state transitions, immutable content, exact reasons, concurrent/stale
+confirmations, audit rollback/retention, strict HTTP boundaries and main/kit
+workspace/role isolation. Queue-size boundary tests are in
+`tests/unit/moderation-queue-config.test.ts`. The browser harness explicitly sets
+the queue size to seven with AI disabled. Run the focused browser suite with
+`bun run test:e2e tests/e2e/moderation tests/e2e/audit --workers=2`.
 
 Start local Supabase before running tests or full verification:
 
@@ -937,8 +998,9 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Role domain pages remain entry headings, with only the owner no-café state;
-domain/AI screens, demo-kit creation, maintenance provisioning, scheduled
+Manual Admin moderation and the read-only audit screen are available. Other
+role domain pages remain entry headings, with the owner no-café state; café
+mutations, AI screens, demo-kit creation, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally, without an AI feature
 endpoint or UI. Live provider compatibility and model

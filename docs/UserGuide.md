@@ -8,6 +8,8 @@
 - [4. Customer guide](#4-customer-guide)
 - [5. Café owner guide](#5-café-owner-guide)
 - [6. Admin guide](#6-admin-guide)
+  - [6.1 Moderate a review](#61-moderate-a-review)
+  - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
 - [7. AI features](#7-ai-features)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
@@ -16,8 +18,8 @@
 ## 1. Getting started
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
-role. The role pages currently provide headings and navigation; café browsing,
-ordering, café management and moderation tools are not yet available.
+role. Admins can manually moderate reviews and inspect their workspace’s audit log.
+Café browsing, ordering and café management tools are not yet available.
 
 ### 1.1 What you need
 
@@ -81,8 +83,8 @@ again.” and does not confirm that sign-out succeeded.
 | Café owner | Dashboard (`/owner/dashboard`) | Café application; Dashboard; Order queue; Menu; Café profile |
 | Admin | Moderation queue (`/admin/moderation`) | Moderation queue; Café applications; Cafés; Audit log |
 
-These entries currently open role page headings, not the domain tools named by
-the entries.
+Moderation queue and Audit log provide the Admin tools described in section 6.
+The other entries currently open role page headings.
 
 ### 1.5 Demo accounts for testers
 
@@ -134,11 +136,63 @@ Sales, order queue, menu and café profile tools are not yet implemented here.
 
 ## 6. Admin guide
 
-### 6.1 Admin features at a glance
+### 6.1 Moderate a review
 
-Existing Admin accounts can sign in and use Admin navigation. The moderation,
-application, café and audit pages currently contain headings without domain
-records or actions.
+Admins can moderate reviews in their own workspace, including reviews for
+suspended cafés. Existing main and demo-kit Admin accounts use the same controls.
+
+**Where:** Admin navigation → **Moderation queue**, or `/admin/moderation`.
+
+1. Select **Pending**, **Kept** or **Hidden**. Pending opens by default.
+2. Read the café name, rating, unchanged review text, Singapore submission time
+   and state. Rows show oldest submissions first, with review reference breaking
+   ties. Use **Previous** and **Next**; tab and page remain in the URL. Page size
+   is configured by the operator, from 1 to 20 reviews.
+3. Select **Keep** or **Hide** on Pending, **Hide** on Kept, or **Restore** on
+   Hidden. Enter the **Keep reason**, **Hide reason** or **Restore reason**.
+4. Type a reason or select **Looks fine**, **Spam**, **Abusive**, **Off-topic**
+   or **Prompt-injection attempt**, then edit it if needed. These are fixed
+   application choices. A reason must contain non-whitespace text and be at
+   most 300 Unicode code points; otherwise “Enter a reason of 1–300 characters.”
+   appears. Valid reasons retain their spaces and wording exactly.
+5. Select **Confirm Keep**, **Confirm Hide** or **Confirm Restore**. **Cancel**
+   closes the reason controls without submitting. Opening controls or selecting
+   a reason alone does not moderate the review. While saving, “Saving…” appears
+   and the action controls are disabled.
+6. After success, the queue refreshes. Keep moves Pending to Kept, Hide moves
+   Pending or Kept to Hidden, and Restore moves Hidden to Kept. Text and rating
+   stay unchanged; each successful action records one audit entry. A failed
+   action changes neither the review nor its audit history.
+
+An empty tab says “No reviews in this tab.” If another action changed the review,
+“Review record changed. Current state: pending.” (or `kept` / `hidden`) appears;
+review the refreshed row before choosing another action. Save failures show
+“Unable to save. Check your reason and try again.” or “Unable to save. Try again.”
+A loading queue says “Loading reviews…”. If loading fails, “Unable to load
+reviews.” provides **Try again**.
+
+### 6.2 Inspect the audit log
+
+The read-only audit log shows Admin actions in your workspace.
+
+**Where:** Admin navigation → **Audit log**, or `/admin/audit`.
+
+1. Select **all**, **approve**, **reject**, **suspend**, **un-suspend**, **keep**,
+   **hide** or **restore**. These filters display recorded actions; they do not
+   perform café actions.
+2. Read **Time (Singapore)**, **Admin** (the acting Admin’s email), **Action**,
+   **Target** and **Reason**. Café targets show the café name; review targets
+   also show the review reference. Review text and internal AI-use events do
+   not appear here. Reasons display as plain text.
+3. Use **Previous** and **Next** for 50-entry pages, newest first with entry
+   reference breaking ties. Filter and page remain in the URL.
+
+No matches shows “No audit entries.” with filter navigation retained. Loading
+shows “Loading audit…”. A failure shows “Unable to load audit entries.” with
+**Try again**. Earlier entries remain when a later action changes the same
+review; the screen offers no history editing or deletion.
+
+Café applications and Cafés currently remain heading-only pages.
 
 ## 7. AI features
 
@@ -151,7 +205,8 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Role pages are entry shells. Demo-kit creation, account password/email changes,
+Customer and Café owner domain tools and Admin café actions remain entry shells.
+Demo-kit creation, account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 
