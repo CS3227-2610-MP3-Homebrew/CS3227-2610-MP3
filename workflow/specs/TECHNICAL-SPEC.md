@@ -264,7 +264,7 @@ not evidence that a migration is safe.
 | Context | Application and database | LLM and delivery boundary |
 | --- | --- | --- |
 | Local development | Node 24 app with local Supabase in Docker. | Local fake or disabled provider for checks; no hosted database access. |
-| CI tests/build | Local Supabase in Docker when database tests run. | No live LLM key; deterministic fake/disabled provider. Lint, typecheck and build run through `bun run verify`. |
+| CI tests/build | Local Supabase in Docker when database tests run. | No live LLM key; deterministic fake/disabled provider. CI runs `bun run verify`'s steps (lint, typecheck, tests, traceability, spec check and build) in parallel jobs, sharding tests across jobs that each start local Supabase; the required `verify` check passes only when every job passes. |
 | Dev | Single Vercel Hobby project, Preview target in `sin1`; Supabase `homebrew-dev`, Singapore. | Dev-only SoC LLM key. GitHub `development` environment deploys from `master`. |
 | Prod | Same Vercel project, Production target in `sin1`; Supabase `homebrew-prod`, Singapore. | Separate prod-only SoC LLM key. GitHub `production` environment deploys from `v*` tags with a listed reviewer's approval. |
 

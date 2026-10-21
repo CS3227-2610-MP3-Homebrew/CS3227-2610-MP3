@@ -10,6 +10,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
 - [Authentication and authorization](#authentication-and-authorization)
+- [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
 - [Security](#security)
 - [How to test](#how-to-test)
@@ -45,6 +46,13 @@ The shared LLM implementation reuses the three literal system messages from
 as is in `src/server/llm/prompts.ts`; the acceptance fixture independently copies
 the same contract into `tests/integration/llm/prompts.json`. This is internal
 contract reuse, outside the five-file MP2 totals above.
+
+The Shared account implementation reuses existing session/workspace guards and
+Supabase SSR clients, with new account handlers and UI rather than copied
+external application code. Installed Next.js request-time authentication guidance
+informed its `connection()`/Suspense boundaries (idea reuse). Account field,
+message and destination constants implement the internal Shared contracts;
+these additions do not change the MP2 reuse totals.
 
 ## Setting up, getting started
 
@@ -84,11 +92,17 @@ and have no hosted target option.
 Before starting the app, supply `APP_ENV=local`, `AI_PROVIDER=disabled`,
 `NEXT_PUBLIC_SUPABASE_URL` for the local stack and its
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` through the development environment.
-The request proxy validates this configuration even for the starter page;
-missing or invalid values fail with `Invalid application configuration.` See
-the [configuration contract](../workflow/specs/TECHNICAL-SPEC.md#configuration-names).
-Run `bun run dev` and open <http://localhost:3000>. The current app still displays
-the starter page.
+The request proxy validates this configuration for browser pages; missing or
+invalid values fail with `Invalid application configuration.` See the
+[configuration contract](../workflow/specs/TECHNICAL-SPEC.md#configuration-names).
+Account registration also needs server-only `SUPABASE_SECRET_KEY`. Account POSTs
+require an exact canonical origin: set server-only `APP_ORIGIN` to the browser
+origin (scheme, host and optional port, without a trailing slash/path). Otherwise
+`VERCEL_URL` supplies an HTTPS origin, or local/CI defaults to
+`http://127.0.0.1:${PORT}` with port 3000 when `PORT` is absent. For local use,
+either open <http://127.0.0.1:3000> or explicitly configure `APP_ORIGIN` for
+<http://localhost:3000>. Request Host/forwarding headers do not establish trust.
+Run `bun run dev`; `/` resolves to Sign in or the verified role home.
 
 ### Local demonstration data
 
@@ -208,7 +222,7 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Testing may add devDependencies required by its tests and the corresponding bun.lock changes, listing each dependency and its purpose in its report. Stage 2 checks that package.json changes only devDependencies; runtime dependencies, scripts and other manifest edits are excluded. These additions are testing-owned alongside fixtures and test configuration. | Tests can use required database clients or parsers while preserving the testing and implementation write boundaries. |
 | Test layout: use `tests/{unit,integration,e2e}/<area>/`, browser specs only under `tests/e2e/`, and `// @vitest-environment node` for database and route tests because Vitest defaults to jsdom. | Playwright reads only `tests/e2e/` and Vitest collects everything else, so one convention lives in the skills that generate plans and tests. |
 | Local Supabase: agents use the fixed-target `bun run db:start`, `bun run db:reset` and `bun run db:check` wrappers; reset and delete bans apply to hosted databases; fixtures are testing-owned. | Migration replay needs a local reset. The wrapper rejects extra arguments and fixes reset to `--local --no-seed`. Prefix allow rules still match command prefixes, so humans review package scripts and configuration before approving them. |
-| `verify` includes unit/integration tests and traceability; e2e runs separately in CI. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
+| `verify` includes unit/integration tests and traceability; e2e runs separately in CI. CI splits `verify`'s steps into parallel jobs and shards Vitest across three runners with their own local Supabase, gathered by one required `verify` job. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Parallel jobs cut a 5–9 minute serial run, mostly database tests, and keep CI time near-flat as tests grow; the gathering job stops a skipped or cancelled job from counting as a pass. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
 | Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
 | The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
@@ -277,7 +291,7 @@ loads its workflow instructions.
 | `.agents/skills/sdd-docs/agents/openai.yaml` | UI metadata and default prompt for the docs skill. |
 | `.agents/skills/sdd-orchestrate/SKILL.md` | For the human's coordinating session: per-stage entry and exit gates with the commands that check them, copy-ready agent prompts, review-round and security-finding routing, and the spec change flow. Foundation stage 0 checks cross-cutting requirements on the selected review base and permitted assumptions, stage 1 requires approval outside the sandbox for the issue script, and stage 3 permits task-scoped workflow/configuration files and workflow-table row additions. |
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
-| `.github/workflows/ci.yml` | Starts and resets local Supabase, checks all application tables for RLS, then runs `bun run verify` and `bun run test:e2e` with pinned actions on PRs to and pushes on master. |
+| `.github/workflows/ci.yml` | On PRs to and pushes on master, with pinned actions, runs `bun run verify`'s steps in parallel jobs: lint, typecheck, traceability, spec check and build in one; Vitest in three shards, each starting and resetting local Supabase and checking every application table for RLS; and Chromium Playwright. A final `verify` job, the ruleset's required check, passes only when all of them passed. |
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
 | `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
@@ -400,7 +414,8 @@ authority. The database's Auth insert trigger independently accepts only those
 two selections and resolves main from `workspaces`. It rejects other selected
 roles, including Admin. An Auth insert with no selected role creates no protected
 profile. Later metadata edits cannot change the protected profile. This is
-backend provisioning; it adds no application sign-up endpoint or screen.
+the foundation provisioning path. The public account flow below uses a separate
+narrow provisioning function and does not pass role metadata to Auth.
 
 Local email confirmation is disabled in `supabase/config.toml`. The signup module
 declares and validates confirmation-off for dev/prod, but does not configure or
@@ -450,9 +465,56 @@ Future screens must keep private data out of public fallbacks/static shells and
 perform protected reads behind the gate with independent near-data authorization.
 Callers still own record/workspace predicates, RLS-bound queries and any endpoint's
 input, origin and lifecycle rules. A prior proxy/UI check never authorizes a
-later operation. This foundation adds no public account endpoint, redirect route,
-role screen or navigation flow; AI consumers and kit/maintenance provisioning
-remain later work.
+later operation. The shared account integration below consumes this foundation;
+AI feature consumers and kit/maintenance provisioning remain separate work.
+
+### Shared accounts and role navigation
+
+The reviewed account integration implements [SYS-01](../workflow/specs/stories/SYS-01-sign-up.md),
+[SYS-02](../workflow/specs/stories/SYS-02-sign-in-out.md),
+[SYS-03](../workflow/specs/stories/SYS-03-role-navigation.md) and the
+[Shared HTTP/browser contracts](../workflow/specs/INTEGRATION-SPEC.md#shared-account-contracts).
+The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
+
+- `src/lib/accounts/fields.ts` supplies shared strict field schemas, safe text,
+  fixed notices and role homes. Client forms disable repeat submissions, clear
+  submitted passwords on failure and use only allowlisted response destinations.
+- `src/server/auth/accounts.ts` owns POST/method, exact Origin, JSON media,
+  strict fields and a streamed 65,536-byte UTF-8 body ceiling. Responses are
+  private/no-store JSON with opaque request IDs and safe errors. Sign-out takes
+  exactly `{}`; sign-in takes email/password; sign-up adds only Customer/owner.
+- `src/server/auth/account-adapter.ts` lazily creates a request-local SSR client
+  after admission. It stages provisional cookies, persists only after protected
+  profile verification, preserves active-account conflicts, and clears failed
+  attempts. Initial account cookies are HttpOnly, SameSite=Lax and Secure for an
+  HTTPS configured origin. The refresh lifecycle limitation is recorded below.
+- Registration creates an Auth identity with no role metadata, then invokes
+  `create_signup_profile` from migration `20261021000001_account_signup.sql`.
+  This service-role-only, empty-search-path function permits Customer/owner,
+  selects the protected main workspace and inserts rather than upserts. Profile
+  failure allows one cleanup attempt for only the newly created identity;
+  completed-account/failed-session preserves the account with a fixed notice.
+- `src/server/auth/account-access.ts` distinguishes verified, anonymous,
+  session-ended, unavailable-profile and temporary-source-failure states after
+  Auth verification and an RLS-bound profile read. Account profile reads disable
+  database retries in both access resolution and the HTTP adapter. Other session
+  client callers retain defaults and normal Auth refresh behavior.
+- `src/server/auth/account-transport.ts` captures only a validated Auth
+  `Retry-After` header before SDK error conversion. State is request-local and
+  consumed once; absent/invalid values and other provider headers are omitted.
+- `src/app/_components/account-boundary.tsx` uses request-time `connection()`
+  and Suspense with public loading text, then fixed homes and role-only links.
+  Wrong-role browser requests go to the caller's own home. Role entry pages
+  contain headings; only owner Dashboard adds an RLS-bound, owner/workspace
+  café-existence check and no-café application link. These shells grant no domain
+  operation permission or fabricated domain data.
+- `/api/auth/sign-up`, `/api/auth/sign-in` and `/api/auth/sign-out` own cookie
+  admission, so the proxy skips refresh there. Other requests retain normal
+  refresh and preserve incoming session evidence on a failed check so the gate
+  can distinguish an ended session from an anonymous visitor. Sign-out requests
+  remote `scope: "local"`, clears browser cookies even when remote revocation
+  fails, and exposes the fixed uncertainty notice without claiming all-device
+  sign-out or immediate revocation of issued access tokens.
 
 ## AI features and the shared LLM module
 
@@ -690,6 +752,19 @@ are fixtures. Actual Supabase Auth is covered separately by integration tests;
 this is not one browser-to-Auth session test. Run `bun run test:e2e` after
 verification, without concurrent builds or database resets.
 
+The Shared account suite adds 125 controlled handler cases in
+`tests/integration/accounts/`, 15 access-state cases in `tests/unit/navigation/`
+and 27 supplementary real-SDK/fake-transport cases in
+`tests/unit/account-adapters/`. It covers strict transport/fields, safe partial
+provisioning, duplicates/concurrency, source/profile faults, no profile retries
+and safe Auth retry-delay propagation. The 28 browser cases under
+`tests/e2e/accounts/` and `tests/e2e/navigation/` exercise real local Auth,
+Customer/owner registration, main/kit role navigation, persistent cookies,
+refresh/revocation and this-browser sign-out. Browser fixtures load local CLI
+configuration and synthetic identities without hosted targets; run sequentially
+after full verification, which resets local data. Provider-outage rendering is
+supported by resolver/fake-transport evidence, not a live outage exercise.
+
 The 69 cases in `tests/integration/usage/`, `tests/unit/usage/` and
 `tests/unit/usage-internals.test.ts` cover durable admission, role grants,
 concurrency, all-or-none denial, operation bounds, minute/day rollover,
@@ -711,11 +786,15 @@ cancellation. Synthetic transports block unexpected global fetch. These checks
 do not establish live SoCLaaS compatibility, model quality, production endpoint
 authorization, persistent cache isolation or browser rendering.
 
-CI installs locked dependencies, starts and resets local Supabase, runs
-`db:check`, then executes `verify` and Chromium Playwright. Local verification
-passes all 704 tests across 25 files and the production build, including isolation
-checks for all 35 client artifacts. The prior session foundation verification
-passed all 14 browser cases locally; the shared LLM layer adds no browser surface.
+CI installs locked dependencies and runs `verify`'s steps and Chromium Playwright
+in parallel jobs; each test shard and the browser job start and reset their own
+local Supabase, and the test shards run `db:check`. Local verification
+passes all 942 tests across 36 files and the production build, including source
+and client-artifact isolation checks, as recorded in the
+[round-3 review](../workflow/handoffs/99-shared-sign-up-sessions-navigation/07-reviewer.md#checks-run).
+The Shared account implementation reports 42/42 production-browser cases,
+including all 14 prior session-foundation cases; the shared LLM layer adds no
+browser surface.
 Remote CI execution remains unobserved. The implementation
 handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
@@ -727,6 +806,13 @@ bun run db:start first.`, check that Docker is running and start the local stack
 their migrations; disabling Data API exposure does not satisfy this check.
 
 ## Deployment and environments
+
+Account POST origin admission uses server-only `APP_ORIGIN` when set, otherwise
+HTTPS `VERCEL_URL`; configure `APP_ORIGIN` for the exact canonical custom domain.
+It must contain only the canonical HTTP(S) origin. Local/CI alone may default to
+loopback and `PORT`. Registration requires server-only `SUPABASE_SECRET_KEY`;
+never expose it through a `NEXT_PUBLIC_` variable. See
+[Shared accounts](#shared-accounts-and-role-navigation) for the transport boundary.
 
 The repository contains static delivery configuration for
 [SYS-07.1](../workflow/specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
@@ -850,9 +936,10 @@ and workflow/PLAN.md rather than copying requirements here. -->
 The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
-Account/domain/AI screens and account HTTP flows, demo-kit creation, maintenance provisioning,
-scheduled retention cleanup and remaining story fields/transitions are not yet
-available. Durable usage admission, shared validated LLM operations/provider
+Shared account screens, account HTTP flows and role navigation are available.
+Role domain pages remain entry headings, with only the owner no-café state;
+domain/AI screens, demo-kit creation, maintenance provisioning, scheduled
+retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally, without an AI feature
 endpoint or UI. Live provider compatibility and model
 quality remain unverified; source authorization, persistent cache eligibility,
@@ -871,7 +958,17 @@ The authentication browser harness controls session resolution; separate actual
 local Auth coverage proves expired-cookie refresh and deletion-based revocation,
 not every logout/ban/password-change policy or its propagation time. Future
 callers must integrate the gate and independently enforce domain permissions;
-no production protected endpoint is supplied by the harness.
+the Shared account browser cases additionally use real local Auth. Domain
+endpoint authorization remains the owning integration's responsibility.
+
+The account routes set stricter initial cookie attributes, but the pre-existing
+proxy uses SSR default cookie options: a normal refresh can replace HttpOnly/Secure
+attributes. The [security assessment](../workflow/handoffs/99-shared-sign-up-sessions-navigation/04-security-reviewer.md#open-issues-for-the-next-step)
+records this lifecycle limitation without establishing an exploitable regression.
+It predates the adapter retry/delay fixes; those fixes have functional transport
+coverage and independent review, not a repeated dedicated security audit. Hosted
+Auth settings, canonical custom-domain Origin, TLS/HSTS and provider faults are
+not established by local account verification.
 
 Delivery validation is local and static. It cannot prove hosted environment
 protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
