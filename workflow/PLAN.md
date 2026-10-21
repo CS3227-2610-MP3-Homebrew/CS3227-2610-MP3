@@ -335,7 +335,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Cache/eligibility/accounting/audit cases trace to contracts with controlled local evidence.
   - [ ] Reusable repository tests need no completed LLM feature implementation.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#46](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/46)
 
 ### T-16: Implement AI caches, catalogue eligibility, accounting and audit
@@ -350,7 +350,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Repository/eligibility/accounting/audit tests and catalogue checks pass locally.
   - [ ] `bun run verify` passes; ordinary clients cannot forge infrastructure rows.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#47](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/47)
 
 ### T-17: Test delivery workflow configuration
