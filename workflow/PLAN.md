@@ -15,10 +15,18 @@ Customer story sources: [CUS-01](specs/stories/CUS-01-browse-cafes.md),
 [CUS-05](specs/stories/CUS-05-review-order.md),
 [CUS-06](specs/stories/CUS-06-brew-finder.md) and
 [CUS-07](specs/stories/CUS-07-favourite-cafes.md).
+Owner story sources: [OWN-01](specs/stories/OWN-01-cafe-application.md),
+[OWN-02](specs/stories/OWN-02-cafe-profile-hours.md),
+[OWN-03](specs/stories/OWN-03-menu-management.md),
+[OWN-04](specs/stories/OWN-04-pickup-rules.md),
+[OWN-05](specs/stories/OWN-05-order-queue.md),
+[OWN-06](specs/stories/OWN-06-sales-dashboard.md),
+[OWN-07](specs/stories/OWN-07-prep-advisor.md) and
+[OWN-08](specs/stories/OWN-08-boost-request.md).
 Shared story sources: [SYS-01](specs/stories/SYS-01-sign-up.md),
 [SYS-02](specs/stories/SYS-02-sign-in-out.md) and
 [SYS-03](specs/stories/SYS-03-role-navigation.md).
-Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Shared adds one pair, Customer five and Admin three: 21 pairs total, with nine specification tasks across the plan.
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Shared adds one pair, Customer five, Café owner five and Admin three: 26 pairs total, with 14 specification tasks across 66 tasks.
 Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
@@ -26,8 +34,9 @@ Changed criteria and new tasks require their governing specs on master before ex
 - Verified baseline: Next.js 16.4.2 App Router in `src/app/`, React 19.3.0,
   strict TypeScript, Tailwind 4 and Bun 1.4.3. `next.config.ts` enables
   cacheComponents and partialPrefetching; existing CI selects Node 24.
-  Supabase SSR, Zod and `openai` are not installed; the tasks that need them
-  add them.
+  Supabase SSR, Supabase JS, Zod and `server-only` are installed. The shared
+  server-only LLM module uses its existing transport; `openai` is not installed
+  and owner integration reuses the installed operation instead of adding an SDK.
 - Vitest, Playwright and Testing Library are installed; `bun run test`,
   `bun run test:e2e`, `bun run check:traceability` and `bun run check:specs` exist. CI runs
   `bun run verify` and `bun run test:e2e`. Every implementation requires its own
@@ -41,8 +50,10 @@ Changed criteria and new tasks require their governing specs on master before ex
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- CUS-01–CUS-07 and ADM-01–ADM-04 story specs exist; owner story contracts and the named customer field/API decisions remain
-  prerequisites where named. New file scopes below identify their owning tasks. Core
+- CUS-01–CUS-07, OWN-01–OWN-08 and ADM-01–ADM-04 story files exist.
+  T-52/T-55/T-58/T-61/T-64 specify the missing owner-domain contracts; dependent
+  tasks name those prerequisites rather than choosing behavior. New file scopes
+  below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
   states and transitions arrive through additive migrations. Their absence does
   not block core schema, local seeds or the fixed role matrix.
@@ -108,7 +119,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
   T-13/T-14 own SEC-02.1, SEC-03.1/03.2, SEC-04.1, SEC-05.1, SEC-08.1/08.2;
   T-15/T-16 own SEC-07.1/07.2 and SEC-09.1/09.2. New T-21/T-22 own application
   integration criteria SEC-01.1/01.2, SEC-02.2, SEC-04.2 and SEC-05.2 after
-  story endpoints/screens exist. Other tasks may exercise a shared control
+  story endpoints/screens exist, including T-63 Prep Advisor. Other tasks may exercise a shared control
   without acquiring that criterion's ownership.
 
 ## Foundations
@@ -385,13 +396,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-19: Test accessibility and responsive core flows
 
-- **Depends on:** None
+- **Depends on:** T-51, T-41, T-43, T-45, T-47, T-54, T-57, T-60, T-63, T-29, T-31, T-33
 - **Owner role:** testing
 - **Requirements:** SYS-11.1, SYS-11.2 — [SYS-11](specs/TECHNICAL-SPEC.md#sys-11--accessible-responsive-core-flows).
 - **Description:** Verify [defined core flows](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior) once screens exist.
 - **Work:** Cover sign-up/sign-in/navigation, browsing/pickup/reviews, café/menu/orders, application/moderation and three AI panels/fallbacks. Require no unresolved automated accessibility violations; complete flows at 360 px and representative wider viewports with readable labels/errors, reachable controls and no clipping/overlap/page-level horizontal scrolling. No full-conformance/manual-assessment or invented performance target.
 - **File scope:** Proposed `tests/e2e/core-ui/` browser checks and local/fake fixtures.
-- **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task.
+- **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task. Owner core surfaces are T-54 (application/profile/pickup), T-57 (menu), T-60 (queue) and T-63 (sales/Prep); their contract prerequisites remain explicit in their own tasks.
 - **Acceptance criteria:**
   - [ ] Every technical core flow has accessibility and viewport completion evidence.
   - [ ] Tests create no missing screens or new product requirements.
@@ -406,7 +417,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Correct existing screens against [core-flow UI criteria](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior).
 - **Work:** Resolve the automated accessibility and 360 px/wider layout/control findings using existing Tailwind tokens/components. Preserve labels, errors and reachable controls; no new screen, full-conformance claim or performance threshold.
 - **File scope:** Existing `src/app/` screens/styles; proposed shared presentation fixes only.
-- **Prerequisite:** BLOCKED: core specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; T-19 evidence.
+- **Prerequisite:** BLOCKED: core specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; T-19 evidence. Owner surface prerequisites are supplied through T-19 and its T-54/T-57/T-60/T-63 dependencies; corrections extend those owners rather than recreating their screens.
 - **Acceptance criteria:**
   - [ ] Core automated accessibility checks have no unresolved violations; viewport flow checks pass.
   - [ ] `bun run verify` passes with local data/fake AI.
@@ -415,13 +426,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-21: Test application AI authorization, rendering and human confirmation
 
-- **Depends on:** T-08, T-10, T-14, T-16
+- **Depends on:** T-08, T-10, T-14, T-16, T-47, T-63, T-33
 - **Owner role:** testing
 - **Requirements:** SEC-01.1, SEC-01.2, SEC-02.2, SEC-04.2, SEC-05.2 — [SEC criteria](specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria).
 - **Description:** Verify application integration of [AI trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries) and [human confirmation](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) after the ordinary domain flows exist.
 - **Work:** Exercise every AI endpoint with anonymous/wrong-role/cross-owner/forged-reference/cross-origin requests; assert authorized RLS source selection and no unrelated Admin sales/order access. Scan provider requests, client artifacts, errors and telemetry with synthetic secret/session canaries. Verify whole-result rejection for forged IDs/labels/evidence and inert rendering/no fetching of HTML/script/URL payloads. Exercise explicit per-review Admin confirmation, reason/current-state checks, preserved review text and separate audit, including stale/forged advice. Check that personalized AI responses never enter a shared public cache (SEC-07.2's HTTP part). Use the linked security evaluation cases; ordinary story behavior is a prerequisite, not new scope.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/ai-security/` route/database cases and browser cases under `tests/e2e/ai-security/`, with synthetic local/fake fixtures; extend existing shared test infrastructure without duplicating its owners.
-- **Prerequisite:** BLOCKED: T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred.
+- **Prerequisite:** BLOCKED: T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred. Owner sales/Prep source, endpoint and rendering are owned by T-63 after T-61 contracts; T-47 and T-33 supply the other two AI features. This pair retains shared SEC ownership.
 - **Acceptance criteria:**
   - [ ] Each owned SEC criterion has deterministic local/fake negative and positive evidence, including browser rendering and stale confirmation cases.
   - [ ] Failing-first results and `bun run verify`/`bun run test:e2e` results are recorded without live provider or hosted access.
@@ -436,7 +447,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Connect the shared AI controls to existing authorized application flows under the approved [HTTP](specs/INTEGRATION-SPEC.md#shared-http-boundary) and [security](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) contracts.
 - **Work:** Connect approved endpoints to verified session/role/scope and same-origin gates, authorized RLS source reads, minimal validated feature operations and safe result/error rendering. Close canary leakage paths and reject whole invalid results without executable text or model-driven fetches. Serve AI results as private, uncacheable responses. Integrate explicit per-review confirmation with existing domain validation and T-31's Admin audit persistence, preserving text and requiring a reason. Reuse prior guards/adapters/repositories; do not recreate story queries, domain lifecycles, screens or infrastructure owned by earlier tasks.
 - **File scope:** Existing story route/UI/domain surfaces; shared server-boundary fixes under `src/server/` as required. T-14 retains provider/schema ownership and T-16 persistent cache/audit ownership; serialize shared edits.
-- **Prerequisite:** BLOCKED: all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task.
+- **Prerequisite:** BLOCKED: all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task. T-21 includes T-63 owner Prep integration and the T-47/T-33 AI surfaces; this task fixes shared boundaries without acquiring their story criteria.
 - **Acceptance criteria:**
   - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
   - [ ] `bun run verify` and `bun run test:e2e` pass with local Supabase/fake AI; no live verification or deployment.
@@ -458,13 +469,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-24: Test demo kits
 
-- **Depends on:** T-08, T-10, T-12, T-29, T-31
+- **Depends on:** T-08, T-10, T-12, T-29, T-31, T-52, T-55, T-58, T-61, T-51
 - **Owner role:** testing
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Test anonymous production demo access under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes), using local Supabase and fake AI.
 - **Work:** Derive failing-first cases for the sign-in creation control, three once-shown normal-sign-in accounts, email/code pattern, secure distinct passwords, Auth-only persistence, no credential logging/later responses and all-or-nothing rollback. Test concurrent global 10-minute/day caps, rollover, restart, unavailable counters, 429/Retry-After, no LLM call, no expiry/deletion, kit-scoped Admin operations and per-account/shared-global AI limits. Verify all seeded content and relative sales history against the owning stories, including unpublished-owner and untrusted synthetic review cases. Reuse T-08 isolation guards and T-12 counters rather than assigning their criteria again.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases under `tests/e2e/demo-kits/`; testing owns all fixtures/mocks.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. Owner prerequisites map to T-52 setup, T-55 menu, T-58 queue and T-61 sales/Prep contracts. T-51 supplies sign-in; source sufficiency cannot be inferred from a seeded date span alone.
 - **Acceptance criteria:**
   - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
@@ -473,13 +484,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-25: Implement demo kits
 
-- **Depends on:** T-24, T-08, T-10, T-12, T-29, T-31
+- **Depends on:** T-24, T-08, T-10, T-12, T-29, T-31, T-63, T-51
 - **Owner role:** implementation
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Implement self-service demo kits under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
 - **Work:** Add the sign-in Create demo kit control and POST /api/demo-kits with one-time credential display, secure account/code generation, Supabase Auth-only password storage and atomic complete-kit creation/rollback. Extend T-12's durable counter/window mechanism for both global kit caps, fail closed and return the specified 429/Retry-After response. Seed the kit's Customer, approved owner/café/menu/hours/pickup rules/relative sales history, separate unpublished owner/pending application and untrusted pending reviews using owning-story states. Apply existing kit Admin controls, account/global AI limits, no LLM call and no automatic expiry/deletion. Reuse T-08 isolation and T-10 session gates; author no tests or ordinary sign-in lifecycle.
 - **File scope:** Proposed `src/app/api/demo-kits/route.ts`, server-only kit provisioning and additive migrations; existing sign-in screen after its owning story exists. Serialize migrations/shared configuration; no hosted execution.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks.
+- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. T-24 maps owner contract prerequisites to T-52/T-55/T-58/T-61. T-51 supplies sign-in and T-63 brings T-54/T-57/T-60 owner source/schema integration; kit creation retains its own SYS/SEC criteria.
 - **Acceptance criteria:**
   - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
@@ -488,13 +499,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-26: Test daily maintenance
 
-- **Depends on:** T-16, T-18
+- **Depends on:** T-16, T-18, T-52, T-55
 - **Owner role:** testing
 - **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Test the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and production trigger configuration locally.
 - **Work:** Derive cases for constant-time bearer comparison, missing/wrong secret 401/no work, ordered independent steps, consecutive-run idempotence, at-most-one maintenance-created main Admin, no-op when one exists even after a configured-email change, creation only when no Admin or matching account exists, cross-role/workspace email-conflict outcomes with no changes, preserved changed passwords, missing main-Admin settings, showcase café/hidden owner credentials, count-only sanitized responses and no kit/user/domain deletion, password reset or LLM call. Exercise T-16 cleanup through the endpoint without taking SEC-09.2 ownership. Statically verify daily UTC cron and exactly one post-successful-production-deploy call extending T-18's workflow, with environment-specific server-only secrets. Test kit no-touch under SYS-13.8 using a T-06 workspace fixture, independently of demo-kit provisioning. Use synthetic secrets and local seeded data; do not execute hosted triggers.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/maintenance/` local endpoint/clock/fault fixtures including a T-06 workspace fixture for SYS-13.8 kit no-touch, and static Vercel/workflow checks; testing owns fixtures/mocks.
-- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and a T-06 workspace fixture for SYS-13.8 kit no-touch; T-25 provisioning is not a prerequisite. BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01).
+- **Prerequisite:** SYS-13/SEC-10/route contracts on master, T-16 cleanup, T-18 workflow and a T-06 workspace fixture for SYS-13.8 kit no-touch; T-25 provisioning is not a prerequisite. BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01). Showcase owner contract prerequisites are T-52 setup/profile/hours and T-55 menu; approved local contract fixtures allow testing before the owner editing screens.
 - **Acceptance criteria:**
   - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
   - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
@@ -503,13 +514,13 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-27: Implement daily maintenance
 
-- **Depends on:** T-26, T-16, T-18
+- **Depends on:** T-26, T-16, T-18, T-54, T-57
 - **Owner role:** implementation
 - **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Add the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and extend delivery triggers.
 - **Work:** Add GET /api/internal/maintenance with server-only environment-specific bearer authentication, constant-time comparison and count-only sanitized outcomes. Invoke T-16's retention cleanup, ensure at most one main Admin under SYS-13.1, retaining an existing main Admin regardless of configured-email changes and reporting conflict without changes when the email is already used but no main Admin exists, then ensure the main showcase café/hidden owner. Preserve step order and independence, idempotence, changed passwords and every no-touch/no-delete/no-LLM restriction. Missing main-Admin variables report that step's failure while other steps run. Add the Vercel production cron entry and extend T-18's production deploy workflow with one maintenance call after each successful deploy; reuse its workflow/configuration ownership rather than recreating it. No tests or hosted execution.
 - **File scope:** Proposed `src/app/api/internal/maintenance/route.ts` and server-only maintenance modules; Vercel cron configuration; extend existing `.github/workflows/` production deployment from T-18. Serialize shared workflow/configuration edits.
-- **Prerequisite:** BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18; SYS-13.8 kit no-touch uses T-26's T-06 workspace fixture, without a T-25 prerequisite. Human approval/execution remains required for production delivery.
+- **Prerequisite:** BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18; SYS-13.8 kit no-touch uses T-26's T-06 workspace fixture, without a T-25 prerequisite. Human approval/execution remains required for production delivery. T-26 maps the owner contract prerequisites to T-52/T-55; T-54/T-57 provide their domain schema/management implementation for showcase provisioning without requiring unrelated owner sales/queue screens.
 - **Acceptance criteria:**
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
@@ -583,13 +594,13 @@ then consume its suspension effect without a dependency cycle.
 
 ### T-35: Finalize customer catalogue and café-page contracts
 
-- **Depends on:** None
+- **Depends on:** T-52, T-55, T-34
 - **Owner role:** spec
 - **Requirements:** CUS-01, CUS-02 — [browse](specs/stories/CUS-01-browse-cafes.md), [café page](specs/stories/CUS-02-cafe-page.md); specification prerequisite only, no criterion ownership.
 - **Description:** Complete deterministic browse, rating and café-detail contracts while retaining the specified unfiltered closed-café and closing-soon behaviour.
 - **Work:** Resolve strict filter fields/values/normalization/combination/reset, Singapore date/time and opening-interval boundaries/overnight rules, and sold-out-only drink matches with the owning hours/menu contracts. Define one authoritative rating formula, unrated handling, ties, display precision and catalogue/review ordering/pagination. Specify customer-visible profile/menu/review fields, reviewer disclosure, money representation, customer page paths and read schemas. Retain CUS-01.9/CUS-01.10 labels, greyed but clickable closed cards and exactly-30-minute closing-soon inclusion; resolve absent next-opening schedules and opening-time text formatting without inventing a time. Amend integration/cache source inputs only from those decisions.
 - **File scope:** Existing CUS-01/CUS-02 story files; customer catalogue/detail sections in `workflow/specs/INTEGRATION-SPEC.md` and relevant `TECHNICAL-SPEC.md` data-model references; own handoff. OWN-02/OWN-03 hours/menu definitions are required owning-role inputs, not application work in this task.
-- **Prerequisite:** Relevant OWN-02/OWN-03 hours/menu contracts and T-34 Shared account/navigation contracts, consistent with the [Customer catalogue boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
+- **Prerequisite:** Relevant OWN-02/OWN-03 hours/menu contracts and T-34 Shared account/navigation contracts, consistent with the [Customer catalogue boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary). Owner contract completion is assigned to T-52 (hours/profile) and T-55 (menu/history); T-34 retains Shared navigation ownership. This task reconciles existing Customer contracts after those inputs, not owner editing behavior.
 - **Acceptance criteria:**
   - [ ] Catalogue filters, card states, next-opening failure cases, ratings and café-page responses are testable and have one authoritative owner.
 - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -598,13 +609,13 @@ then consume its suspension effect without a dependency cycle.
 
 ### T-36: Finalize pickup, order and suspension-cancellation contracts
 
-- **Depends on:** None
+- **Depends on:** T-52, T-55, T-58
 - **Owner role:** spec
 - **Requirements:** CUS-03, CUS-04, ADM-02 — [pre-order](specs/stories/CUS-03-pre-order.md), [own orders](specs/stories/CUS-04-my-orders.md), [suspension](specs/stories/ADM-02-cafe-suspension.md); specification prerequisite only, no criterion ownership.
 - **Description:** Complete the shared order lifecycle needed by Customer ordering and Admin suspension without weakening the confirmed all-uncollected cancellation rule.
 - **Work:** Resolve pickup representations/intervals/horizon/past and boundary rules, quantities, sold-out eligibility, price snapshots/totals, duplicate submissions, customer order paths/read/write schemas and display ordering. Reconcile authoritative order state names/transitions with OWN-04/OWN-05 and later menu/hour changes with OWN-02/OWN-03. Define acceptance/cancellation and collection/suspension races, already terminal-order treatment and transactional failure responses. Preserve automatic suspension cancellation of every outstanding uncollected order including accepted/ready, fixed customer reason, unchanged collected purchases and no revival on un-suspension; separate this fixed reason from the private Admin reason. Keep suspension mutation/transaction ownership with T-28/T-29 and Customer display/actions with T-42/T-43.
 - **File scope:** Existing CUS-03/CUS-04 and only the related ADM-02 suspension clauses; corresponding order/API/data-model sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff. Missing OWN-02–OWN-05 source contracts remain explicit owning-role inputs.
-- **Prerequisite:** Owning OWN-02–OWN-05 menu/hour/pickup/queue contracts, consistent with the [Customer order boundary and race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary); fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9.
+- **Prerequisite:** Owning OWN-02–OWN-05 menu/hour/pickup/queue contracts, consistent with the [Customer order boundary and race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary); fixed suspension cancellation behaviour is defined by CUS-04.5 and linked from ADM-02.9. Owner contract completion is assigned to T-52 (profile/hours/pickup), T-55 (menu/history) and T-58 (queue/actions); their local fixtures avoid a dependency on owner or Customer runtime screens.
 - **Acceptance criteria:**
   - [ ] Order/pickup schemas, complete state/race/error matrix and suspension rollback/visibility responsibilities agree across the owning specs.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -613,13 +624,13 @@ then consume its suspension effect without a dependency cycle.
 
 ### T-37: Finalize customer review submission contracts
 
-- **Depends on:** T-36
+- **Depends on:** T-36, T-58
 - **Owner role:** spec
 - **Requirements:** CUS-05 — [review story](specs/stories/CUS-05-review-order.md); specification prerequisite only, no criterion ownership.
 - **Description:** Define a valid review payload and public submission/read contract, retaining own-collected-once-only and ADM-03 immutability/post-moderation.
 - **Work:** Resolve rating scale/type, text requiredness/length/normalization, duplicate submission outcomes, input feedback and customer review paths/schemas. Clarify review creation after café suspension while preserving collected purchases. Keep pending/kept/hidden visibility and immutable text/rating owned by ADM-03; integration Label/Reason bounds are not customer input limits. Make the canonical field contract sufficient for contract-derived local moderation fixtures without requiring a Customer review screen first.
 - **File scope:** Existing `workflow/specs/stories/CUS-05-review-order.md`; corresponding review sections in `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own handoff only.
-- **Prerequisite:** T-36 and OWN-05 collection-state ownership, consistent with the [Customer review field/submission boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary).
+- **Prerequisite:** T-36 and OWN-05 collection-state ownership, consistent with the [Customer review field/submission boundary](specs/INTEGRATION-SPEC.md#customer-review-boundary). OWN-05 owner queue/source completion is assigned to T-58; T-36 retains the shared Customer order reconciliation and local collected-order fixtures suffice.
 - **Acceptance criteria:**
   - [ ] Valid/invalid review payloads, source eligibility and duplicate outcomes are explicit and do not conflict with ADM-03.
   - [ ] The specification changes have reviewed merge evidence on master before dependent testing/implementation; `bun run check:specs` and `bun run verify` results are recorded in the spec handoff, without claiming implementation acceptance.
@@ -814,7 +825,246 @@ then consume its suspension effect without a dependency cycle.
 
 ## Café owner
 
-Story tasks are added as story specs merge.
+Five pairs cover café setup/profile/pickup rules (OWN-01/OWN-02/OWN-04), menu
+(OWN-03), fulfilment queue (OWN-05), sales/Prep Advisor (OWN-06/OWN-07) and stretch
+boost requests (OWN-08). Each pair owns only its listed story criteria. Shared
+SYS/SEC criteria retain their foundation owners. Contract tasks T-52, T-55,
+T-58, T-61 and T-64 own specification completion, not executable coverage.
+
+Setup, menu and queue contracts can be drafted independently. Sales/advice
+contracts use menu-history and queue source decisions; boost decisions also
+require ADM-06. Local authorized fixtures permit owner tests before Customer
+order creation or Admin decision screens, avoiding a cycle through T-29/T-43.
+Owner application/profile layout is owned by T-54, menu by T-57, queue by T-60
+and Dashboard sales/Prep by T-63; T-66 extends the selected owner surface only
+for stretch. Shared-file edits are serialized, and missing contracts never
+become implementation choices. Execution requires governing specs on master;
+implementation also requires the paired failing-first evidence.
+
+### T-52: Finalize owner café application, profile and pickup contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** OWN-01, OWN-02, OWN-04 — [OWN-01](specs/stories/OWN-01-cafe-application.md#acceptance-criteria), [OWN-02](specs/stories/OWN-02-cafe-profile-hours.md#acceptance-criteria), [OWN-04](specs/stories/OWN-04-pickup-rules.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
+- **Description:** Complete the owner setup contracts reserved by the [integration dependency map](specs/INTEGRATION-SPEC.md#contract-dependencies), preserving approval/suspension independence and the existing Customer hours/pickup vocabulary.
+- **Work:** Resolve café cardinality, application/profile editable fields and validation, first/duplicate submission, rejected-application editing/resubmission and submission ordering. Define current-state/concurrent-save behavior, exact owner read/save/resubmit paths and strict request/success/error schemas. Specify owner no-café states, application/latest-decision display and suspension/reason surfaces without exposing private Admin reasons to Customers. Retain established Singapore weekly/overnight intervals, empty hours, cutoff bounds/default, unchanged order snapshots and owner management during suspension. Put domain behavior in its owning story, API contracts in INTEGRATION-SPEC and data/RLS constraints in TECHNICAL-SPEC; do not resolve decisions in PLAN.
+- **File scope:** Existing OWN-01/OWN-02/OWN-04 story files and their owning sections of `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own numbered spec handoff. No application, tests or unrelated story changes.
+- **Prerequisite:** Human decisions on the missing fields/cardinality/lifecycle/edit contracts; source role, Customer read/slot and ADM-01/ADM-02 contracts already exist. Accepted risk ratings do not supply the unspecified behavior.
+- **Acceptance criteria:**
+  - [ ] Application/profile/hour/cutoff boundaries are deterministic, preserve source IDs and have no unresolved behavioral assumptions; any changed criteria remain in their owning files.
+  - [ ] Reviewed governing contracts are on master before dependent testing/implementation; `bun run check:specs` and `bun run check:traceability` results and remaining decisions are recorded in the spec handoff.
+- **Status:** awaiting-decision
+- **Issue:** [#108](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/108)
+
+### T-53: Test owner café application, profile, hours and pickup rules
+
+- **Depends on:** T-52, T-34, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-01.1, OWN-01.2, OWN-01.3, OWN-01.4, OWN-01.5, OWN-01.6, OWN-01.7, OWN-01.8; OWN-02.1, OWN-02.2, OWN-02.3, OWN-02.4, OWN-02.5, OWN-02.6, OWN-02.7, OWN-02.8; OWN-04.1, OWN-04.2, OWN-04.3, OWN-04.4, OWN-04.5, OWN-04.6, OWN-04.7, OWN-04.8 — [OWN-01](specs/stories/OWN-01-cafe-application.md#acceptance-criteria), [OWN-02](specs/stories/OWN-02-cafe-profile-hours.md#acceptance-criteria), [OWN-04](specs/stories/OWN-04-pickup-rules.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for owner setup from OWN-01/OWN-02/OWN-04 and their finalized [HTTP](specs/INTEGRATION-SPEC.md#authorization-and-transport), [hours](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary) and [pickup](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary) contracts.
+- **Work:** Cover all 24 listed criteria: verified owner/workspace application submission, pending/approved/rejected display and latest private decision reason, resubmission preserving audit history, no self-approval or suspension clearing, profile persistence, Singapore weekly/overnight/week-boundary/adjacent/empty hours, invalid overlap/duration, cutoff 0/180/default and invalid inputs, no-slots outcomes and immutable existing orders. Test anonymous/wrong-role/foreign targets, kit/main isolation, direct RLS denials, source versus absent-data states and shared JSON protection. Use authoritative local application/decision/order fixtures rather than requiring T-29 Admin mutations or T-43 Customer creation. Extend coverage only from T-52-approved amendments, not implementation task details.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-cafe/`, testing-owned local state/clock/decision/order fixtures and browser cases under `tests/e2e/owner-cafe/`; database/route Vitest files use `// @vitest-environment node`. Reuse existing role/session harnesses.
+- **Prerequisite:** T-52 contracts and all governing owner specs on master; T-34 account/navigation contract and T-08/T-10 role/RLS/session gates. T-51 provides the role shell for final browser integration; missing owner screens are expected failing-first targets, not fixture authoring by implementation.
+- **Acceptance criteria:**
+  - [ ] Every listed criterion has named positive/negative failing-first evidence, including main/kit access and time boundaries; no additional permission or owner/cardinality rule is inferred.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes, checks not reached and expected missing implementation are recorded in the issue-scoped [handoff](templates/handoff.md), using local Supabase/fake or disabled AI only.
+- **Status:** blocked
+- **Issue:** [#109](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/109)
+
+### T-54: Implement owner café application, profile, hours and pickup rules
+
+- **Depends on:** T-53, T-52, T-51, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-01.1, OWN-01.2, OWN-01.3, OWN-01.4, OWN-01.5, OWN-01.6, OWN-01.7, OWN-01.8; OWN-02.1, OWN-02.2, OWN-02.3, OWN-02.4, OWN-02.5, OWN-02.6, OWN-02.7, OWN-02.8; OWN-04.1, OWN-04.2, OWN-04.3, OWN-04.4, OWN-04.5, OWN-04.6, OWN-04.7, OWN-04.8 — [OWN-01](specs/stories/OWN-01-cafe-application.md#acceptance-criteria), [OWN-02](specs/stories/OWN-02-cafe-profile-hours.md#acceptance-criteria), [OWN-04](specs/stories/OWN-04-pickup-rules.md#acceptance-criteria).
+- **Description:** Implement owner setup using the owning stories and T-52 contracts, reusing the [data/RLS model](specs/TECHNICAL-SPEC.md#data-model-and-ownership) and [role navigation](specs/stories/SYS-03-role-navigation.md).
+- **Work:** Add `/owner/application`, owner profile/hour/cutoff surfaces and the shared owner-domain layout beneath T-51 role navigation. Implement only the approved submission/resubmission and edit/read contracts with strict server validation, same-origin mutation protection, verified owner/workspace and RLS. Persist permitted own data, show application/decision/suspension context and protect Admin-controlled states. Reuse the established interval/cutoff semantics, enforce no-café/source-error distinctions and preserve order snapshots. Add only required additive domain/policy constraints; reuse guards/session-bound clients rather than adding a privileged generic CRUD boundary. Customer/Admin flows and menu/queue/sales content keep their separate owners.
+- **File scope:** Proposed `src/app/owner/application/`, owner profile/hour/pickup surfaces and shared owner-domain layout under `src/app/owner/`; owner Route Handlers only at T-52-approved paths; server-only domain modules under proposed `src/server/owner/`; additive `supabase/migrations/`. Serialize profile/layout/migration edits; no tests/fixtures/mocks.
+- **Prerequisite:** T-53 failing-first evidence, T-52 contracts on master, T-51 role shell and T-08/T-10 access/session infrastructure. Local decision/order fixtures permit acceptance before Admin or Customer mutation screens exist; no dependency on T-29/T-43.
+- **Acceptance criteria:**
+  - [ ] T-53 coverage passes for all 24 criteria and any formally approved amendments, including private reason scope, suspension access, time/cutoff validation and immutable purchases.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` pass; issue-scoped [handoff](templates/handoff.md) records actual evidence and any external surface limit. Acceptance tests/configuration/fixtures are unchanged.
+- **Status:** blocked
+- **Issue:** [#110](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/110)
+
+### T-55: Finalize owner menu lifecycle and edit contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** OWN-03 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
+- **Description:** Complete OWN-03 menu edit/history contracts while preserving the [shared money/type and Customer menu boundary](specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
+- **Work:** Resolve add/edit/remove actions, names/validation/normalization/duplicates, initial sold-out state, removal/history retention and source identity after rename/removal. Define owner list ordering/pagination, no-café behavior, concurrency and exact read/mutation request/success/error schemas. Preserve integer SGD cents, shared DrinkType values, sold-out inclusion in Customer views, unavailable-item refusal for new orders and historical purchase snapshots. Record data/RLS and transport in their canonical shared specs; do not introduce inventory, payment or new Admin write access.
+- **File scope:** Existing OWN-03 story; owner-menu sections in `workflow/specs/INTEGRATION-SPEC.md` and menu/history/RLS sections in `TECHNICAL-SPEC.md`; own spec handoff. No code/tests.
+- **Prerequisite:** Human decisions on the missing menu lifecycle/validation/API contracts; Customer money/menu/order snapshot contracts already exist. Coordinate shared café identity with T-52 without coupling independent drafting.
+- **Acceptance criteria:**
+  - [ ] One authoritative menu lifecycle/edit contract covers ordinary and failure/concurrent paths without rewriting purchases or broadening access.
+  - [ ] Reviewed contracts are on master before dependent execution; spec/traceability checks and decisions are recorded in the spec handoff.
+- **Status:** awaiting-decision
+- **Issue:** [#111](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/111)
+
+### T-56: Test owner menu prices, items and sold-out state
+
+- **Depends on:** T-55, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
+- **Description:** Derive failing-first tests for all OWN-03 criteria and the finalized menu boundary, independently of Customer order screens.
+- **Work:** Cover own menu reads/persistence, shared drink enums, integer price bounds and exact SGD formatting, sold-out on/off and Customer-visible sold-out items, new-order refusal and unchanged historical snapshots. Exercise missing/foreign item and café targets, forged parents, main/kit isolation, suspended-owner access, empty/all-sold-out menus and safe source/JSON failures. Add menu lifecycle/removal/concurrency cases only from T-55-approved contracts. Use local authorized café/order fixtures; reuse Customer/shared assertions without taking their criterion ownership.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-menu/`, testing-owned local menu/history/fault fixtures and browser cases under `tests/e2e/owner-menu/`; database/route tests declare node environment.
+- **Prerequisite:** T-55 and governing specs on master, T-08/T-10 infrastructure; T-54 supplies owner-domain layout for final browser integration. Test authoring may use local café fixtures before setup UI is implemented.
+- **Acceptance criteria:**
+  - [ ] All eight listed OWN-03 criteria have named failing-first cases; no unspecified deletion/history behavior is inferred.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes are recorded in an issue-scoped handoff with local-only fixtures.
+- **Status:** blocked
+- **Issue:** [#112](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/112)
+
+### T-57: Implement owner menu management
+
+- **Depends on:** T-56, T-55, T-54, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
+- **Description:** Implement the owner Menu surface and approved menu operations, reusing T-54 owner layout and the [purchase snapshot boundary](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
+- **Work:** Add own-menu reads and approved add/edit/remove/price/sold-out controls with server validation, current parent ownership/workspace checks, RLS and shared HTTP errors. Preserve cents/type vocabulary, visible sold-out items, stale-price/new-order validation and immutable purchase snapshots. Apply only T-55-approved removal/history/concurrency semantics. Keep suspension/approval independent and reuse the existing role/session clients; no inventory, Customer order UI or AI menu-write authority.
+- **File scope:** Proposed owner Menu surface under `src/app/owner/`, T-55-approved owner menu Route Handlers, menu domain modules under `src/server/owner/` and additive menu/policy migrations. Serialize shared owner layout and migrations; no tests/fixtures/mocks.
+- **Prerequisite:** T-56 failing-first evidence, T-55 contracts on master, T-54 owner setup/layout and T-08/T-10 authorization/session controls.
+- **Acceptance criteria:**
+  - [ ] T-56 suite passes, including all eight OWN-03 criteria, cross-parent denial, availability changes and retained purchase snapshots.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; an issue-scoped handoff records results without hosted services or acceptance-test edits.
+- **Status:** blocked
+- **Issue:** [#113](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/113)
+
+### T-58: Finalize owner order queue read and action contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** OWN-05 — [OWN-05](specs/stories/OWN-05-order-queue.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
+- **Description:** Complete OWN-05 queue presentation/transport without changing the established [order transition/race matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
+- **Work:** Resolve queue state filters, ordering/pagination, displayed purchase/customer fields, rejection-reason policy, no-café and stale-action feedback. Define exact owner read/action paths, strict request/success/error schemas and transaction concurrency rules. Preserve pending→accepted/rejected, accepted→ready, ready→collected, terminal-state conflicts, acceptance/cancellation race and collection/suspension serialization. Any source timestamp needed by subsequent sales decisions is an explicit canonical contract amendment, not an implementation inference. Queue scope grants no general Customer-profile access, new payment operation or invented order audit.
+- **File scope:** Existing OWN-05 and owning order sections of `workflow/specs/INTEGRATION-SPEC.md` and `TECHNICAL-SPEC.md`; own spec handoff. Other story behavior changes require its owning specification scope; no application/tests.
+- **Prerequisite:** Human queue field/UI/API decisions; the shared Customer state/snapshot and ADM-02 suspension contracts already exist. Does not require T-43 Customer implementation or T-29 Admin implementation.
+- **Acceptance criteria:**
+  - [ ] Owner queue contracts are exact and consistent with every current shared state/race outcome and minimum necessary Customer disclosure.
+  - [ ] Governing reviewed contracts are on master before dependent execution; spec/traceability results and unresolved decisions are recorded.
+- **Status:** awaiting-decision
+- **Issue:** [#114](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/114)
+
+### T-59: Test owner order queue and fulfilment races
+
+- **Depends on:** T-58, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-05.1, OWN-05.2, OWN-05.3, OWN-05.4, OWN-05.5, OWN-05.6, OWN-05.7, OWN-05.8, OWN-05.9, OWN-05.10 — [OWN-05](specs/stories/OWN-05-order-queue.md#acceptance-criteria).
+- **Description:** Derive failing-first OWN-05 queue coverage from the [story criteria](specs/stories/OWN-05-order-queue.md#acceptance-criteria) and T-58 contracts using local purchases.
+- **Work:** Cover scoped queue reads and snapshots; accept/reject pending, mark accepted ready and mark ready collected; wrong-state/repeat/skip/terminal conflicts; exactly-one pending winner against Customer cancellation; collection-before/after suspension and no revival; rollback/source failures; review eligibility without review mutation; main/kit/session/role/foreign-parent denials and direct RLS. Test presentation, private fields and rejection reasons only as specified by T-58. Local atomic actor fixtures exercise races without requiring the Customer/Admin screens; preserve separate CUS/ADM/SYS/SEC ownership.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-queue/`, local state/race/fault fixtures and browser cases under `tests/e2e/owner-queue/`; route/database files declare node environment. Reuse existing role harnesses.
+- **Prerequisite:** T-58/governing contracts on master and T-08/T-10 controls; T-54 supplies final owner layout. T-29/T-43 screens are not prerequisites for fixture-based transition/race testing.
+- **Acceptance criteria:**
+  - [ ] All ten listed OWN-05 criteria have named failing-first cases, including both race orderings, no partial mutation and indistinguishable foreign references.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff; tests use only local Supabase/fake or disabled AI.
+- **Status:** blocked
+- **Issue:** [#115](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/115)
+
+### T-60: Implement owner order queue
+
+- **Depends on:** T-59, T-58, T-54, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-05.1, OWN-05.2, OWN-05.3, OWN-05.4, OWN-05.5, OWN-05.6, OWN-05.7, OWN-05.8, OWN-05.9, OWN-05.10 — [OWN-05](specs/stories/OWN-05-order-queue.md#acceptance-criteria).
+- **Description:** Implement own-café queue reads and the four approved actions with [current-state and race enforcement](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
+- **Work:** Add the queue and T-58-approved read/mutation handlers with strict server validation, same-origin/session/role/owner/workspace checks and session-bound RLS. Implement only the four transitions with atomic current café/order checks shared with Customer cancellation and ADM-02 suspension. Preserve snapshots, terminal orders, source failures and private reason rules; render only specified fields/filter/page/conflict states. No generic order rewrite, new audit requirement, review mutation or Customer/Admin surface. Reuse T-54 layout and shared guards; any authorized source timestamp follows the canonical contract.
+- **File scope:** Proposed Order queue surface under `src/app/owner/`, T-58-approved owner queue Route Handlers and server-only queue transactions under `src/server/owner/`; additive order/state/policy migrations as required. Serialize shared order transactions with T-29/T-43; no tests/fixtures/mocks.
+- **Prerequisite:** T-59 failing-first evidence, T-58 contracts on master and T-54 owner layout. Canonical local fixtures permit implementation independently of Customer creation and Admin UI; shared race behavior remains one canonical transaction contract.
+- **Acceptance criteria:**
+  - [ ] T-59 suite passes for all ten OWN-05 criteria, exact state/race outcomes and scoped private queue data without modifying purchase snapshots.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff records evidence and confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#116](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/116)
+
+### T-61: Finalize sales aggregates and Prep Advisor decision contracts
+
+- **Depends on:** T-55, T-58
+- **Owner role:** spec
+- **Requirements:** OWN-06, OWN-07 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
+- **Description:** Complete OWN-06 sales and OWN-07 sufficiency/direction contracts within the existing [aggregate-only Prep schema](specs/INTEGRATION-SPEC.md#prep-advisor--own-07).
+- **Work:** Resolve included order states, reporting period/ranges, business-date event and required source timestamp, daily/weekday metrics, top-item ranking/ties/limits, zero/missing-day handling and historical identity after menu rename/removal. Define the canonical source/read schema and Dashboard read boundary in shared specs. Resolve inclusive Prep period, nonempty-history sufficiency, more/less comparison/baseline, cross-weekday evidence meaning and normal directional-quality evaluation examples. Preserve Singapore time, immutable SGD snapshots, aggregate-only provider context, deterministic quoted numbers and all existing security/usage/cache/envelope limits. Any needed queue-source amendment belongs explicitly to OWN-05 with stable IDs and coverage updates; no forecast/confidence/extra call or new schema is implied.
+- **File scope:** Existing OWN-06/OWN-07, canonical sales/Prep sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`; narrowly related OWN-05 source-event amendment only if required by the chosen sales contract; own spec handoff. No application or executable tests.
+- **Prerequisite:** Human analytics/advice decisions, T-55 menu-history and T-58 queue/source contracts; security limits/prompt/output schema are available. Source/model/schema validation alone does not settle directional correctness. Coordinate the SYS-12 seed sufficiency contract without duplicating demo provisioning.
+- **Acceptance criteria:**
+  - [ ] Sales figures, top-item fallback and Prep sufficiency/direction can be independently evaluated with explicit normal/edge fixtures; no invented threshold or business window remains.
+  - [ ] Reviewed contracts and all related criterion/coverage amendments are on master before dependent execution; spec/traceability outcomes and evaluation limits are recorded.
+- **Status:** awaiting-decision
+- **Issue:** [#117](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/117)
+
+### T-62: Test owner sales Dashboard and Prep Advisor
+
+- **Depends on:** T-61, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** testing
+- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for all OWN-06/OWN-07 criteria and [Prep evaluation cases](specs/stories/OWN-07-prep-advisor.md#evaluation-cases), consuming shared AI infrastructure.
+- **Work:** Cover three scoped sales views, source-backed SGD amounts, Singapore date/weekday boundaries, renamed/removed-item history under T-61, no-café/no-sales/source failures and AI-independent top items. Cover strict Prep request/authorized aggregate-only provider context, exact quoted evidence, complete rejection, empty suggestions/source, sufficiency/direction fixtures, same-café/date/source/version cache, bounded manual refresh and failed-refresh preservation, disabled/limited/unavailable fallbacks, source 503, no domain writes, inert label injection, forged evidence and content-free audit. Exercise all 12 existing evaluation cases plus T-61-approved quality cases with fake captures; distinguish deterministic safety from quality. Reuse T-12/T-14/T-16 tests without reallocating their SYS/SEC criteria.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-sales/` and `tests/{unit,integration,e2e}/prep-advisor/`, controlled local sales/clock/cache/failure fixtures and evaluation evidence; browser files only under respective `tests/e2e/` directories; database/route files declare node environment.
+- **Prerequisite:** T-61 and all governing specs on master, plus shared access/session, admission, validated LLM operations and cache/audit repositories. Local sales fixtures permit failing-first tests before queue/menu UI integration; no demo-kit or live-provider prerequisite.
+- **Acceptance criteria:**
+  - [ ] Every one of the 21 listed story criteria has named failing-first coverage; all Prep adversarial cases map to guardrails and normal direction examples follow the approved comparison contract.
+  - [ ] Exact `bun run verify` and relevant browser results plus fake-provider/evaluation limits are recorded in an issue-scoped handoff without live calls or hosted data.
+- **Status:** blocked
+- **Issue:** [#118](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/118)
+
+### T-63: Implement owner sales Dashboard and Prep Advisor
+
+- **Depends on:** T-62, T-61, T-54, T-57, T-60, T-08, T-10, T-12, T-14, T-16
+- **Owner role:** implementation
+- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
+- **Description:** Implement Dashboard sales and the advisory Prep panel using the [shared AI HTTP envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope), existing server-only operations and [cache eligibility](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope).
+- **Work:** Build authorized source aggregates and daily/top-item/weekday views exactly under T-61, preserving retained purchase amounts and Singapore time. Add `POST /api/ai/prep-advisor` with strict café/refresh selection, current owner/workspace/RLS source checks and the existing shared controls before provider/cache/fallback use. Construct only canonical aggregate inputs; reuse T-14 prompt/schema/operation and T-12/T-16 admission/cache/audit. Render AI-labelled item/weekday/more-less advice and server-quoted evidence as escaped text, empty advice, loading, explicit bounded refresh and typed safe top-items fallback; never apply a suggestion. Ordinary sales remain usable without AI, and unavailable source never becomes invented zero data. No duplicated provider transport, policy/storage or T-21/T-22 SEC ownership.
+- **File scope:** Proposed owner Dashboard sales/Prep components under `src/app/owner/dashboard/`, `src/app/api/ai/prep-advisor/route.ts`, T-61-approved Dashboard read boundary and server-only sales/Prep source adapters under `src/server/owner/`; required additive aggregate-source migrations. Reuse `src/server/llm/` repositories without changing canonical policy/prompt/schema by inference; no tests/fixtures/mocks.
+- **Prerequisite:** T-62 failing-first evidence, T-61 contracts on master, T-54 owner layout, T-57 menu-history and T-60 queue/source semantics plus shared T-08/T-10/T-12/T-14/T-16 infrastructure. T-25 provisioning and T-21/T-22 later cross-feature acceptance are not prerequisites.
+- **Acceptance criteria:**
+  - [ ] T-62 suite passes for all 21 criteria; ordinary sales and every authorized fallback remain useful; advice quotes only source numbers and changes no domain record.
+  - [ ] Exact `bun run verify` and relevant browser tests pass; issue-scoped handoff records controlled fake-provider/evaluation evidence and any quality limitations.
+- **Status:** blocked
+- **Issue:** [#119](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/119)
+
+### T-64: Finalize stretch owner boost contracts
+
+- **Depends on:** None
+- **Owner role:** spec
+- **Requirements:** OWN-08 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria); specification prerequisite only, no criterion ownership.
+- **Description:** Complete the optional OWN-08 request boundary and identify the separate ADM-06 decision dependency, preserving [stretch-only scope](specs/PRODUCT-SPEC.md#mvp-and-stretch-scope).
+- **Work:** Resolve request eligibility/lifecycle/duplicates/resubmission, fee amount/currency/source, active duration/start/end/expiry, badge display and any permitted catalogue effect, owner UI placement and exact read/mutation schemas. Specify technical boost data/RLS and integration owner boundary only from approved decisions. ADM-06 owns Admin decisions and activation consequences; its story/decision contract is a named prerequisite, not an owner self-approval permission. A missing Admin source file is reported without fabricating a link or assigning ADM criteria to this owner pair. Preserve fee-record-only/no-payment and ordinary Customer café/workspace eligibility; do not add MVP navigation or a new screen by inference.
+- **File scope:** Existing OWN-08, owning optional boost sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`, own spec handoff. ADM-06 story authoring/coverage belongs to its Admin specification owner and is not included in this owner task.
+- **Prerequisite:** Human boost term/placement decisions and an approved ADM-06 story/decision contract; PRODUCT-SPEC contains ADM-06 but no story file exists. Source owner request/no-payment boundaries already exist.
+- **Acceptance criteria:**
+  - [ ] Owner request, recorded fee and time-limited badge terms are exact, coordinate with ADM-06 and preserve existing Customer eligibility and MVP navigation.
+  - [ ] Reviewed owner/shared/Admin dependency contracts are on master before execution; spec/traceability results and any missing ADM-06 prerequisite are reported.
+- **Status:** awaiting-decision
+- **Issue:** [#120](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/120)
+
+### T-65: Test stretch owner boost requests
+
+- **Depends on:** T-64, T-54, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
+- **Description:** Derive failing-first tests for the optional [OWN-08 boundary](specs/stories/OWN-08-boost-request.md#requirements) after boost terms and ADM-06 coordination are specified.
+- **Work:** Cover own/workspace-only requests, fee recorded without payment/provider action, no owner Admin decision authority, unchanged approval/suspension, ordinary Customer eligibility, badge expiry and shared session/role/foreign-record failures. Test lifecycle/duplicates/time/placement only as resolved by T-64 and the separate ADM-06 contract. Use local decision/time fixtures; do not implement Admin boost UI, allocate its criteria, change ranking without a governing amendment or require live payment.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-boosts/`, testing-owned optional boost/clock/decision fixtures; browser files under `tests/e2e/owner-boosts/`; database/route files declare node environment.
+- **Prerequisite:** T-64, OWN-08/shared and separate ADM-06 decision contracts on master; T-54 owner surface and T-08/T-10 access controls. Local Admin-decision fixtures may support failing-first tests; end-to-end decision integration additionally needs the separately owned Admin surface.
+- **Acceptance criteria:**
+  - [ ] All five listed OWN-08 criteria have named failing-first cases with explicit clock/scope/fee-only assertions; optional behavior does not enter MVP.
+  - [ ] Exact `bun run verify` and relevant browser outcomes are recorded in the issue-scoped handoff with no payment, deployment or hosted execution.
+- **Status:** blocked
+- **Issue:** [#121](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/121)
+
+### T-66: Implement stretch owner boost requests
+
+- **Depends on:** T-65, T-64, T-54, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
+- **Description:** Implement the optional owner boost request using the approved OWN-08 technical/integration and ADM-06 coordination contracts.
+- **Work:** Extend only the approved existing owner surface and add T-64-approved request/read handlers, validation and scoped boost persistence/RLS. Record the specified fee without charging it; apply only authorized lifecycle/time/badge behavior consistent with the separate Admin decision contract. Recheck current café/workspace eligibility for any public badge surface; a request cannot approve/un-suspend or confer Admin authority. Do not author Admin decisions/screens, payment logic, arbitrary catalogue ranking or new MVP navigation. Serialize shared café/profile/migration edits with T-54 and Admin boost ownership.
+- **File scope:** Approved optional owner interaction under `src/app/owner/`, T-64-approved owner boost Route Handlers and server-only boost domain code under `src/server/owner/`, additive boost/RLS migrations; Customer badge projection only if the canonical approved contract assigns that owner surface. No tests/fixtures/mocks or Admin boost implementation.
+- **Prerequisite:** T-65 failing-first evidence, T-64/OWN-08/shared/ADM-06 contracts on master and T-54 owner surface; separately owned Admin decision integration is required before claiming end-to-end boost activation. Missing Admin behavior is not implemented as an owner workaround.
+- **Acceptance criteria:**
+  - [ ] T-65 suite passes for all five OWN-08 criteria; recorded fee triggers no payment and expired/ineligible badges confer no visibility.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff identifies separately owned Admin integration evidence and leaves acceptance tests unchanged.
+- **Status:** blocked
+- **Issue:** [#122](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/122)
 
 ## Admin
 
@@ -832,13 +1082,13 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-28: Test café applications and suspension
 
-- **Depends on:** T-08, T-10, T-16, T-36
+- **Depends on:** T-08, T-10, T-16, T-36, T-52, T-58
 - **Owner role:** testing
 - **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
 - **Description:** Derive failing-first coverage for the [applications](specs/stories/ADM-01-cafe-applications.md#screens) and [approved-cafés](specs/stories/ADM-02-cafe-suspension.md#screens) screens, domain transitions and accountable workspace-scoped mutations.
 - **Work:** Test both queues' ordering, ties, 20-row URL pagination, empty/conflict states, reason controls and private-data-free role gates. Cover approve/reject and suspend/un-suspend exact HTTP success bodies, strict shared HTTP/Ref validation, exact reason preservation/escaped display, session/role/workspace denials and indistinguishable missing/foreign targets. Exercise one-way decisions, owner resubmission, invalid/current-state and concurrent decisions/transitions, exactly-one atomic audit and rollback on audit failure, append-only retention and owner/Admin-only latest reasons. Assert customer RLS eligibility changes, unchanged application state, menus/hours/reviews and retained order records on suspension. Test automatic cancellation of every outstanding uncollected order, including accepted/ready, with the fixed CUS-04.5 reason; unchanged collected orders, no revival after un-suspension, private Admin-reason isolation and owner management access. The suspension/cancellation/audit transaction rolls back together on failure; this pair owns that mutation and its transaction assertions, while T-42/T-43 own Customer display/actions. Keep café audit-entry assertions here; T-30/T-31 own the common audit screen, not these criterion IDs. Use local main/kit fixtures and shared foundation session/RLS/audit harnesses.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/cafe-eligibility/` unit and local database/route cases, browser cases under `tests/e2e/cafe-eligibility/`, and synthetic café/application/order/audit fixtures; extend existing testing infrastructure without duplicating its owners. Tests may exercise `/admin/audit` after T-31 supplies it; testing owns all fixtures/mocks.
-- **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; T-36 and OWN-05 must finalize order states, new-order refusal, suspension/collection races and terminal-state behaviour while retaining CUS-04.5. Approved order contracts permit local order fixtures without requiring T-43 Customer order creation/screens; no dependency on T-43 is introduced. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility repositories. Café audit cases additionally await T-31's Admin audit storage and screen; no missing owner/customer behavior is inferred.
+- **Prerequisite:** BLOCKED: OWN-01 must define application details, submission/resubmission and owner-side decision-reason display; OWN-02 must define owner management/banner/reason surfaces; T-36 and OWN-05 must finalize order states, new-order refusal, suspension/collection races and terminal-state behaviour while retaining CUS-04.5. Approved order contracts permit local order fixtures without requiring T-43 Customer order creation/screens; no dependency on T-43 is introduced. T-08 provides role/workspace RLS, T-10 sessions/streaming gates and T-16 eligibility repositories. Café audit cases additionally await T-31's Admin audit storage and screen; no missing owner/customer behavior is inferred. Owner prerequisite completion is assigned to T-52 application/profile and T-58 queue/state contracts; T-36 retains Customer order reconciliation. No owner runtime-screen dependency is introduced.
 - **Acceptance criteria:**
   - [ ] Every listed ADM criterion has named deterministic tests and recorded failing-first evidence, including races, rollback, main/kit isolation and customer eligibility.
   - [ ] Café audit persistence and later T-31 display assertions preserve the criterion ownership above; unresolved contract/surface prerequisites are recorded.
@@ -848,13 +1098,13 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-29: Implement café applications and suspension
 
-- **Depends on:** T-28, T-08, T-10, T-16, T-31
+- **Depends on:** T-28, T-08, T-10, T-16, T-31, T-52, T-58, T-36
 - **Owner role:** implementation
 - **Requirements:** ADM-01.1, ADM-01.2, ADM-01.3, ADM-01.4, ADM-01.5, ADM-01.6, ADM-01.7, ADM-01.8, ADM-01.9, ADM-01.10, ADM-01.11, ADM-01.12, ADM-01.13; ADM-02.1, ADM-02.2, ADM-02.3, ADM-02.4, ADM-02.5, ADM-02.6, ADM-02.7, ADM-02.8, ADM-02.9, ADM-02.10, ADM-02.11, ADM-02.12, ADM-02.13 — [applications criteria](specs/stories/ADM-01-cafe-applications.md#acceptance-criteria), [suspension criteria](specs/stories/ADM-02-cafe-suspension.md#acceptance-criteria).
 - **Description:** Implement workspace-scoped [application decisions](specs/stories/ADM-01-cafe-applications.md#requirements) and [reversible suspension](specs/stories/ADM-02-cafe-suspension.md#requirements), reusing the [shared HTTP boundary](specs/INTEGRATION-SPEC.md#authorization-and-transport) and [RLS contracts](specs/TECHNICAL-SPEC.md#rls-and-database-exposure).
 - **Work:** Add `/admin/applications` and `/admin/cafes` with specified ordering, pagination, reason/confirmation, empty/conflict feedback and Suspense-wrapped role gates. Add `POST /api/admin/cafes/{cafeId}/decision` and `/suspension` with server-side Zod, session/role/workspace/current-state and exact-origin checks, strict bodies and exact responses. Apply one-way approval/rejection and independent approved-café suspension atomically with one T-16 Admin-action entry, rolling back both on failure. Preserve submitted reasons, restrict latest-reason reads, update customer RLS eligibility and retain order records, collected purchases and owner management access. This task owns the suspension-triggered cancellation writer/storage: automatically cancel every outstanding uncollected order under CUS-04.5, including accepted/ready, and persist the fixed public reason separately from the private Admin reason. Commit suspension, cancellations and one audit entry together; un-suspension never revives cancellations. T-43 consumes these effects rather than adding another suspension writer. Consume owner submission/resubmission and management contracts; do not author their screens or customer order lifecycles. T-31 owns audit display; this pair supplies its café entries and integration evidence without duplicating the screen.
 - **File scope:** Proposed `src/app/admin/applications/`, `src/app/admin/cafes/`, `src/app/api/admin/cafes/[cafeId]/decision/route.ts`, `src/app/api/admin/cafes/[cafeId]/suspension/route.ts`, server-only café operations under `src/server/` and additive migrations/policies, including suspension cancellation state/reason storage consumed by T-43. Serialize order schema edits with T-43; do not implement Customer order screens. Reuse foundation gates/repositories; serialize shared Admin layout and migration edits with T-31. No tests/fixtures/mocks or owner/customer screen authoring.
-- **Prerequisite:** BLOCKED on the OWN-01/OWN-02/OWN-05 and T-36 order contracts named in T-28, plus T-28 failing-first evidence. T-16 supplies eligibility storage; T-31 supplies Admin audit storage and the audit screen needed for café audit-display acceptance. Canonical order fixtures permit suspension evidence before T-43; T-29 does not depend on Customer order creation/screens. Missing contracts are not implementation choices.
+- **Prerequisite:** BLOCKED on the OWN-01/OWN-02/OWN-05 and T-36 order contracts named in T-28, plus T-28 failing-first evidence. T-16 supplies eligibility storage; T-31 supplies Admin audit storage and the audit screen needed for café audit-display acceptance. Canonical order fixtures permit suspension evidence before T-43; T-29 does not depend on Customer order creation/screens. Missing contracts are not implementation choices. The owner prerequisite tasks are T-52/T-58 and Customer order reconciliation is T-36; T-31 still owns Admin audit storage/display and local fixtures avoid any T-43 cycle.
 - **Acceptance criteria:**
   - [ ] T-28's owned state, HTTP, reason, access, concurrency, rollback and preservation cases pass; audit-display acceptance is evidenced when T-31 is available.
   - [ ] No self-approval, cross-workspace access, un-approval, Admin rejection reversal or generic order/menu-edit permission is added; suspension cancellation is only the defined system consequence.
@@ -896,13 +1146,13 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-32: Test Moderation Assistant
 
-- **Depends on:** T-30, T-31, T-08, T-10, T-12, T-14, T-16
+- **Depends on:** T-30, T-31, T-08, T-10, T-12, T-14, T-16, T-37
 - **Owner role:** testing
 - **Requirements:** ADM-04.1, ADM-04.2, ADM-04.3, ADM-04.4, ADM-04.5, ADM-04.6, ADM-04.7, ADM-04.8, ADM-04.9, ADM-04.10, ADM-04.11, ADM-04.12, ADM-04.13, ADM-04.14, ADM-04.15, ADM-04.16, ADM-04.17, ADM-04.18 — [ADM-04 criteria](specs/stories/ADM-04-moderation-assistant.md#acceptance-criteria).
 - **Description:** Derive failing-first route/browser tests and evaluation evidence for the advisory [Moderation Assistant experience](specs/stories/ADM-04-moderation-assistant.md#user-experience), consuming the [fixed prompt/schema](specs/INTEGRATION-SPEC.md#moderation-assistant--adm-04) and [security evaluations](specs/AI-SECURITY-SPEC.md#security-evaluation-plan).
 - **Work:** Cover the Pending-only button, empty disablement/loading, exactly one current-page request, configured batch/action/run/call bounds and no automatic pagination/splitting/retry. Test complete five-label results, inert AI-suggestion rendering/highlights without selection/mutation, fixed editable app-text reasons and no copying of model reasons. Exercise ordinary per-review confirmation, invalid reasons, forged-label fields, stale-state conflict/removal and remaining-suggestion lifetime through one action/reload/page change. Cover main/kit session/role/workspace/origin/strict-body/source denials before admission; empty/duplicate/oversized/no-longer-pending selection is invalid, never no_source_data. Use fake captures/results for minimal encoded review-only context, injection containment, whole-result rejection, no cache/persistence, disabled/usage_limited/unavailable fallbacks, source-unavailable 503, bounded failures and content-free internal AI audit distinct from Admin audit. Reuse shared limit/provider/audit tests without claiming their SYS/SEC criteria. Record ADM-04's human-labelled evaluation cases and quality assessment without a live call or invented accuracy target.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/moderation-assistant/` route cases and browser cases under `tests/e2e/moderation-assistant/`, synthetic adversarial review/provider responses, controlled limit/clock/storage-fault fixtures and human-labelled evaluation records owned by testing. Extend T-30's manual-flow fixtures; do not read implementation tasks as a test-design source.
-- **Prerequisite:** BLOCKED on T-37/CUS-05's finalized review field/source contract with local review fixtures, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite.
+- **Prerequisite:** BLOCKED on T-37/CUS-05's finalized review field/source contract with local review fixtures, plus the T-30/T-31 manual queue/confirmation/audit pair. T-08/T-10 supply authorization/sessions, T-12 durable admission, T-14 fixed validated operations/fake provider and T-16 accounting/audit/cleanup. Main/kit scenarios can use local fixtures; T-25 demo provisioning is not a prerequisite. T-37 is the explicit review-source prerequisite and inherits T-58 owner collection-state ownership; no owner runtime UI or kit provisioning dependency is introduced.
 - **Acceptance criteria:**
   - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
   - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
@@ -912,13 +1162,13 @@ Missing story contracts below block execution, not criterion allocation.
 
 ### T-33: Implement Moderation Assistant
 
-- **Depends on:** T-32, T-30, T-31, T-08, T-10, T-12, T-14, T-16
+- **Depends on:** T-32, T-30, T-31, T-08, T-10, T-12, T-14, T-16, T-37
 - **Owner role:** implementation
 - **Requirements:** ADM-04.1, ADM-04.2, ADM-04.3, ADM-04.4, ADM-04.5, ADM-04.6, ADM-04.7, ADM-04.8, ADM-04.9, ADM-04.10, ADM-04.11, ADM-04.12, ADM-04.13, ADM-04.14, ADM-04.15, ADM-04.16, ADM-04.17, ADM-04.18 — [ADM-04 criteria](specs/stories/ADM-04-moderation-assistant.md#acceptance-criteria).
 - **Description:** Integrate advisory [review triage](specs/stories/ADM-04-moderation-assistant.md#requirements) into T-31's manual queue through the existing [AI HTTP envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope), shared LLM operation and [guardrails](specs/stories/ADM-04-moderation-assistant.md#guardrails).
 - **Work:** Add `POST /api/ai/moderation` with strict JSON/Ref/session/role/origin/workspace and currently pending selection checks before admission. Read authoritative review references/text under RLS and call only T-14's server-only moderation operation with T-12 admission and T-16 content-free accounting. Reuse the exact prompt/schema and unchanged envelopes; reject the whole invalid result, honor disable/limit/failure precedence and never cache suggestions. Add the Pending-only current-page button/loading, escaped AI labels/reasons and advisory highlights, typed safe fallback explanations and queue-changed/reload handling. Keep suggestions transient with specified action/page lifetime. Reuse T-31's fixed editable quick picks and ordinary action/reason-only confirmation; never copy model reasons, preselect/submit actions or provide apply-all. Preserve immutable text/rating and independent stale/forged confirmation checks and separate Admin audit. No new provider transport, prompts, quotas, runtime AI settings or automatic moderation.
 - **File scope:** Proposed `src/app/api/ai/moderation/route.ts` and server-only authorized moderation-source adapter under `src/server/`; extend existing T-31 `src/app/admin/moderation/` with a browser interaction boundary. Reuse T-14 `src/server/llm/` operation and T-12/T-16 repositories; serialize shared queue/repository edits. No tests/fixtures/mocks or audit-screen reimplementation.
-- **Prerequisite:** BLOCKED on the same T-37/CUS-05 source contract and T-30/T-31 queue/confirmation prerequisites as T-32, plus T-32 failing-first evidence and the shared T-08/T-10/T-12/T-14/T-16 controls. No dependence on T-21/T-22's later cross-feature security integration; those tasks retain their separate SEC ownership.
+- **Prerequisite:** BLOCKED on the same T-37/CUS-05 source contract and T-30/T-31 queue/confirmation prerequisites as T-32, plus T-32 failing-first evidence and the shared T-08/T-10/T-12/T-14/T-16 controls. No dependence on T-21/T-22's later cross-feature security integration; those tasks retain their separate SEC ownership. T-37 explicitly supplies the review-source dependency and inherits T-58 owner collection-state ownership; owner runtime UI remains outside this Admin pair.
 - **Acceptance criteria:**
   - [ ] T-32's full ADM-04 suite passes, including main/kit boundaries, transient complete results, injection/forged/stale advice, exact fallback/error behavior and explicit per-review control.
   - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
