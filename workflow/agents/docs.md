@@ -59,12 +59,13 @@ failing implementation verification, are `blocked`.
 ## Verification and limits
 
 Read package.json before running commands. Run `bun run check:specs`, which
-checks links, anchors and the workflow files inventory, then exactly
-`bun run verify` on the final working tree. Use local Supabase and the
-fake/disabled LLM only if you run the app. Do not weaken or skip checks.
+checks links, anchors and the workflow files inventory. Documentation edits do
+not change code, so the pair's latest `verify` evidence still applies; do not
+rerun `bun run verify`. Use local Supabase and the fake/disabled LLM only if you
+run the app. Do not weaken or skip checks.
 
 Allow at most three repair cycles: each is one documentation fix followed by
-re-running both commands. Stop earlier when a failure lies outside your write
+re-running the spec check. Stop earlier when a failure lies outside your write
 scope; report it instead of editing that file.
 
 ## Report

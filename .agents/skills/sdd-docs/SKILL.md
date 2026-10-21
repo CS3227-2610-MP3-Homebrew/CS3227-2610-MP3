@@ -58,5 +58,5 @@ Update the table of contents. Correct or remove stale steps in place.
 ## 5. Check and report
 
 Re-read every changed sentence against its evidence row. Run
-`bun run check:specs` and `bun run verify`, then write the report the docs agent
+`bun run check:specs` (not `verify`; docs edits change no code), then write the report the docs agent
 defines, including the claim-evidence table and screenshots a human should capture.

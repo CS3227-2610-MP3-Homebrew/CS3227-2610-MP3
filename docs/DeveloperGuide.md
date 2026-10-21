@@ -138,24 +138,31 @@ Agents and `review.sh` use their configured model and effort.
 4. The testing agent reads approved stories, linked contracts and only its own
    task, then writes failing acceptance tests. A human checks the tests against
    the criteria and commits them before implementation starts.
-5. Implementation works on its task until the tests and `bun run verify` pass.
+5. Implementation works on its task until the affected tests pass, then runs
+   `bun run verify` on the final code.
    It may add supplementary unit tests under `tests/unit/` for internal code it
    introduces, with no criterion IDs in titles. It never edits, skips or weakens
    the testing agent's tests, fixtures or test configuration; suspected errors
-   go back to testing. A human commits the implementation.
-6. The reviewer assesses code and the implementation handoff using a separate
-   read-only CLI worker. The caller coordinates fixes and at most three review
+   go back to testing. The human commits implementation work at the end of the
+   pair, not after each round.
+6. The reviewer assesses the uncommitted or committed code and the
+   implementation handoff using a separate read-only CLI worker, after rerunning
+   `bun run verify`. The caller coordinates fixes and at most three review
    rounds per pair. The latest completed/pass report supplies completion evidence
    for close-out.
-7. The security reviewer applies baseline checks to every pair, plus task SEC
-   criteria and relevant AI-SECURITY-SPEC evaluation cases when present. It writes
+7. The security reviewer runs once per pair, right after the first review round
+   on the same code, and applies baseline checks plus task SEC criteria and
+   relevant AI-SECURITY-SPEC evaluation cases when present. It relies on that
+   review's verify result. It writes
    its own next `NN-security-reviewer.md` in the pair's folder and edits nothing else.
-   P0/P1 findings return to implementation and independent review; required
-   acceptance-test changes go to testing. A later review must pass again.
-8. The docs agent documents implemented behaviour with evidence. Close-out checks
-   the latest review and reports. With the latest review completed/pass, the pair
-   session sets both tasks to `done`, then reruns `bun run verify`; e2e must also
-   pass for browser-visible changes.
+   Its P0/P1 findings join the review's findings in one implementation fix
+   round, followed by independent review; required acceptance-test changes go
+   to testing. A later review must pass again.
+8. The docs agent documents implemented behaviour with evidence and runs the
+   spec check. Close-out checks the latest review and reports. With the latest
+   review completed/pass, the pair session sets both tasks to `done`, then runs
+   the traceability and spec checks; e2e must also pass for browser-visible
+   changes. The PR's required `verify` check reruns the full suite.
 9. A human reviews the diff, opens and merges the PR through the branch ruleset's
    required `verify` check. Merging deploys to dev. Production deploys come from
    version tags and need a listed reviewer's approval.
@@ -173,8 +180,10 @@ Minor changes (copy, styling or documentation fixes with no change in behaviour)
 may skip the testing, review and docs steps.
 
 The human's coordinating session uses the `sdd-orchestrate` skill to check each
-stage's gate evidence (merged spec, issues, clean write scope, report status,
-re-run `verify`) before the next agent starts, and to prepare that agent's prompt.
+stage's gate evidence (merged spec, issues, clean write scope, report status)
+before the next agent starts, and to prepare that agent's prompt. It stops for
+the human only to commit the tests, for the final commits, or when a gate fails
+or needs a decision.
 
 ### Human gates
 
@@ -204,15 +213,16 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
 | The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
 | The full loop applies to every issue except minor changes. | Consistent evidence across features without six agent runs for small fixes. |
+| Per-pair cost limits: full `verify` runs only for testing's failing-first evidence, implementation's final code, each `review.sh` round and CI; the security review runs once, on the first review round's code, and its findings share one fix round; the coordinating session stops only to commit tests, for the final commits, or on a failed gate or decision. | In the T-15/T-16 pair, seven local `verify` runs each took up to 7 minutes as database tests grew, and the loop stopped for a human commit after every round. Trade-offs: implementation rounds are no longer separate commits, so a review report's `Reviewed HEAD` names the test commit rather than the reviewed code; security fixes are checked by the reviewer, not a second security review; docs and close-out rely on the latest verify plus CI. |
 | Spec PRs are merged after unresolved points are resolved on the PR; a spec is approved when its PR is merged. For foundation pairs (SYS-04 or later, or SEC IDs), stage 0 checks each requirement heading in TECHNICAL-SPEC.md or AI-SECURITY-SPEC.md on the selected review base (fetched when the branch is cut), no open assumptions beyond permitted unverifiable facts (currently TECHNICAL-SPEC ASM-01), and a passing `bun run check:specs`; no story file is required. | Keeps spec writing unblocked while ensuring work only starts from an agreed spec. |
 | `bun run check:specs` runs inside `verify`. It checks that each criterion is defined once in its owning spec, that PLAN.md references and coverage are valid, that test titles name only defined criteria, that links and anchors resolve, and that this guide lists every workflow file. | Earlier plan validation was a one-off command whose results were lost, while specs, the plan and this guide drifted apart. A CI check gates structural consistency; reviewer-evidence reconciliation stays with the pair session and spec agent. Specs, PLAN and spec templates omit dates and workflow-state commentary. |
 | Issues are generated from PLAN.md by `workflow/scripts/create-issues.ts`. Agents never create them; `--apply` needs a passing spec check, the merged plan and a human typing the repository name. The script calls `gh`, so the coordinating session requests approval to run it outside the sandbox at stage 1. | Issues copy, rather than redefine, the plan. Tying creation to the merged plan and a terminal confirmation keeps creation a human step that an agent cannot trigger by accident. |
 | A testing/implementation pair is two issues on one branch and one PR named after the testing issue, covering up to three related stories of one role, or one story at the owner's request. | One pair keeps related tests, implementation and review evidence together; the PR closes both issues. The spec agent reports the pair count on every PLAN update. |
-| The pair session sets both tasks to `done` after the latest completed/pass reviewer report, then reruns `bun run verify`; the spec agent reconciles statuses from handoffs on every PLAN update. | Completion follows reviewed evidence. CI does not enforce reviewer evidence; structural PLAN checks remain. |
-| Agents default to `gpt-6.1-sol` at medium effort; the security-reviewer agent and the `review.sh` review worker stay at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. Medium effort shortens authoring runs; the two independent reviews keep high effort, where depth has caught real defects. `review.sh` requires the Codex CLI even for teammates using another assistant. |
+| The pair session sets both tasks to `done` after the latest completed/pass reviewer report, then runs `bun run check:traceability` and `bun run check:specs`; the spec agent reconciles statuses from handoffs on every PLAN update. | Completion follows reviewed evidence. A Status-line edit changes only what those two checks read, and the PR's required `verify` reruns everything. CI does not enforce reviewer evidence; structural PLAN checks remain. |
+| Agents default to `gpt-6.1-sol` at medium effort; the docs agent runs at low effort; the security-reviewer agent and the `review.sh` review worker stay at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. Medium effort shortens authoring runs, and the docs agent's evidence-to-prose task needs less reasoning; Artificial Analysis rates `gpt-6-luna` far weaker at agentic terminal work (Terminal-Bench 4.0: 5% at high, 13% at max, against 31% for `gpt-6.1-sol` at low), so no agent uses it; the two independent reviews keep high effort, where depth has caught real defects. `review.sh` requires the Codex CLI even for teammates using another assistant. |
 | Implementation may add supplementary unit tests for introduced internal code under `tests/unit/`, without criterion IDs in titles, and never edits, skips or weakens testing-owned tests, fixtures or config. Files under `.github/workflows/` and other configuration are in scope when named in the task's File scope. Implementation may add one row per workflow file it creates to this guide's Workflow files table, with no other `docs/` edits; stage 3 checks this exception. | Acceptance coverage remains independent while internal code receives focused checks. |
 | Merge gates are the branch ruleset's required `verify` check and the human's diff review; a listed reviewer approves the production job. | Keeps merge ownership with the human and production approval separate. |
-| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. `bun run db:start`, `bun run db:reset`, `bun run db:check`, `bun run test` and `bun install --frozen-lockfile` are also allowed for local Docker and lockfile installs. Additional forbidden commands are `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
+| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. `bun run db:start`, `bun run db:reset`, `bun run db:check`, `bun run test` and `bun install --frozen-lockfile` are also allowed for local Docker and lockfile installs, plus `bun run lint`, `typecheck`, `check:specs`, `check:traceability` and `git status` so read-only checks never prompt. `git diff`, `git log` and `git show` run inside the sandbox and are not allow-listed, because their `--output` option writes a file anywhere. Additional forbidden commands are `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
 
 ### Workflow files
 
@@ -252,7 +262,7 @@ loads its workflow instructions.
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. Uses the local Supabase scripts, bans hosted resets/deletions and linking, and keeps fixtures testing-owned. |
 | `.agents/skills/sdd-implement/references/soc-llm.md` | Guidance for server-only SoC calls, INTEGRATION-SPEC transport rules, zero retries, bounded failures, output validation, credential protection and mocked verification. |
 | `.agents/skills/session-log/SKILL.md` | Drafts one numbered session log, resolves author attribution, records key prompts and corrections, and limits scope, length and file changes. |
-| `.codex/rules/allow.rules` | Lets `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e. Adds `bun run db:start`, `bun run db:reset`, `bun run db:check` and `bun run test` for local Supabase Docker, and `bun install --frozen-lockfile` for lockfile installs, with match/not_match examples. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop, not exact enforcement. |
+| `.codex/rules/allow.rules` | Lets `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e. Adds `bun run db:start`, `bun run db:reset`, `bun run db:check` and `bun run test` for local Supabase Docker, `bun install --frozen-lockfile` for lockfile installs, and the read-only `bun run lint`, `typecheck`, `check:specs`, `check:traceability` and `git status`, with match/not_match examples. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop, not exact enforcement. |
 | `.codex/rules/guardrails.rules` | Forbids agents from committing, tagging, rebasing, pushing, rewriting history, opening or merging PRs, deploying with Vercel and pushing to the hosted Supabase database. Also forbids `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. |
 | `workflow/scripts/check-specs.ts` | CLI for `bun run check:specs`: prints drift errors and warnings and exits 1 on any error. |
 | `workflow/scripts/lib/spec-checks.ts` | The spec-check rules: story IDs from PRODUCT-SPEC.md, single owning definition per criterion, story-file names and leftover template placeholders, PLAN.md fields, statuses, dependencies, cycles and one testing plus one implementation owner per criterion, test-title IDs, the spec registry, links and anchors, and this table. |
