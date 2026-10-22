@@ -5,7 +5,7 @@
 - **Spec IDs:** OWN-06.1–OWN-06.11, OWN-07.1–OWN-07.16
 - **Date:** 2026-10-22
 - **Branch:** feat/118-owner-sales-prep
-- **Base commit:** eddd083 (testing commits 7584209, 50fd8cc and 99572af)
+- **Base commit:** eddd083, then merged with feat/115-owner-order-queue (testing commits 7584209, 50fd8cc, 99572af and 07e7c25)
 - **Status:** completed
 
 ## Summary
@@ -51,6 +51,7 @@ The source is aggregate-only. It covers the 28 completed dates before today, nee
 - `docs/UserGuide.md` and `docs/DeveloperGuide.md`: owner sales and Prep Advisor sections.
 - Test corrections, committed separately:
   - `test(OWN-07)` 7584209 aligns the T-14 Prep fixture in `tests/integration/llm/contracts.ts` with OWN-07.16. Its "more" suggestion broke the direction rule.
+  - `test(OWN-07)` 07e7c25 converts the loop-generated OWN-07.9 and OWN-07.14 cases in `route.test.ts` and `cache.test.ts` to `test.each` with literal `%s` titles. `check:traceability` ignores interpolated titles, so those criteria counted as uncovered. The assertions are unchanged.
   - `test(OWN-07)` 99572af fixes `tests/integration/prep-advisor/source.test.ts`. E17 inserted line quantity 50, which the `order_items` 1–20 quantity check rejects, so the fixture failed before reaching its assertion; it now uses 20. Each database-backed source test also gets a 60 s timeout, following `seeds.test.ts`, because each fixture order spawns several local `psql` calls and the tests overran Vitest's 5 s default.
 
 ## Self-review
@@ -62,6 +63,7 @@ I reviewed against `workflow/agents/reviewer.md` and the review skill's criteria
 | SR-1 | P2 | Five Prep source tests failed: one fixture violated the quantity check, and the others overran the 5 s timeout. | Test-only correction 99572af; all 9 pass. |
 | SR-2 | — | Trust boundary. The request body carries only `cafeId` and `refresh`. Ownership and workspace are re-checked in SQL under RLS. Provider context is the aggregate input only, with no order IDs, customer data or other cafés (E11 canary test). The output passes strict evidence and direction validation before display, and model text never selects the item name. No route writes domain data. Errors use the shared safe messages, and non-POST methods return 405. | No change. |
 | SR-3 | — | Item names are owner-controlled labels and do reach the provider. They are treated as data under the shared T-14 prompt and render as inert text (E09). | No change. |
+| SR-5 | P2 | On a café with no sales, the Prep fallback's empty top-items table repeated the Dashboard's "No completed sales in the last 28 days.". `OWN-06.11` then failed intermittently, whenever the async panel rendered before the assertion. | `TopItemsTable` takes an `emptyText` prop, and the Prep fallback shows "No sold items to show yet." |
 | SR-4 | P3 | `owner_sales` picks the owner's café with `order by c.id limit 1`. OWN-01 allows one pending or approved café per owner, so the result is deterministic. | No change; noted. |
 
 No P0 or P1 finding remains open.
@@ -73,7 +75,12 @@ No P0 or P1 finding remains open.
 | `bun run db:reset` (from this worktree) | pass | "Local Supabase reset succeeded." |
 | `bunx vitest run tests/integration/prep-advisor tests/integration/owner-sales tests/unit` | 5 failed before 99572af; pass after | `source.test.ts` "Tests 9 passed (9)" after the fix |
 | `bunx playwright test tests/e2e/owner-sales` | pass | "14 passed" |
-| `bun run verify` | pass (exit 0) | Vitest "Test Files 66 passed (66); Tests 1197 passed (1197)"; "Traceability passed"; "Spec check passed (0 warning(s))."; build compiled |
+| `bun run verify` (before the merge) | pass (exit 0) | Vitest "Test Files 66 passed (66); Tests 1197 passed (1197)"; "Traceability passed"; "Spec check passed (0 warning(s))."; build compiled |
+| `bun run verify` (merged tree, before SR-5) | pass (exit 0) | Vitest "Test Files 71 passed (71); Tests 1250 passed (1250)"; "Traceability passed (51 done tasks; …)"; "Spec check passed (0 warning(s))."; build compiled |
+| `bun run test:e2e` (merged tree, before SR-5) | fail | "1 failed, 719 passed": `OWN-06.11` strict-mode duplicate text (SR-5) |
+| `bun run lint`, `bun run typecheck` (after SR-5) | pass | eslint clean; "Types generated successfully" |
+| `bunx playwright test tests/e2e/owner-sales --repeat-each=3` (after SR-5) | pass | "42 passed" |
+| `bun run test:e2e` (final merged tree) | pass (exit 0) | "720 passed (2.4m)" |
 
 ## Open issues for the next step
 

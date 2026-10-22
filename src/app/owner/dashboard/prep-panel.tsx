@@ -51,7 +51,7 @@ export function PrepPanel({ cafeId, topItems, itemNames }: { cafeId: string; top
     </div>}
     {state.kind === 'result' && state.result.mode === 'fallback' && <div className="space-y-3">
       <p>{explanations[state.result.reason]}</p>
-      <h3 className="font-semibold">Top items</h3><TopItemsTable items={topItems} />
+      <h3 className="font-semibold">Top items</h3><TopItemsTable items={topItems} emptyText="No sold items to show yet." />
     </div>}
   </section>;
 }
