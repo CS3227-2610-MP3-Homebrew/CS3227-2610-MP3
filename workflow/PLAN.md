@@ -879,7 +879,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] Every listed criterion has named positive/negative failing-first evidence, including main/kit access and time boundaries; no additional permission or owner/cardinality rule is inferred.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes, checks not reached and expected missing implementation are recorded in the issue-scoped [handoff](templates/handoff.md), using local Supabase/fake or disabled AI only.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#109](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/109)
 
 ### T-54: Implement owner café application, profile, hours and pickup rules
@@ -894,7 +894,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-53 coverage passes for all 24 criteria and any formally approved amendments, including private reason scope, suspension access, time/cutoff validation and immutable purchases.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` pass; issue-scoped [handoff](templates/handoff.md) records actual evidence and any external surface limit. Acceptance tests/configuration/fixtures are unchanged.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#110](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/110)
 
 ### T-55: Finalize owner menu lifecycle and edit contracts
