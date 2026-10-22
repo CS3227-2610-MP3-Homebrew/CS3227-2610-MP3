@@ -1,5 +1,6 @@
 {
   "regions": ["sin1"],
+  "crons": [{ "path": "/api/internal/maintenance", "schedule": "0 19 * * *" }],
   "git": {
     "deploymentEnabled": false
   }

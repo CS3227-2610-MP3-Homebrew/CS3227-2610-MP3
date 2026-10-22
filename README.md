@@ -13,6 +13,14 @@ for caller responsibilities and integration limits.
 
 ## User roles
 
+Daily maintenance provisions the main Admin and an approved **Homebrew Showcase**
+café, preserves existing accounts/passwords and kits, and runs AI retention
+cleanup without generating AI content. Production configuration schedules it
+daily and invokes it once after successful deployment; hosted execution remains
+unverified. See [Daily maintenance](docs/DeveloperGuide.md#daily-maintenance) for
+configuration, sanitized outcomes and recovery limits. Demo kits remain the
+end-to-end testing path across roles.
+
 Planned product roles:
 
 | Role | What they do |

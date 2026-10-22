@@ -136,6 +136,13 @@ reached. Try again in N seconds.”, with the actual wait replacing N. Wait befo
 trying again. A temporary failure says “Demo kit service is temporarily
 unavailable. Try again.” No account credentials are shown on failure.
 
+After a successful maintenance run, ordinary main-workspace Customers can browse
+**Homebrew Showcase**, an approved café with a menu and weekly opening hours.
+Its seeded owner's credentials are not published. Use a demo kit for end-to-end
+testing across roles: main-workspace café applications may remain pending
+indefinitely. Maintenance preserves existing accounts and passwords and does
+not delete or reset your kit.
+
 ## 2. Navigating Homebrew
 
 Use your role's navigation links after signing in. Opening `/`, Sign in or Sign

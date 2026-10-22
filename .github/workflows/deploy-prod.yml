@@ -57,3 +57,12 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod
+      - name: Run production maintenance
+        if: success()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          builtin printf 'Authorization: Bearer %s\n' "$CRON_SECRET" | curl --fail --silent --show-error --max-time 120 \
+            --header @- --output "$RUNNER_TEMP/maintenance.json" https://homebrew-cs3227-prod.vercel.app/api/internal/maintenance
+          jq -e '.steps | length == 3 and all(.[]; .outcome == "success")' "$RUNNER_TEMP/maintenance.json" > /dev/null
