@@ -712,7 +712,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] No test grants Customer acceptance/collection or generic Admin order-write permission; CUS-04.5 uses the fixed public cancellation reason.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:**todo
+- **Status:** done
 - **Issue:** [#73](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/73)
 
 ### T-43: Implement customer pickup orders and My orders
@@ -727,7 +727,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-42's full suite passes, including actual suspension cancellation display, ownership and unchanged collected purchases.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#74](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/74)
 
 ### T-44: Test collected-order reviews
