@@ -72,7 +72,7 @@ for (const reason of ["disabled", "usage_limited", "unavailable", "no_source_dat
   const f = fixture(); f.fields(); f.menu(); await login(page.request, f.customer);
   await page.route(`**${path}`, route => route.fulfill({ json: { requestId: "synthetic", feature: "brew_finder", mode: "fallback", reason, fallback: "rating_sorted_catalogue" } }));
   await page.goto("/customer/cafes"); await input(page).fill("coffee"); await search(page).click();
-  await expect(page.getByText(reason === "usage_limited" ? /usage limit|search limit|limit reached/i : reason === "disabled" ? /AI.*disabled|Brew Finder.*disabled/i : reason === "no_source_data" ? /no.*(recommend|available|match|source)/i : /AI.*unavailable|Brew Finder.*unavailable/i)).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: reason === "usage_limited" ? /usage limit|search limit|limit reached/i : reason === "disabled" ? /AI.*disabled|Brew Finder.*disabled/i : reason === "no_source_data" ? /no.*(recommend|available|match|source)/i : /AI.*unavailable|Brew Finder.*unavailable/i })).toBeVisible();
   await expect(page.getByRole("link").filter({ hasText: f.name })).toBeVisible();
   expect(await list(page.request)).toMatchObject({ items: [expect.objectContaining({ cafeId: f.cafe })] });
 });

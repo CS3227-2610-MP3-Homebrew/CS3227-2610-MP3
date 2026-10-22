@@ -2,7 +2,9 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, expect, test, vi } from "vitest";
 import { boundary, cafe, fallback, filters, providerEnvelope, query, setup } from "./fixtures";
-import { scenario, insert } from "../moderation/fixtures";
+import { scenario, insert, q } from "../moderation/fixtures";
+import { localSql } from "../../e2e/accounts/local";
+import { matchingRows } from "../ai-state/fixtures";
 import { queryAs, rpcAs } from "../usage/local";
 import { createAiState, type AiOperationContext, type AiOperationOptions } from "@/server/llm/ai-state";
 import { createUsageAdmission, parseUsageLimits } from "@/server/llm/usage";
@@ -82,7 +84,7 @@ test("CUS-06.8 CUS-06.9: E09/E11 disable and current RLS suspension defeat popul
   const f = await durable(); await f.post(); f.settings.AI_PROVIDER = "disabled";
   await fallback(await f.post(), "disabled"); expect(f.transport).toHaveBeenCalledTimes(1);
   f.settings.AI_PROVIDER = "fake";
-  await queryAs()("update public.cafes set suspended=true where id=$1 returning id", [f.domain.cafe]);
+  localSql(`update public.cafes set suspended=true where id=${q(f.domain.cafe)};`);
   await fallback(await f.post(), "unavailable"); expect(f.transport).toHaveBeenCalledTimes(1);
 });
 test("CUS-06.10 CUS-06.13: E11 parallel different queries at final feature capacity dispatch exactly once across state instances", async () => {
@@ -100,8 +102,9 @@ test("CUS-06.16: E12 durable audit stores allowlisted metadata and never query/p
   const events = f.rpc.mock.calls.filter(([name, args]) => name === "ai_audit" || (name === "ai_state" && String(args.p_action).includes("audit")));
   expect(events.length).toBeGreaterThan(0);
   expect(JSON.stringify(events)).not.toMatch(/QUERY_CANARY|Coffee matches|RAW_REVIEW|PRIVATE_|SOCLAAS_API_KEY/);
-  const names = await queryAs()("select table_schema,table_name,column_name from information_schema.columns where column_name='operation_id'");
-  expect(names.length).toBeGreaterThan(0);
+  const audits = matchingRows(f.contexts[0].operationId).filter(({ table }) => table.name === "ai_audit_events");
+  expect(audits.length).toBeGreaterThan(0);
+  expect(JSON.stringify(audits)).not.toMatch(/QUERY_CANARY|Coffee matches|RAW_REVIEW|PRIVATE_/);
   // Cache publication contains validated advice; audit/accounting calls contain metadata only.
   const accounting = f.rpc.mock.calls.filter(([name]) => name === "reserve_ai_usage");
   expect(accounting.length).toBeGreaterThan(0); expect(JSON.stringify(accounting)).not.toMatch(/QUERY_CANARY|Coffee matches/);

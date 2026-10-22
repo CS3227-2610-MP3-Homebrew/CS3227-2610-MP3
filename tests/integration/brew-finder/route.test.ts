@@ -24,7 +24,7 @@ test("CUS-06.1 CUS-06.2 CUS-06.13 CUS-06.14: E01/E05/E06 exact fixed prompt, enc
   expect(globalThis.fetch).not.toHaveBeenCalled();
 });
 
-for (const role of [null, "owner", "admin"] as const) test(`CUS-06.3: ${role ?? "anonymous"} denied before source/provider disclosure`, async () => {
+test.each([null, "owner", "admin"] as const)("CUS-06.3: %s denied before source/provider disclosure", async role => {
   const f = await setup(); boundary.actor.mockResolvedValue(role ? { ...f.actor, role } : null);
   await error(await f.post(), role ? 403 : 401, role ? "FORBIDDEN" : "UNAUTHENTICATED");
   expect(f.rpc).not.toHaveBeenCalled(); expect(boundary.run).not.toHaveBeenCalled(); expect(f.transport).not.toHaveBeenCalled();
@@ -65,7 +65,7 @@ test("CUS-06.1: E15 full catalogue selects 20 rating-ordered cafes and 20 name/r
   const f = await setup(); f.source.cafes = Array.from({ length: 25 }, (_, i) => cafe(i, i === 24 ? 5 : 4));
   for (const c of f.source.cafes) c.menu = Array.from({ length: 25 }, (_, i) => ({ ...c.menu[0], itemId: `${c.cafeId}-${String(i).padStart(2, "0")}`,
     name: i === 0 ? "😀" : i === 1 ? "\ue000" : "A", soldOut: i === 2, drinkType: i === 3 ? "tea" : "coffee" }));
-  f.transport.mockImplementation(async req => { const wire = await req.json(); const c = JSON.parse(wire.messages[1].content).candidates[0];
+  f.transport.mockImplementation(async req => { const wire = await req.clone().json(); const c = JSON.parse(wire.messages[1].content).candidates[0];
     return Response.json(providerEnvelope({ suggestions: [{ cafeId: c.cafeId, itemId: c.items[0].itemId, reason: "Coffee" }] })); });
   await f.post({ query, filters: { ...filters, drinkType: "coffee" } });
   const wire = await f.transport.mock.calls[0][0].json(); const selected = JSON.parse(wire.messages[1].content).candidates;
