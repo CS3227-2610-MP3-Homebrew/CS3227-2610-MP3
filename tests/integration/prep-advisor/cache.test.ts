@@ -57,7 +57,7 @@ test("OWN-07.7: E05 manual refresh bypasses lookup with one attempt and replaces
   expect(transport).toHaveBeenCalledTimes(1); expect(s.requests.map(r => r.event)).toEqual(["refresh", "provider_attempt"]);
   expect((await f.state.readCache(f.next()))!.data).toEqual(f.result);
 });
-for (const failure of ["timeout", "invalid"] as const) test(`OWN-07.7 OWN-07.14: E05 a failed ${failure} refresh returns fallback and preserves the previous entry`, async () => {
+test.each(["timeout", "invalid"] as const)("OWN-07.7 OWN-07.14: E05 a failed %s refresh returns fallback and preserves the previous entry", async (failure) => {
   const f = await prepFixture(); const s = setup(f);
   await s.state.runOperation(snapshot(f.context), { requestId: "seed", getConfig: () => s.config, transport: async () => envelope(model(f)) });
   const before = await f.state.readCache(f.next()); const next = f.next();

@@ -92,7 +92,7 @@ test("OWN-07.11: an unavailable source is 503, never a fabricated fallback", asy
   const f = fixture(); f.deps.readSource.mockRejectedValue(new Error("Synthetic private SQL"));
   await error(await (await handler(f.deps))(request()), 503, "SOURCE_UNAVAILABLE"); expect(f.deps.run).not.toHaveBeenCalled();
 });
-for (const reason of ["disabled", "usage_limited", "unavailable"] as const) test(`OWN-07.8 OWN-07.9 OWN-07.10: E12 typed ${reason} fallback from the shared operation is delivered as HTTP 200`, async () => {
+test.each(["disabled", "usage_limited", "unavailable"] as const)("OWN-07.8 OWN-07.9 OWN-07.10: E12 typed %s fallback from the shared operation is delivered as HTTP 200", async (reason) => {
   const f = fixture(); f.deps.run.mockImplementation(async (_a, _c, requestId) => ({ requestId, feature: "prep_advisor", mode: "fallback", reason, fallback: "top_items" }));
   const response = await (await handler(f.deps))(request()); expect(response.status).toBe(200);
   expect(await response.json()).toEqual(fallback(reason));
