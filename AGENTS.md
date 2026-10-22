@@ -19,7 +19,7 @@ has one SoCLaaS feature.
 | --- | --- |
 | `src/` | Application code; App Router pages and route handlers in `src/app/`. |
 | `workflow/` | Specs, PLAN.md, agent instructions, templates, handoffs and scripts. |
-| `.agents/skills/`, `.codex/agents/` | Shared skills and Codex agent wrappers. |
+| `.agents/skills/`, `.codex/`, `.claude/` | Shared skills, plus Codex and Claude Code agent, skill and permission wrappers. |
 | `docs/`, `logs/` | Guides, reflections and verified session logs per team member. |
 | `.github/workflows/` | CI and deployment workflows. |
 
@@ -67,11 +67,13 @@ The security reviewer writes only `NN-security-reviewer.md` in the pair's folder
 applying baseline security checks plus task SEC criteria and relevant
 AI-SECURITY-SPEC evaluation cases when present.
 `review.sh` defaults to `upstream/master`, otherwise `origin/master`, prints its
-base and rejects unresolved refs. From Codex, each run requires approval for
-escalated execution, without an allow rule.
+base and rejects unresolved refs. Its worker runs under Codex by default, or
+Claude Code with `REVIEW_RUNNER=claude`. From either tool, each run requires
+approval for escalated execution, without an allow rule.
 
 Run allow-listed commands bare: output redirection, environment-variable prefixes
-or `cd … &&` stop them matching `.codex/rules` and force an approval prompt.
+or `cd … &&` stop them matching `.codex/rules` or `.claude/settings.json` and
+force an approval prompt.
 Run read-only `git diff`, `git log` and `git show` inside the sandbox and never
 request escalation for them; escalate only for git commands that write `.git/`
 or use the network.

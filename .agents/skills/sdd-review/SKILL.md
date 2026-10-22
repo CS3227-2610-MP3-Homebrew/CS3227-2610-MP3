@@ -11,9 +11,10 @@ Follow `workflow/agents/reviewer.md` for boundaries, verification and reporting.
 
 Identify the assigned task, issue and existing implementation handoff. Read the
 applicable specs/contracts, handoff and package scripts, then run required extra
-tests before invoking from the repository root. In a Codex session, request
-escalated execution outside the sandbox with the human's approval for each run;
-never add an allow rule or reusable approval prefix for this launcher:
+tests before invoking from the repository root. In a Codex or Claude Code
+session, request escalated execution outside the sandbox with the human's
+approval for each run; never add an allow rule or reusable approval prefix for
+this launcher. Prefix `REVIEW_RUNNER=claude` to use a Claude Code worker:
 
 ```bash
 bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
@@ -25,7 +26,8 @@ base ref and refuses an unresolved ref before verification or review.
 
 The launcher runs verify, starts a fresh read-only worker with the configured
 model and effort, and saves its response as a new reviewer handoff. Set
-`REVIEW_MODEL` and `REVIEW_EFFORT` to override the launcher defaults. It never changes the input
+`REVIEW_MODEL` and `REVIEW_EFFORT` to override the launcher defaults, and
+`CLAUDE_BIN` when the `claude` CLI is not on `PATH`. It never changes the input
 report. Command success means the report was saved; read its status and verdict.
 
 ## Independent assessment

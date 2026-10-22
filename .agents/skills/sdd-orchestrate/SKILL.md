@@ -92,7 +92,7 @@ Then:
 1. **Tests.** Follow `workflow/agents/testing.md` and the `sdd-test` skill,
    with stage 2's scope and manifest checks. Write `NN-testing.md`. Stop for
    the human to read and commit the tests (`test(<ID>): …`, trailer
-   `Agent: Codex`).
+   `Agent: Codex` or `Agent: Claude`, naming the coordinating session's tool).
 2. **Implementation.** Follow `workflow/agents/implementation.md` and the
    `sdd-implement` skill, with stage 3's scope checks. Committed tests stay
    untouched, except a test that contradicts its spec criterion: fix only that
@@ -111,7 +111,7 @@ Then:
    Summary starts with `Single-agent mode`. When it is `completed` with verify
    passing and no open P0/P1 finding, set both Status lines to `done`, run
    stage 7's checks, then stop for the final commits: `feat(<ID>)`, then
-   `docs(<ID>)`, then the Status-line close-out, each with `Agent: Codex`.
+   `docs(<ID>)`, then the Status-line close-out, each with that same trailer.
 
 The human may add an independent `review.sh` round or one security-reviewer
 run on the final tree (prompts below). Either report then joins the
