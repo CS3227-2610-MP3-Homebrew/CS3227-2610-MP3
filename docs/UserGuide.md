@@ -10,6 +10,7 @@
   - [4.2 Inspect a café](#42-inspect-a-café)
   - [4.3 Pre-order for pickup](#43-pre-order-for-pickup)
   - [4.4 View and cancel your orders](#44-view-and-cancel-your-orders)
+  - [4.5 Review a collected order](#45-review-a-collected-order)
 - [5. Café owner guide](#5-café-owner-guide)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
@@ -25,12 +26,12 @@
 ## 1. Getting started
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
-role.
-Ordering and café management tools are not yet available.
 role. Admins can decide café applications, suspend or un-suspend approved cafés,
-manually moderate reviews and inspect their workspace’s audit log. 
-Customers can browse cafés and inspect menus, opening hours and public reviews.
-Ordering and café management tools are not yet available.
+manually moderate reviews and inspect their workspace’s audit log.
+Customers can browse cafés, inspect menus and public reviews, pre-order for
+pickup, read order history, cancel pending orders, and review collected purchases.
+Ordering requires the protected account name described in section 4.3; owner
+fulfilment and café management tools remain unavailable.
 
 ### 1.1 What you need
 
@@ -196,8 +197,8 @@ rewriting their original text or rating. Invalid review pagination shows
 “Invalid review page.” A source failure shows “Café information is temporarily
 unavailable. Try again.”; retry explicitly when ready.
 
-Choose **Pre-order for pickup** to select drinks and a pickup time. Writing
-reviews is not available in this build.
+Choose **Pre-order for pickup** to select drinks and a pickup time. To review
+a collected purchase, open **My orders** and follow section 4.5.
 
 ### 4.3 Pre-order for pickup
 
@@ -266,6 +267,47 @@ is temporarily unavailable. Try again.” rather than an empty collection. Inval
 pagination shows “Invalid orders page.” If a cancellation cannot be confirmed,
 the page reports “Unable to confirm cancellation. Refresh to check the current
 order before trying again.”
+
+### 4.5 Review a collected order
+
+Customers can submit one review for each of their own collected orders.
+
+**Where:** Customer navigation → **My orders** → **Review order** on a collected
+purchase, or `/customer/orders/{orderId}/review` for that purchase.
+
+1. Read the retained café name, order reference, state and collected time on
+   **Review your order**. A collected purchase remains reviewable after café
+   suspension or removal of its original menu items; this does not reopen the
+   restricted café page.
+2. Choose **Rating** from 1 to 5 and enter **Review text**. Text must be nonblank
+   and at most 1,000 Unicode code points; the counter shows the current count.
+   Valid text, including spaces and newlines, is preserved exactly.
+3. Select **Submit review**. Controls are disabled and “Submitting…” appears
+   while the request is in progress.
+4. Success shows **Your submitted review**, its rating, original text,
+   moderation state and submission time in Singapore time. The initial state is
+   pending. Reopening the page shows the existing review, including a hidden
+   review. Submitted reviews cannot be edited or deleted, and hiding/restoring
+   does not allow another review for the order.
+
+Invalid fields retain your entered values and show “Choose an integer rating
+from 1 to 5 and enter nonblank review text of 1–1,000 Unicode code points.”
+Correct the fields and submit again. An uncollected purchase has no review
+control in My orders; opening its review page says “This order must be collected
+before you can submit a review.”
+
+If another submission or state change wins first, the form says “This order is
+not collected or already has a review. Refresh to check your order and submitted
+review.” Use **Refresh review status** to read current information. If submission
+cannot be confirmed, it says “Unable to confirm submission. Refresh to check
+your submitted review before trying again.” Refresh and check for an existing
+review before retrying. A page read failure says “Review information is
+temporarily unavailable. Try again.”
+
+Review text displays as plain text. Public café reviews continue to use
+“Verified customer” and show only pending/kept reviews for an eligible café.
+Owner fulfilment is not yet available, so collected examples currently use
+local test fixtures.
 
 ## 5. Café owner guide
 
@@ -435,9 +477,8 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Customer review writing and favourites and Café owner domain tools remain
-entry shells or unavailable. Customer ordering requires the protected account
-name described in [Pre-order for pickup](#43-pre-order-for-pickup); current
+Favourites and Café owner domain tools remain entry shells or unavailable.
+Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup); current
 sign-up/demo provisioning does not supply it yet. Owner fulfilment actions are
 not available, so accepted/ready/collected examples use local test fixtures.
 Demo-kit creation, account password/email changes,
