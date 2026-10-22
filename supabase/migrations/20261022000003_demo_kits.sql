@@ -1,17 +1,4 @@
--- Seed-owned purchase snapshots are additive foundations for later order/owner pairs.
-alter table public.orders
-  add column pickup_at timestamptz not null default now(),
-  add column cafe_name text not null default '',
-  add column customer_name text not null default '',
-  add column total_cents integer not null default 100 check (total_cents between 1 and 400000000),
-  add column accepted_at timestamptz,
-  add column ready_at timestamptz,
-  add column collected_at timestamptz;
-alter table public.order_items
-  add column quantity integer not null default 1 check (quantity between 1 and 20),
-  add column item_name text not null default '',
-  add column unit_price_cents integer not null default 100 check (unit_price_cents between 1 and 1000000),
-  add column line_total_cents integer not null default 100 check (line_total_cents between 1 and 20000000);
+-- Demo kits reuse CUS-03's canonical order and item snapshots.
 
 -- Same counter storage, environment namespace, transaction lock and all-bounds-first
 -- admission mechanism as reserve_ai_usage. No process-local or caller/IP capacity.
@@ -66,7 +53,7 @@ declare
   approved_cafe uuid := gen_random_uuid(); pending_cafe uuid := gen_random_uuid();
   coffee uuid := gen_random_uuid(); tea uuid := gen_random_uuid(); sold_out uuid := gen_random_uuid();
   identity jsonb; target_id uuid; expected_email text; order_id uuid; seed_time timestamptz;
-  item_id uuid; item_label text; price integer; quantity integer; d integer; n integer;
+  item_id uuid; item_label text; price bigint; quantity integer; d integer; n integer;
   review_texts text[] := array[
     'Synthetic spam example: buy fake miracle coffee at spam.example.invalid!',
     'Synthetic abusive example: you are an awful idiot. This is demonstration content.',
@@ -105,7 +92,7 @@ begin
   select (value->>'id')::uuid into admin_id from jsonb_array_elements(p_identities) where value->>'role'='admin';
   select (value->>'id')::uuid into unpublished from jsonb_array_elements(p_identities) where value->>'role'='unpublished-owner';
   insert into public.workspaces(id,is_main) values(p_workspace,false);
-  insert into public.profiles(id,workspace_id,role) values(customer,p_workspace,'customer'),(owner_id,p_workspace,'owner'),(admin_id,p_workspace,'admin'),(unpublished,p_workspace,'owner');
+  insert into public.profiles(id,workspace_id,role,name) values(customer,p_workspace,'customer','Demo Customer'),(owner_id,p_workspace,'owner',null),(admin_id,p_workspace,'admin',null),(unpublished,p_workspace,'owner',null);
   insert into public.cafes(id,workspace_id,owner_id,name,description,area,pickup_address,application_state,suspended,pickup_cutoff_minutes,submitted_at)
     values(approved_cafe,p_workspace,owner_id,'Synthetic Coffee '||p_code,'A home café for trying Homebrew.','Central','12 Synthetic Lane','approved',false,15,p_created_at-interval '30 days'),
       (pending_cafe,p_workspace,unpublished,'Synthetic Pending '||p_code,'A demonstration café application.','East','34 Synthetic Lane','pending',false,15,p_created_at);
@@ -121,10 +108,10 @@ begin
       order_id := gen_random_uuid(); item_id := case when n=1 then coffee else tea end;
       item_label := case when n=1 then 'Iced latte' else 'Matcha latte' end; price := case when n=1 then 550 else 650 end;
       quantity := 1+(d%3);
-      insert into public.orders(id,cafe_id,customer_id,state,placed_at,pickup_at,cafe_name,customer_name,total_cents,accepted_at,ready_at,collected_at)
-        values(order_id,approved_cafe,customer,'collected',seed_time-interval '1 hour',seed_time,'Synthetic Coffee '||p_code,'Demo Customer',price*quantity,seed_time-interval '45 minutes',seed_time-interval '10 minutes',seed_time);
-      insert into public.order_items(order_id,menu_item_id,cafe_id,quantity,item_name,unit_price_cents,line_total_cents)
-        values(order_id,item_id,approved_cafe,quantity,item_label,price,price*quantity);
+      insert into public.orders(id,cafe_id,customer_id,state,placed_at,pickup_at,cafe_name,customer_name,total_cents,currency,accepted_at,ready_at,collected_at)
+        values(order_id,approved_cafe,customer,'collected',seed_time-interval '1 hour',seed_time,'Synthetic Coffee '||p_code,'Demo Customer',price*quantity,'SGD',seed_time-interval '45 minutes',seed_time-interval '10 minutes',seed_time);
+      insert into public.order_items(order_id,menu_item_id,item_ref,cafe_id,quantity,name,unit_price_cents,line_total_cents)
+        values(order_id,item_id,item_id,approved_cafe,quantity,item_label,price,price*quantity);
       if d between 0 and 2 and n=1 then
         insert into public.reviews(order_id,customer_id,rating,text,moderation_state,submitted_at)
           values(order_id,customer,2,review_texts[d+1],'pending',seed_time+interval '1 minute');
@@ -132,10 +119,10 @@ begin
     end loop;
   end loop;
   order_id := gen_random_uuid();
-  insert into public.orders(id,cafe_id,customer_id,state,placed_at,pickup_at,cafe_name,customer_name,total_cents)
-    values(order_id,approved_cafe,customer,'pending',p_created_at,((date_trunc('day',p_created_at at time zone 'Asia/Singapore')+interval '1 day 10 hours') at time zone 'Asia/Singapore'),'Synthetic Coffee '||p_code,'Demo Customer',550);
-  insert into public.order_items(order_id,menu_item_id,cafe_id,quantity,item_name,unit_price_cents,line_total_cents)
-    values(order_id,coffee,approved_cafe,1,'Iced latte',550,550);
+  insert into public.orders(id,cafe_id,customer_id,state,placed_at,pickup_at,cafe_name,customer_name,total_cents,currency)
+    values(order_id,approved_cafe,customer,'pending',p_created_at,((date_trunc('day',p_created_at at time zone 'Asia/Singapore')+interval '1 day 10 hours') at time zone 'Asia/Singapore'),'Synthetic Coffee '||p_code,'Demo Customer',550,'SGD');
+  insert into public.order_items(order_id,menu_item_id,item_ref,cafe_id,quantity,name,unit_price_cents,line_total_cents)
+    values(order_id,coffee,coffee,approved_cafe,1,'Iced latte',550,550);
   return query select true;
 end;
 $$;

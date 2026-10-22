@@ -9,6 +9,8 @@
 - [4. Customer guide](#4-customer-guide)
   - [4.1 Browse cafés](#41-browse-cafés)
   - [4.2 Inspect a café](#42-inspect-a-café)
+  - [4.3 Pre-order for pickup](#43-pre-order-for-pickup)
+  - [4.4 View and cancel your orders](#44-view-and-cancel-your-orders)
 - [5. Café owner guide](#5-café-owner-guide)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
@@ -24,12 +26,11 @@
 ## 1. Getting started
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
-role.
-Ordering and café management tools are not yet available.
 role. Admins can decide café applications, suspend or un-suspend approved cafés,
-manually moderate reviews and inspect their workspace’s audit log. 
-Customers can browse cafés and inspect menus, opening hours and public reviews.
-Ordering and café management tools are not yet available.
+manually moderate reviews and inspect their workspace’s audit log. Customers
+can browse cafés, inspect menus, opening hours and public reviews, place pickup
+pre-orders with a valid protected account name, and view or cancel their own
+pending orders. Owner café management tools are not yet available.
 
 ### 1.1 What you need
 
@@ -94,8 +95,9 @@ again.” and does not confirm that sign-out succeeded.
 | Admin | Moderation queue (`/admin/moderation`) | Moderation queue; Café applications; Cafés; Audit log |
 
 Browse cafés provides the Customer tools in section 4; Moderation queue and
-Audit log provide the Admin tools in section 6. The other entries currently
-open role page headings.
+Audit log provide the Admin tools in section 6. My orders provides retained
+purchases and pending-order cancellation; the remaining owner entries open
+role page headings.
 
 ### 1.5 Demo accounts for testers
 
@@ -118,9 +120,9 @@ accounts without signing in.
    the ordinary reasons, confirmations and audit log within your kit.
 
 Each kit also has about four weeks of sample collected purchases, unreviewed
-collected orders and a pending order. These are seeded data; Customer ordering,
-review submission, the owner queue and sales/Prep Advisor screens remain
-unavailable in this build. The pending café's separate owner has no published
+collected orders and a pending order. New kit Customers can use Pre-order for
+pickup and My orders, including pending-order cancellation. Review submission,
+the owner queue and sales/Prep Advisor screens remain unavailable in this build. The pending café's separate owner has no published
 credentials. Kits have no automatic expiry or deletion, and creating a kit
 makes no AI request. Kit accounts keep their own AI user allowances while the
 application's global AI limits remain shared.
@@ -223,7 +225,77 @@ rewriting their original text or rating. Invalid review pagination shows
 “Invalid review page.” A source failure shows “Café information is temporarily
 unavailable. Try again.”; retry explicitly when ready.
 
-Pickup ordering and writing reviews are not available in this build.
+Choose **Pre-order for pickup** to select drinks and a pickup time. Writing
+reviews is not available in this build.
+
+### 4.3 Pre-order for pickup
+
+Customers with a valid name stored on their protected account can pre-order
+drinks from one eligible café and pay at pickup.
+
+**Where:** **Browse cafés** → select a café → **Pre-order for pickup**,
+or `/customer/cafes/{cafeId}/pre-order`.
+
+1. Under **Choose drinks**, enter quantities for the drinks you want. Zero leaves
+   a drink unselected; a purchase permits 1–20 distinct drinks, each with quantity
+   1–20. Sold-out drinks remain visible with disabled quantity controls.
+2. Choose **Pickup time (Singapore)**. Choices cover today and the next six
+   Singapore dates, on a 15-minute grid with at least 15 minutes' notice. They
+   follow opening hours and the café's pickup cutoff; closing itself is excluded.
+3. Review **Total**, shown in SGD with two decimal places, and select **Place
+   pre-order**. The button shows “Placing order…” during submission. Success
+   opens **My orders** with a pending order and retained drink/price details.
+4. Pay at the counter when collecting your drinks. The form states “Payment at
+   pickup. Pay at the counter when you collect your drinks.”
+
+No available choices shows “No valid pickup slots are available within the next
+seven dates.” and disables submission. Invalid selections show “Choose 1–20
+drinks, quantities from 1–20, and a pickup slot.” A changed menu, price, pickup
+rule or order state reports “The order, menu prices or pickup availability
+changed. Review the current details before submitting again.” Use **Review
+current menu and pickup choices** before resubmitting. The server repeats the
+checks; an earlier café page does not guarantee a successful purchase.
+
+An uncertain submission reports “Unable to confirm this order. Try again with
+the same selection; a retry will not create a duplicate.” Retry on that form
+without reloading to retain its submission key. If the pre-order source cannot
+be read, the page shows “Pre-order information is temporarily unavailable. Try
+again.”
+
+**Account limitation:** current sign-up and older unnamed accounts do not
+populate the required Customer name. New demo-kit Customers have a protected
+name and can order. Unnamed accounts receive “Customer name is
+unavailable. Account setup must be completed before ordering.” and no order is
+created. There is no account-name repair control in this build; the available
+ordering flow is available to new demo-kit Customers and named local test accounts.
+
+### 4.4 View and cancel your orders
+
+Customers can read their own order history and cancel pending orders.
+
+**Where:** Customer navigation → **My orders**, or `/customer/orders`.
+
+1. Read the retained café name, order reference, state, drinks, quantities, unit
+   prices, line totals and overall SGD total. Pickup and lifecycle times use
+   Singapore time (SGT). Later menu, price or opening-hour changes do not rewrite
+   these purchase details.
+2. Orders appear newest first, with order reference breaking placement-time
+   ties. Use **Previous orders** and **Next orders** for 20-order pages.
+3. For a pending order, select **Cancel order**. The button shows “Updating…”
+   while saving; success changes the state to cancelled and displays **Cancelled
+   at**. Accepted, ready, collected, rejected and cancelled orders have no
+   cancellation button. A stale cancellation returns the state-conflict message
+   described above and changes nothing.
+4. Automatically cancelled pending/accepted/ready orders remain listed with
+   “Cafe is suspended”. The Admin's private explanation is not shown. Collected
+   purchases and prior terminal orders remain unchanged; un-suspension does not
+   revive orders. Owner-rejected history displays its rejection reason as text.
+
+An empty history shows “No orders yet.” A read failure shows “Order information
+is temporarily unavailable. Try again.” rather than an empty collection. Invalid
+pagination shows “Invalid orders page.” If a cancellation cannot be confirmed,
+the page reports “Unable to confirm cancellation. Refresh to check the current
+order before trying again.”
 
 ## 5. Café owner guide
 
@@ -337,8 +409,8 @@ Admins can change the suspension state of approved cafés in their own workspace
    Un-suspension restores eligibility without reviving cancelled orders.
 
 The Admin reason remains private; the fixed cancellation reason does not reveal
-it. Owner access to retained café records remains available. Owner management
-screens and Customer order displays are still outside this build.
+it. Owner access to retained café records remains available. Customers see the
+fixed reason in **My orders**. Owner management screens remain outside this build.
 An empty list shows “No approved cafés.” Loading shows “Loading cafés…”.
 
 Both café screens show “Enter a reason of 1–300 characters.” for an invalid
@@ -393,9 +465,12 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Customer ordering, order tracking, review writing and favourites, Café owner
-domain tools remain entry shells or unavailable.
-Account password/email changes,
+Customer review writing and favourites and Café owner domain tools remain
+entry shells or unavailable. Customer ordering requires the protected account
+name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
+kits supply it; current signup and older unnamed accounts do not. Owner
+fulfilment actions are not available, so accepted/ready/collected examples use
+seeded kit purchases or local test fixtures. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 

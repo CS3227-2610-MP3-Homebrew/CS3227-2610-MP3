@@ -395,11 +395,11 @@ relationships and the shared fields needed for permission checks:
 | Table | Implemented relationships and constraints |
 | --- | --- |
 | `workspaces` | UUID identity and `is_main`; a partial unique index allows at most one main workspace. Migration replay inserts exactly one. |
-| `profiles` | UUID identity references `auth.users`; required workspace and protected role enum (`customer`, `owner`, `admin`). |
+| `profiles` | UUID identity references `auth.users`; required workspace and protected role enum (`customer`, `owner`, `admin`); nullable `name` consumed and validated by Customer ordering. |
 | `cafes` | UUID identity, workspace and owner profile; a composite foreign key requires the owner to share the café's workspace. `application_state` is `pending` (default), `approved` or `rejected`; independent `suspended` defaults to false. |
 | `menu_items`, `opening_hours` | UUID identities and required café references; menu `name` and opening time `opens_at` support the narrow owner updates. |
-| `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. `placed_at` stores an instant. |
-| `order_items` | UUID identity; composite foreign keys require the parent order and menu item to belong to the same café. |
+| `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. Retained café/customer/total/pickup snapshots, lifecycle fields and a unique non-null customer/submission-key pair support purchase history and replay. |
+| `order_items` | UUID identity; composite foreign keys require the parent order and live menu item to belong to the same café. Snapshots retain item identity/name/quantity/unit and line prices; live menu removal clears only the nullable live reference. |
 | `reviews` | UUID identity and customer reference; a composite foreign key ties the customer to the order. A unique order reference prevents a second review for that order. The café is derived through the order. `moderation_state` is `pending` (default), `kept` or `hidden`. |
 
 Only profiles and cafés store workspace references. Menu items, opening hours,
@@ -525,6 +525,78 @@ visibility, current eligibility, role denial and main/kit isolation. The paired
 suites can be selected with `bun run test -- tests/unit/catalogue tests/integration/catalogue`
 and `bun run test:e2e -- tests/e2e/catalogue`; local database-mutating suites run
 serially. These commands do not replace the full verification gate.
+### Customer pickup orders and retained history
+
+The [CUS-03 pre-order](../workflow/specs/stories/CUS-03-pre-order.md),
+[CUS-04 own-order](../workflow/specs/stories/CUS-04-my-orders.md) and
+[Customer pickup/order boundary](../workflow/specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary)
+govern the implemented Pre-order and My orders surfaces.
+
+- `/customer/cafes/{cafeId}/pre-order` repeats the Customer account gate and
+  reads the eligible café/menu and current pickup source. Accessible quantities,
+  a Singapore-time pickup select and integer-cent totals feed the strict creation
+  request. The form retains a key for retries of the same selection on that
+  mounted form; changing the selection creates a fresh key. Reloading the page
+  does not preserve that key. Success navigates to `/customer/orders`.
+- `/customer/orders` repeats the Customer gate before reading retained history.
+  It displays 20 records per page in placement-descending/reference-ascending
+  order, snapshot amounts, public cancellation/rejection reasons and lifecycle
+  times. React text rendering keeps stored café/item/reason content inert. Only
+  pending rows offer cancellation; every mutation rechecks current state.
+- `src/server/orders/http.ts` supplies creation/list/detail/cancel and pickup
+  JSON boundaries. It uses verified Auth/Customer checks, Zod strict schemas,
+  the shared bounded body reader, trusted deployment Origin, safe error codes
+  and private/no-store responses. `query.ts` preserves raw query validation in
+  the existing proxy before URL reconstruction; the proxy replaces caller flags,
+  and each handler repeats authorization and parsing. `source.ts` uses only a
+  fresh session-bound publishable-key client, without automatic database retries.
+- `20261022000002_customer_orders.sql` extends the existing order states with
+  purchase/name/price and lifecycle snapshots and a customer-scoped unique
+  submission key/content record. An item retains `item_ref` and its name/price
+  after live menu removal; the nullable live menu FK still checks non-null
+  relational ownership. Defaults preserve existing structural fixtures.
+- `customer_order_history` and `customer_pickup_source` are SECURITY INVOKER
+  reads under session RLS. History reads do not require a publicly eligible live
+  café, so suspended orders remain visible to their owner. Private Admin reasons
+  are neither joined nor projected.
+- `create_customer_order` and `cancel_customer_order` independently derive the
+  Customer/workspace and repeat input, relationship and state checks inside
+  restricted SECURITY DEFINER transactions with empty search paths. No generic
+  order/item/profile write grant is added. Creation serializes same-actor keys
+  before replay comparison and locks the café before validating current sources;
+  it takes the clock after source locks, snapshots server-derived prices/name,
+  compares the expected total and commits order/items/key together. Cancellation
+  locks café then order and changes only pending to cancelled with a null
+  suspension reason. T-29 remains the sole suspension writer and shares that
+  café lock; successful replay never revives or reprices retained history.
+- `pickup.ts` offers 15-minute Singapore-grid choices using the database source
+  clock, today-plus-six-date horizon, inclusive cutoff and exclusive closing.
+  SQL independently revalidates under the transaction lock. Supplementary parity
+  tests compare both policies across overnight, adjacent-hour, cutoff and horizon
+  cases. Nonzero timestamp fractions cannot round onto the grid at PostgreSQL's
+  lower timestamp precision.
+
+The added nullable `profiles.name` stores the protected Customer name consumed
+by creation; `orders.customer_name` retains its snapshot. Missing, untrimmed or
+invalid names produce the specified safe account-setup conflict without an
+order/key. Current SYS-01 signup and older unnamed accounts do not populate
+this field; new demo kits seed a valid protected Customer name. The CUS-03 pair
+does not add a profile repair endpoint or change account contracts; successful
+order tests also provision valid synthetic protected names.
+Owner acceptance/collection and menu/settings writers remain separate work.
+
+The order suites contain 25 spec-derived Vitest cases in `tests/unit/orders/`
+and `tests/integration/orders/`, four supplementary internal cases in
+`tests/unit/orders-internals.test.ts`, and 88 browser/API cases in
+`tests/e2e/orders/`. They cover submission/concurrency/rollback, snapshot
+retention, source failures, strict HTTP bounds, own-history RLS, kit/main
+isolation, actual authorized suspension effects and rendered customer flows.
+Two browser session setups explicitly sign out before switching customers to
+respect SYS-02's active-account conflict. Role-denial cases use literal titles
+so static traceability can recognize their criterion IDs; interpolated titles
+are intentionally ignored by that scanner. Actual owner acceptance/collection
+race integration remains unverified until the owning writers exist.
+
 ### Café applications and suspension
 
 The [ADM-01 application](../workflow/specs/stories/ADM-01-cafe-applications.md)
@@ -746,8 +818,10 @@ own the demo flow; its public contract is
   Admin; a separate owner is created for the pending café. Passwords go only to
   Auth and the once-shown creation response, never to seed RPC arguments,
   application tables, caches or telemetry. No model call is made.
-- `20261022000002_demo_kits.sql` adds purchase/lifecycle snapshots needed by
-  the seed and three service-role-only, empty-search-path RPCs. `reserve_demo_kit`
+- `20261022000003_demo_kits.sql` follows CUS-03’s
+  `20261022000002_customer_orders.sql`, reuses its canonical snapshots and
+  bigint money fields. It adds three service-role-only, empty-search-path RPCs
+  without adding duplicate snapshot columns. `reserve_demo_kit`
   reuses `private.ai_usage_counters` and the existing per-environment transaction
   lock, checking both fixed ten-minute and Singapore-day bounds before either
   increment. Database time controls production membership; explicit clock
@@ -765,8 +839,10 @@ own the demo flow; its public contract is
   menu items, weekly hours, a cutoff, fifty-six collected purchases across about
   four weeks, a pending purchase and three synthetic pending moderation reviews.
   Historical item names/quantities/prices and SGD-cent totals are stored as
-  snapshots. Later owner/Customer pairs extend these fields and operations;
-  this seed does not implement their screens. Dashboard/Prep result quality is
+  snapshots. Seed items populate CUS-03’s canonical `name` and `item_ref`;
+  orders carry `SGD` currency and the Customer profile
+  has the protected name `Demo Customer`. The merged CUS-03 screens support
+  kit ordering/history/cancellation; owner writers remain separate work. Dashboard/Prep result quality is
   verified by T-62, rather than inferred from this dataset's date span.
 - Existing workspace RLS, role restrictions, reason/audit/text-preservation and
   reversible Admin actions are unchanged. Kit user AI counters remain separate
@@ -1269,10 +1345,13 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, advisory Admin triage, the read-only audit screen and
-Customer catalogue/detail reads are available. Customer ordering/review writing and other role domain pages
-remain unavailable or entry headings, with the owner no-café state; café
-mutations, the remaining AI screens, maintenance provisioning, scheduled
+Manual Admin moderation, advisory Admin triage, the read-only audit screen,
+Customer catalogue/detail reads and Customer pickup/history/cancellation surfaces
+are available. Ordering requires a valid protected Customer name: new demo kits
+supply it, while current signup and older unnamed accounts do not. Customer
+review writing and other role domain pages remain unavailable or entry headings,
+with the owner no-café state. Owner fulfilment race integration remains unverified;
+owner café mutations, the remaining AI screens, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally and consumed by Admin
 triage. Live provider compatibility and model quality remain unverified;
