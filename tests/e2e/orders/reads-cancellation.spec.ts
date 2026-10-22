@@ -51,6 +51,8 @@ test("CUS-04.4 CUS-04.6: missing, same-workspace foreign, main and other-kit ord
     }
     expect((await ownOrder(peer, own)).orderId).toBe(own);
     await orderResponse(await cancel(peer, own), 200);
+    // SYS-02's active-account conflict forbids replacing this reader session.
+    expect((await request.post("/api/auth/sign-out", { headers: { origin }, data: {} })).status()).toBe(200);
     await login(request, main.customer); await failure(await request.get(`${base}/${own}`), 404, "NOT_FOUND");
     await failure(await cancel(request, own), 404, "NOT_FOUND");
   } finally { await peer.dispose(); }
@@ -95,6 +97,8 @@ test("CUS-03.1: a submission key replay from another customer in the same worksp
   const f = fixture(); await login(request, f.customer); const data = f.payload(); const original = await orderResponse(await create(request, data));
   // Reader is a second verified customer, with its own independent key scope.
   const { profileName, customerName } = await import("./fixtures"); profileName(f.reader.id, customerName);
+  // Start a new session before testing the second customer's independent key.
+  expect((await request.post("/api/auth/sign-out", { headers: { origin }, data: {} })).status()).toBe(200);
   await login(request, f.reader); const second = await orderResponse(await create(request, data));
   expect(second.orderId).not.toBe(original.orderId); expect(orderCount(f.customer.id)).toBe(1); expect(orderCount(f.reader.id)).toBe(1);
   await failure(await request.get(`${base}/${original.orderId}`), 404, "NOT_FOUND");

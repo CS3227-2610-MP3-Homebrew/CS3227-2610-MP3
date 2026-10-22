@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { localSql, provisionAccount } from "../accounts/local";
 import { customerName, base, cancel, create, failure, fixture, login, orderCount, orderResponse, origin, ownOrder, profileName, q, rows, stored, unsafe } from "./fixtures";
 
@@ -126,12 +126,16 @@ test("CUS-03.5: missing or invalid protected profile name conflicts without pers
   }
   profileName(f.customer.id, customerName); await orderResponse(await create(request, data));
 });
-for (const role of [null, "owner", "admin"] as const) test(`CUS-03.7 CUS-04.7: ${role ?? "anonymous"} cannot create/read/cancel orders or read pickup slots`, async ({ request }) => {
+async function protectedOrderAccess(request: APIRequestContext, role: null | "owner" | "admin") {
   const f = fixture(); if (role) await login(request, role === "owner" ? f.owner : f.admin);
   const status = role ? 403 : 401, code = role ? "FORBIDDEN" : "UNAUTHENTICATED";
   for (const response of [await create(request, f.payload()), await request.get(base), await request.get(`${base}/${randomUUID()}`), await cancel(request, randomUUID()), await request.get(`/api/customer/cafes/${f.cafe}/pickup-slots`)]) await failure(response, status, code);
   expect(orderCount(f.customer.id)).toBe(0);
-});
+}
+// Literal titles keep the existing role assertions visible to static traceability.
+test("CUS-03.7 CUS-04.7: anonymous cannot create/read/cancel orders or read pickup slots", async ({ request }) => protectedOrderAccess(request, null));
+test("CUS-03.7 CUS-04.7: owner cannot create/read/cancel orders or read pickup slots", async ({ request }) => protectedOrderAccess(request, "owner"));
+test("CUS-03.7 CUS-04.7: admin cannot create/read/cancel orders or read pickup slots", async ({ request }) => protectedOrderAccess(request, "admin"));
 test("CUS-03.1 CUS-03.5: the same submission key belongs independently to each verified customer", async ({ request, playwright }) => {
   const f = fixture(); const other = provisionAccount("customer", true); const peer = await playwright.request.newContext({ baseURL: origin });
   try {
