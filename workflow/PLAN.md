@@ -510,7 +510,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
   - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#56](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/56)
 
 ### T-27: Implement daily maintenance
@@ -525,7 +525,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#57](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/57)
 
 ### T-34: Specify shared account and role-navigation contracts
