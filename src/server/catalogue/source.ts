@@ -21,7 +21,8 @@ const cafe = z.object({
   reviews: z.array(review),
 });
 const snapshot = z.object({ now: z.string(), cafes: z.array(cafe) });
-type SourceCafe = z.infer<typeof cafe>;
+export type SourceCafe = z.infer<typeof cafe>;
+export type CatalogueSource = z.infer<typeof snapshot>;
 export type PublicReview = z.infer<typeof review>;
 export type RatingSummary = { average: number | null; visibleReviewCount: number };
 export type CafeCardData = Pick<SourceCafe, 'cafeId' | 'name' | 'area'> & ReturnType<typeof openingState> & { rating: RatingSummary };
@@ -56,13 +57,17 @@ export function paginate<T>(items: T[], page: number) {
   const offset = (page - 1) * 20;
   return { items: items.slice(offset, offset + 20), page, pageSize: 20 as const, hasNextPage: offset + 20 < items.length };
 }
-export async function readCatalogue(query: CatalogueQuery) {
-  const source = await readCatalogueSource();
-  const selected = source.cafes.filter(c =>
+/** One ordinary filter/rating order for browse, Brew selection and fallback. */
+export function selectCatalogueCafes(source: CatalogueSource, query: Omit<CatalogueQuery, 'page'>) {
+  return source.cafes.filter(c =>
     (!query.area || c.area === query.area) &&
     (!query.drinkType || c.menu.some(m => m.drinkType === query.drinkType)) &&
     (query.timeMode === 'all' || openingState(c.openingHours, query.timeMode === 'at' ? query.at! : source.now).isOpen)
-  ).sort(compareCafeRatings).map(c => ({ cafeId: c.cafeId, name: c.name, area: c.area,
+  ).sort(compareCafeRatings);
+}
+export async function readCatalogue(query: CatalogueQuery) {
+  const source = await readCatalogueSource();
+  const selected = selectCatalogueCafes(source, query).map(c => ({ cafeId: c.cafeId, name: c.name, area: c.area,
     rating: ratingSummary(c), ...openingState(c.openingHours, source.now) }));
   return paginate(selected, query.page);
 }
