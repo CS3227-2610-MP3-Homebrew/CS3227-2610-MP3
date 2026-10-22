@@ -712,7 +712,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] No test grants Customer acceptance/collection or generic Admin order-write permission; CUS-04.5 uses the fixed public cancellation reason.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** blocked
+- **Status:**todo
 - **Issue:** [#73](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/73)
 
 ### T-43: Implement customer pickup orders and My orders
@@ -727,7 +727,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-42's full suite passes, including actual suspension cancellation display, ownership and unchanged collected purchases.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#74](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/74)
 
 ### T-44: Test collected-order reviews
@@ -743,7 +743,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] Concurrent submissions cannot produce a second review; testing uses approved domain bounds rather than LLM text limits.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#75](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/75)
 
 ### T-45: Implement collected-order review submission
@@ -758,7 +758,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-44's full suite passes for creation, concurrent uniqueness, session/workspace/ownership and immutable post-submission data.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#76](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/76)
 
 ### T-46: Test Brew Finder search and fallbacks
@@ -774,7 +774,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] All 13 evaluation cases have explicit evidence; no cache/provider/result can grant record access or an order write.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#77](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/77)
 
 ### T-47: Implement Brew Finder search integration
@@ -789,7 +789,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-46's full criterion/evaluation suite passes with fake/disabled AI and independent catalogue/order authorization.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#78](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/78)
 
 ### T-48: Test stretch favourite saving
@@ -805,7 +805,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] Favourite tests use the approved stretch schema and never expand catalogue permissions or add unapproved removal/sharing.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#79](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/79)
 
 ### T-49: Implement stretch favourite saving
@@ -820,7 +820,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-48's full suite passes with personal/workspace isolation and no saved-reference eligibility bypass.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#80](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/80)
 
 
