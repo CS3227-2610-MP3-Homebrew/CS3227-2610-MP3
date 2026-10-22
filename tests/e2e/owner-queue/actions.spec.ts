@@ -83,7 +83,7 @@ for (const [label, data] of [
 for (const action of ["accept", "ready", "collect"] as const) test(`OWN-05.2 OWN-05.3: ${action} cannot supply a rejection reason or other body`, async ({ request }) => {
   const f = fixture(); const id = f.order({ accept: "pending", ready: "accepted", collect: "ready" }[action] as "pending"); await login(request, f.owner);
   const before = stored(id);
-  for (const data of [{ reason: "x" }, [], null, "x"]) await failure(await act(request, id, action, data), 400, "INVALID_REQUEST");
+  for (const data of [{ reason: "x" }, [], null, 5]) await failure(await act(request, id, action, data), 400, "INVALID_REQUEST");
   expect(stored(id)).toEqual(before);
 });
 test("OWN-05.3: accepted becomes ready, then ready becomes collected, retaining earlier timestamps and snapshots", async ({ request }) => {

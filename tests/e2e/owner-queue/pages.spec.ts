@@ -47,7 +47,7 @@ test("OWN-05.4: a stale action announces the conflict message and reloads the cu
 test("OWN-05.1: an owner without a café gets an empty state with an application call to action", async ({ page }) => {
   const f = fixture(); await login(page.request, ownerWithoutCafe(f.owner.workspaceId));
   await page.goto("/owner/orders");
-  await expect(page.getByRole("link", { name: /appl/i })).toHaveAttribute("href", /\/owner\/application/);
+  await expect(page.getByRole("main").getByRole("link", { name: /appl/i })).toHaveAttribute("href", /\/owner\/application/);
 });
 test("OWN-05.1: history filters are exposed for each terminal state", async ({ page }) => {
   const f = fixture(); for (const state of ["collected", "rejected", "cancelled"] as const) f.order(state);
