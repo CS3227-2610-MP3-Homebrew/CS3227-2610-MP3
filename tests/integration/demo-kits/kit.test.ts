@@ -182,7 +182,7 @@ for (const decision of ["approve", "reject"] as const) describe(decision, () => 
 });
 test("SYS-12.12 SEC-10.3: kit Admin suspension and reversal preserve collected history and audit both actions", () => {
   const cafe = cafes().find(c => c.application_state === "approved")!;
-  const result = asActor(actor("admin"), `select public.set_cafe_suspension(${q(cafe.id)},true,'Safety'); select public.set_cafe_suspension(${q(cafe.id)},false,'Resolved'); select json_build_object('suspended',(select suspended from public.cafes where id=${q(cafe.id)}),'collected',(select count(*) from public.orders where cafe_id=${q(cafe.id)} and state='collected'),'audits',(select count(*) from public.admin_audit_entries where workspace_id=${q(workspace)}));`);
+  const result = asActor(actor("admin"), `select public.set_cafe_suspension(${q(cafe.id)},true,'Safety'); select public.set_cafe_suspension(${q(cafe.id)},false,'Resolved'); reset role; select json_build_object('suspended',(select suspended from public.cafes where id=${q(cafe.id)}),'collected',(select count(*) from public.orders where cafe_id=${q(cafe.id)} and state='collected'),'audits',(select count(*) from public.admin_audit_entries where workspace_id=${q(workspace)}));`);
   expect(result.status, result.stderr).toBe(0);
   const last = JSON.parse(result.stdout.split("\n").at(-1)!); expect(last.suspended).toBe(false); expect(Number(last.collected)).toBeGreaterThan(0); expect(Number(last.audits)).toBe(2);
 });
