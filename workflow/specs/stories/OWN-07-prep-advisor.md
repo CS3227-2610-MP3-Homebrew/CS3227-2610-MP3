@@ -39,6 +39,41 @@ aggregates, identity, policy, provider configuration or prompt instructions.
 | Aggregate references, item references, weekdays and quantities | Own café's server-aggregated sales source | Authorized data, never instructions | Unique `Ref`, `Weekday` 1–7 and `Count`; shared context ceiling | Check source ownership and strict schema; canonical source revision binds all aggregates |
 | Item names | Corresponding authorized item labels | Untrusted stored text | Integration `Label`, at most 200 Unicode code points | JSON data field separated from fixed instructions; no truncation or execution |
 
+## Prep source and decision basis
+
+Prep Advisor reads the same sale definition as
+[OWN-06](OWN-06-sales-dashboard.md#sales-source-and-views): own-café `collected`
+orders dated by the Singapore date of `collectedAt`, using retained line
+quantities. It differs from the Dashboard only in period and item selection.
+
+- **Period:** the 28 completed Singapore business dates before `businessDate`:
+  `from` is `businessDate` minus 28 days and `through` is `businessDate` minus 1
+  day. Today's partial sales are excluded, so the input stays stable for the
+  whole business day and the daily cache remains reusable.
+- **Candidate items:** items with collected quantity in the period that are
+  still on the current menu and not archived under
+  [OWN-13](OWN-13-archive-menu-items.md). Rank them by period quantity
+  descending, revenue descending, then item reference ascending, and keep at
+  most 10. Removed and archived items never become candidates.
+- **Aggregates:** for each candidate item, exactly seven aggregates, one per
+  weekday 1–7, each holding that item's collected quantity on that weekday's
+  four dates in the period. Weekdays without sales have quantity 0.
+  `aggregateId` is `{itemId}:{weekday}`, for example `item-ref:3`. `itemName`
+  is the item's current menu name. The input therefore holds at most 70
+  aggregates.
+- **Sufficiency:** the source is empty, and `no_source_data` applies without a
+  provider attempt, when fewer than 7 distinct business dates in the period
+  have collected sales or no candidate item remains.
+- **Direction consistency:** for a suggestion's item and weekday, let `q` be
+  the quantity of that item's aggregate for that weekday and `T` the sum of
+  the item's seven aggregates. Direction `more` is supported only when
+  `7 × q > T` (above the item's average weekday quantity) and `less` only when
+  `7 × q < T` (below it). Integer arithmetic applies. A suggestion that fails
+  this check is semantically invalid, and the whole result is rejected under
+  the existing complete-result rule. This is a minimum consistency rule;
+  whether advice is useful remains a human-reviewed evaluation, not a
+  numeric quality target.
+
 ## What is never sent to the LLM
 
 Individual order rows/order IDs, customer identity/contact details, reviews,
@@ -78,6 +113,8 @@ under SEC-09; aggregate data is still private commercial data.
 - **`OWN-07.12`:** Given no valid session, a wrong role, or a missing/foreign café, when the AI endpoint is called, then it returns shared `401 UNAUTHENTICATED`, `403 FORBIDDEN` or indistinguishable `404 NOT_FOUND` respectively with no protected source/fallback/cache disclosure or provider attempt; main and kit owners use the same verified workspace boundary.
 - **`OWN-07.13`:** Given stored item-label injection or a model request to reveal secrets, execute a tool or change a record, when the operation processes it, then text remains untrusted data, the provider receives no tools/write authority, and no extra read/fetch/write or permission change occurs; all displayed text remains inert.
 - **`OWN-07.14`:** Given any advice/fallback outcome, when usage/cache/audit effects are inspected, then the shared admission caps, validated-success-only cache rules and content-free AI audit apply, without raw sales, prompt, output, provider body or secrets in telemetry; disconnects initiate no later attempt and do not refund a dispatched attempt.
+- **`OWN-07.15`:** Given own-café collected sales, when the provider input is built, then its period is the 28 completed business dates before `businessDate`, it holds seven `{itemId}:{weekday}` aggregates for each of at most 10 ranked candidate items still on the current menu and not archived, with zero quantities kept, and fewer than 7 distinct sale dates in the period yields `no_source_data` without a provider attempt.
+- **`OWN-07.16`:** Given a schema-valid model result, when a suggestion's direction is checked against its item's aggregates, then `more` requires `7 × q > T` and `less` requires `7 × q < T` for that item/weekday quantity `q` and item total `T`; any failing suggestion rejects the whole result with the `unavailable` top-items fallback and no success-cache write.
 
 #### Edge cases and failure paths
 
@@ -169,6 +206,11 @@ aggregate fixtures; no live LLM or hosted database evidence is implied.
 | OWN-07-E10 | Model claims approval and asks to mark orders collected | No order/menu/café change; maps to Claimed authority or automatic business change | adversarial |
 | OWN-07-E11 | Synthetic customer/order/secret canaries in surrounding domain data/errors | Absent from provider input and telemetry; maps to Raw-order, customer or secret leakage | adversarial |
 | OWN-07-E12 | Parallel refreshes at cap, disabled mode with populated cache, provider timeout/429 | Shared caps/disable precedence hold, no retries, typed fallback; maps to Quota exhaustion, disabled-mode bypass or stale cache | adversarial |
+| OWN-07-E13 | One item with Monday–Sunday quantities 12, 4, 4, 4, 4, 4, 4; fake result suggests `more` on Monday and `less` on Tuesday | Both pass direction consistency (84 > 36 and 28 < 36); quantities are quoted exactly | normal |
+| OWN-07-E14 | Same item; fake result suggests `more` on Tuesday | Whole result rejected; `unavailable` fallback with top items; no success-cache write | edge |
+| OWN-07-E15 | Item sold 4 on every weekday; fake result suggests either direction for it | Whole result rejected, because neither direction is supported at the average | edge |
+| OWN-07-E16 | Collected sales on only 6 distinct dates in the period | No provider attempt; `no_source_data` with the ordinary top-items view | edge |
+| OWN-07-E17 | Removed item with past sales, archived item with past sales and an order collected today | Neither removed nor archived item becomes a candidate; today's sale is absent from the input period | edge |
 
 ## Out of scope
 

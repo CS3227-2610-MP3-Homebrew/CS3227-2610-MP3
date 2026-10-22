@@ -33,8 +33,8 @@ endpoints can be finalized.
 | Orders and pickup | CUS-03–CUS-04, OWN-04–OWN-05 | Customer pickup/order boundaries and shared state/race vocabulary are defined below. Owner pickup-rule editing and queue actions are projected in the owner boundaries below under OWN-04–OWN-05 ownership. |
 | Reviews and moderation | CUS-05, ADM-03–ADM-04 | Customer review fields/submission are defined below. Admin queue ordering, keep/hide/restore transactions and AI classification remain ADM-03–ADM-04. |
 | Café and menu management | OWN-01–OWN-04, ADM-01–ADM-02 | Customer enums/money/hours and the owner café/menu boundaries below project OWN-01–OWN-04 decisions, including fields, atomic edits, applications and private suspension context. |
-| Sales and preparation advice | OWN-06–OWN-07 | Included order states, aggregation window, business-day boundaries, minimum data, top-item sorting and meaning of more/less advice. |
-| Stretch features | CUS-07, OWN-08, ADM-05–ADM-06 | CUS-07's optional favourite boundary is defined below. Boost and runtime AI-control contracts remain with their owning stories. No MVP favourite endpoint is implied. |
+| Sales and preparation advice | OWN-06–OWN-07 | The [owner sales boundary](#owner-sales-boundary) below projects OWN-06's sale definition, period and views; OWN-07 owns the Prep period, candidate items, sufficiency and direction consistency used to build `PrepInput`. |
+| Stretch features | CUS-07, OWN-08–OWN-15, ADM-05–ADM-06 | CUS-07's optional favourite boundary and the [owner stretch operations boundary](#owner-stretch-operations-boundary) for OWN-08–OWN-15 are defined below. ADM-06's Admin boost decision and ADM-05's runtime AI controls remain with their owning stories, which do not yet exist as story files. No MVP endpoint is implied. |
 
 Customer domain paths, schemas and error mappings below project their owning
 stories. Other role route/query/edit contracts remain with the dependencies
@@ -466,7 +466,10 @@ integer 0–180 minutes (default 15); equality at the cutoff is allowed, but
 closing itself is always excluded, including a zero cutoff. Overnight slots
 use their actual pickup date/instant; an interval can start on the prior date.
 No slots, including past/horizon/cutoff exclusions, means an empty choices array.
-Owner rule editing remains OWN-04. There is no capacity reservation.
+Owner rule editing remains OWN-04. There is no capacity reservation unless the
+stretch OWN-12 limit is set. When provided, stretch OWN-10 pausing, OWN-11
+closure dates and the OWN-12 per-slot limit further remove slots and refuse
+creation as defined in the [owner stretch boundary](#owner-stretch-operations-boundary).
 
 ```text
 CreateOrder = {cafeId: Ref, pickupAt: Instant,
@@ -476,13 +479,16 @@ OrderItem = {itemId: Ref, name: string, quantity: integer 1..20,
   unitPriceCents: Count, lineTotalCents: Count}
 Order = {orderId: Ref, cafeId: Ref, cafeName: string, placedAt: Instant,
   pickupAt: Instant, state: "pending" | "accepted" | "ready" |
-  "collected" | "rejected" | "cancelled", items: OrderItem[],
+  "collected" | "rejected" | "cancelled" | "no_show", items: OrderItem[],
   totalCents: Count, currency: "SGD",
   cancellationReason: "Cafe is suspended" | null, rejectionReason: string | null,
   acceptedAt: Instant | null, readyAt: Instant | null,
   collectedAt: Instant | null, rejectedAt: Instant | null,
-  cancelledAt: Instant | null}
+  cancelledAt: Instant | null, noShowAt: Instant | null}
 ```
+
+`no_show` and `noShowAt` exist only when stretch OWN-14 is provided; until
+then no order reaches that state and `noShowAt` stays null.
 
 `items` contains 1–20 distinct item references from this one café. Reject
 duplicate references rather than merging quantities. Quantities are JSON
@@ -551,8 +557,9 @@ orders give indistinguishable `404 NOT_FOUND`.
 | Owner reject | pending | rejected, required customer-visible rejection reason | OWN-05 |
 | Owner mark ready | accepted | ready | OWN-05 |
 | Owner mark collected | ready | collected | OWN-05 |
+| Owner mark no-show (stretch) | accepted or ready, at or after `pickupAt` | no_show, `noShowAt` recorded | OWN-14 |
 | Admin suspension consequence | pending, accepted, ready | cancelled, fixed “Cafe is suspended” | ADM-02 applies CUS-04.5 |
-| Suspension against terminal orders | collected, rejected, cancelled | Unchanged, including prior cancellation reason | ADM-02/CUS-04.5 |
+| Suspension against terminal orders | collected, rejected, cancelled, no_show | Unchanged, including prior cancellation reason | ADM-02/CUS-04.5 |
 | Un-suspension | Any retained order state | Unchanged | ADM-02 |
 
 State-changing operations serialize on café/order state. Acceptance versus
@@ -563,7 +570,8 @@ Creation before suspension is included in its cancellations; creation after
 suspension is denied. Suspension atomically changes café state, cancels every
 pending/accepted/ready order and appends exactly one Admin audit entry, or rolls
 all effects back. Terminal orders never revive or change. No automatic expiry,
-no-show, refund, rescheduling or payment operation is introduced. Transactional
+refund, rescheduling or payment operation is introduced; the only no-show is
+the stretch owner action in OWN-14. Transactional
 application failures return the shared `500 INTERNAL_ERROR` with no partial
 mutation; source-read failures use `503 SOURCE_UNAVAILABLE`.
 
@@ -803,6 +811,140 @@ without partial updates. Suspension and owner collection retain the shared
 serialization rules and terminal preservation. No-café reads return empty
 pages and the UI provides an application CTA; source outages give 503.
 
+## Owner sales boundary
+
+OWN-06 owns the sale definition and views; this section projects them. A sale
+is an own-café `collected` order dated by the Singapore date of `collectedAt`,
+measured only from retained `totalCents` and line snapshots. The read uses the
+verified owner/workspace, session-bound RLS and the shared private/no-store,
+safe-error conventions. It accepts no query keys; any query key gives 400.
+
+```text
+OwnerSales = {cafeId: Ref, businessDate: BusinessDate,
+  period: {from: BusinessDate, through: BusinessDate}, currency: "SGD",
+  daily: [{date: BusinessDate, orderCount: Count, revenueCents: Count}],
+  topItems: [{rank: integer 1..10, itemId: Ref, itemName: string,
+    quantity: Count, revenueCents: Count}],
+  weekdays: [{weekday: Weekday, orderCount: Count, quantity: Count,
+    revenueCents: Count}]}
+```
+
+`period.through` is `businessDate` and `period.from` is 27 days earlier.
+`daily` has exactly 28 entries, newest first, zero-filled. `topItems` has at
+most 10 entries ranked as OWN-06 defines, using each item's most recent
+collected item-name snapshot. `weekdays` has exactly seven entries, Monday (1)
+through Sunday (7), zero-filled. An empty period returns zero-filled `daily`
+and `weekdays` and an empty `topItems`.
+
+| Method/path | Request | Success |
+| --- | --- | --- |
+| GET /api/owner/sales | No query/body | 200 {requestId, sales: OwnerSales or null}; null only for no café. |
+
+Source failure gives 503 SOURCE_UNAVAILABLE, never zero-filled data. Prep
+Advisor's top-items fallback renders `topItems` from this read. The stretch
+OWN-15 export below uses the same sale definition.
+
+## Owner stretch operations boundary
+
+These contracts apply only when the owning stretch story is provided. Every
+route requires a verified owner/workspace, session-bound RLS and the shared
+strict-JSON, same-origin, 65,536-byte body, safe-error and private/no-store
+conventions. Caller-supplied owner, workspace, approval, suspension or
+timestamp keys are invalid. Missing or foreign targets give indistinguishable
+404, wrong role 403 and no session 401. Mutations that carry
+`expectedSuspensionVersion` apply the [owner café guard](#owner-cafe-management-boundary)
+exactly. Transaction failure gives 500 with no partial change; source failure
+gives 503.
+
+**Boosts (OWN-08).** Requests need an approved, non-suspended café and no open
+boost, meaning no `requested` boost and no approved boost before its
+`featuredUntil`. Otherwise the request gives 409 STATE_CONFLICT and stores
+nothing. The fee is fixed at 1,000 SGD cents and never collected.
+
+```text
+OwnerBoost = {boostId: Ref, state: "requested" | "approved" | "rejected",
+  feeCents: 1000, currency: "SGD", requestedAt: Instant,
+  decidedAt: Instant | null, featuredFrom: Instant | null,
+  featuredUntil: Instant | null}
+```
+
+ADM-06's approval sets `state` to `approved`, `decidedAt` and `featuredFrom` to
+the decision instant and `featuredUntil` to 168 hours later; rejection sets
+`state` and `decidedAt` only. A boost is active while the database clock is at
+or after `featuredFrom` and before `featuredUntil`. The Customer catalogue card
+and café detail carry `featured: boolean`, true only for an eligible café with
+an active boost; ordering and filters ignore it.
+
+**Ordering pause (OWN-10).** `OwnerCafe` gains `ordersPaused: boolean`. Customer
+café detail gains `acceptingOrders: boolean`, false while paused. While paused,
+`GET /api/customer/cafes/{cafeId}/pickup-slots` returns an empty list and
+`POST /api/customer/orders` gives 409 STATE_CONFLICT with “This café is not
+taking pre-orders right now.”; submission-key replay of an existing order is
+unaffected. Pause and order creation serialize on the café.
+
+**Closure dates (OWN-11).** `Closure = {date: BusinessDate, note: string}`, with
+the note trimmed to 0–100 code points. A new closure date must be from today
+through today plus 365 days, with at most 30 closures dated today or later per
+café. A closure removes all opening time from 00:00 to 24:00 Singapore time on
+its date for slots, creation, open state, open-now/open-at filters and next
+opening. A cut interval's continuous closing becomes the date boundary for the
+pickup cutoff. Customer café detail gains `closures: Closure[]` for dates
+within the seven-date pickup horizon, ascending. Creation for a slot on a
+closure date gives 409 STATE_CONFLICT.
+
+**Per-slot limit (OWN-12).** `OwnerCafe` gains `maxOrdersPerSlot: integer
+1..50 | null`, null by default. A slot's count is the café's orders with that
+exact `pickupAt` in pending, accepted, ready or collected state. Slots at or
+over the limit are omitted from pickup choices. Creating into a full slot
+gives 409 STATE_CONFLICT with “This pickup time is full. Choose another
+time.”; creation serializes per café and slot so the limit is never exceeded.
+
+**Archive (OWN-13).** Owner `MenuItem` gains `archived: boolean`. Archived
+items are absent from Customer menus, drink-type filters, Brew Finder and Prep
+Advisor candidates and order creation (404 as a missing item). Archiving an
+archived item, or restoring an active one, gives 409.
+
+**No-show (OWN-14).** The shared state matrix above defines the transition.
+Before `pickupAt`, the action gives 409 STATE_CONFLICT with “This order's
+pickup time has not passed yet.” Owner history filters add `no_show`; the active
+view never includes it.
+
+**Prep sheet (OWN-09) and export (OWN-15).** The prep sheet uses OWN-09's
+selection and sorting, holding only accepted orders whose Singapore pickup
+date is the current business date.
+
+```text
+PrepSheet = {businessDate: BusinessDate, generatedAt: Instant,
+  items: [{itemId: Ref, itemName: string, quantity: Count, orderCount: Count}],
+  orders: [{orderId: Ref, pickupAt: Instant, customerName: string,
+    items: [{itemId: Ref, name: string, quantity: integer 1..20}]}],
+  pendingTodayCount: Count}
+```
+
+The export accepts exactly the query keys `from` and `through`, each a
+`BusinessDate`, at most once each. It returns `text/csv; charset=utf-8` in
+OWN-15's exact format as an attachment, or 400 for invalid ranges. An owner
+without a café gets 404.
+
+| Method/path | Request | Success | Story |
+| --- | --- | --- | --- |
+| GET /api/owner/boosts | Optional page, customer page parser | 200 Page<OwnerBoost>, 10 per page, requestedAt descending then boostId ascending | OWN-08 |
+| POST /api/owner/boosts | Exactly {} | 201 {requestId, boost: OwnerBoost} | OWN-08 |
+| POST /api/owner/cafe/ordering | Exactly {paused: boolean, expectedSuspensionVersion: Count} | 200 {requestId, cafe: OwnerCafe}; approved café only | OWN-10 |
+| GET /api/owner/closures | No query/body | 200 {requestId, closures: Closure[]}, today and later, ascending | OWN-11 |
+| POST /api/owner/closures | Exactly {date: BusinessDate, note: string, expectedSuspensionVersion: Count} | 200 {requestId, closure: Closure, activeOrdersOnDate: Count}; approved café only | OWN-11 |
+| POST /api/owner/closures/{date}/remove | Exactly {expectedSuspensionVersion: Count} | 200 {requestId, removed: true}; missing or past date gives 404 | OWN-11 |
+| POST /api/owner/cafe/slot-limit | Exactly {maxOrdersPerSlot: integer 1..50 or null, expectedSuspensionVersion: Count} | 200 {requestId, cafe: OwnerCafe}; approved café only | OWN-12 |
+| POST /api/owner/menu/{itemId}/archive | Exactly {expectedSuspensionVersion: Count} | 200 {requestId, item: MenuItem} | OWN-13 |
+| POST /api/owner/menu/{itemId}/restore | Exactly {expectedSuspensionVersion: Count} | 200 {requestId, item: MenuItem} | OWN-13 |
+| POST /api/owner/orders/{orderId}/no-show | Exactly {} | 200 {requestId, order: OwnerOrder} | OWN-14 |
+| GET /api/owner/prep-sheet | No query/body | 200 {requestId, prepSheet: PrepSheet or null}; null only for no café | OWN-09 |
+| GET /api/owner/sales/export | Query from and through | 200 CSV attachment | OWN-15 |
+
+Pending and rejected cafés cannot pause, add closures or set a slot limit;
+those operations give 409. All of them remain available to an approved café
+during suspension and never change approval, suspension or Customer visibility.
+
 ## SoCLaaS transport
 
 Only server-only `src/server/llm/` imports/calls `openai`. The configured
@@ -924,7 +1066,9 @@ that arbitrary natural-language truth can be proved by a schema.
 
 Only authorized café aggregates, business dates and item references/labels are
 sent. The server never passes order rows, customer identity or another café's
-sales. Aggregation calculations and sufficiency remain OWN-06–OWN-07's contract.
+sales. The period, candidate items, aggregate construction (including
+`aggregateId` = `{itemId}:{weekday}`), sufficiency and direction consistency
+are defined in [OWN-07](stories/OWN-07-prep-advisor.md#prep-source-and-decision-basis).
 
 ```text
 PrepInput = {
@@ -954,9 +1098,10 @@ item on weekday {weekday}; recorded quantities: {quantities}.` Quantities use
 base-10 integer strings joined by `, ` in evidence-ID order. If the generated
 reason exceeds `Reason`, the full AI result is invalid. This text
 ensures each suggestion quotes its supporting figures without accepting
-invented numerical prose. It does not establish that an item should be prepared
-more/less; that decision basis and evaluation remain OWN-07's contract.
-Nothing changes inventory, menu or orders.
+invented numerical prose. Validation also applies OWN-07's direction
+consistency rule to every suggestion before this text is produced; one failing
+suggestion invalidates the whole result. The rule is part of Prep contract
+version `"1"`, and the exact prompt below is unchanged. Nothing changes inventory, menu or orders.
 
 Exact system message:
 
@@ -1088,8 +1233,8 @@ These are required contract/evaluation cases.
 
 This specification adds no app code, executable tests, migrations, hosted-service
 changes, payments, extra roles, live provider probes or deployment. It defines
-only CUS-07's specified optional favourite boundary, not other stretch APIs,
-unspecified owner edit/queue behaviour or sales calculations. No numeric
+only the stretch boundaries specified above (CUS-07 and OWN-08–OWN-15), not
+ADM-05/ADM-06 APIs or unspecified owner behaviour. No numeric
 performance or classification-accuracy target
 is inferred. Supabase SDK/domain contracts remain subject to their owning
 stories; this file does not expose a secret-key browser endpoint.
