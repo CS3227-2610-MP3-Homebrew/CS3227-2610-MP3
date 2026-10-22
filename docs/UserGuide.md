@@ -301,12 +301,17 @@ Customers can read their own order history and cancel pending orders.
    these purchase details.
 2. Orders appear newest first, with order reference breaking placement-time
    ties. Use **Previous orders** and **Next orders** for 20-order pages.
-3. For a pending order, select **Cancel order**. The button shows “Updating…”
+3. When updated order information arrives while you stay on this page, the list
+   reflects new orders, current states, reasons and lifecycle times. **Cancel
+   order** disappears once an order is no longer pending, and **Review order**
+   appears for collected orders. Refresh the page when you want to check the
+   latest fulfilment state.
+4. For a pending order, select **Cancel order**. The button shows “Updating…”
    while saving; success changes the state to cancelled and displays **Cancelled
    at**. Accepted, ready, collected, rejected and cancelled orders have no
    cancellation button. A stale cancellation returns the state-conflict message
    described above and changes nothing.
-4. Automatically cancelled pending/accepted/ready orders remain listed with
+5. Automatically cancelled pending/accepted/ready orders remain listed with
    “Cafe is suspended”. The Admin's private explanation is not shown. Collected
    purchases and prior terminal orders remain unchanged; un-suspension does not
    revive orders. Owner-rejected history displays its rejection reason as text.

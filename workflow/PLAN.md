@@ -752,7 +752,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Related tests change first; named failing-first evidence demonstrates stale membership/state/reason/timestamps after a fresh same-page payload is delivered.
   - [ ] Complete CUS-04.1 scoped display coverage is retained, including current controls, inert feedback and unchanged snapshots; existing customer cancellation coverage remains intact.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase/fake or disabled AI in the issue-scoped [handoff](templates/handoff.md), following the [handoff conventions](handoffs/README.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#169](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/169)
 
 ### T-82: Refresh customer orders after owner MVP fulfilment
@@ -768,7 +768,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] T-81's CUS-04.1 suite passes for fresh same-page membership/state/feedback/timestamps, correct current controls, retained snapshots and scoped reads.
   - [ ] Existing cancellation success/conflict behavior remains covered; implementation does not edit, skip or weaken acceptance tests, fixtures or configuration.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI; the issue-scoped [handoff](templates/handoff.md) records actual evidence and remaining limits under the [handoff conventions](handoffs/README.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#170](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/170)
 
 ### T-83: Test customer integration with owner stretch controls
