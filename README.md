@@ -7,8 +7,8 @@ reservations, explicit configured limits and database-clock minute/Singapore-day
 windows. It uses a restricted secret-key Supabase RPC. Shared server-only LLM
 operations now validate feature inputs and provider/cache results, use fixed
 prompts and one bounded provider attempt, and return typed fallbacks. Deterministic
-fake and disabled modes support local checks; AI screens and endpoints remain
-pending. See the [shared LLM layer](docs/DeveloperGuide.md#ai-features-and-the-shared-llm-module)
+fake and disabled modes support local checks. Admin triage consumes these controls
+through `/api/ai/moderation`; other AI feature integrations remain pending. See the [shared LLM layer](docs/DeveloperGuide.md#ai-features-and-the-shared-llm-module)
 for caller responsibilities and integration limits.
 
 ## User roles

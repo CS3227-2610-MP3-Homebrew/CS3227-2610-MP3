@@ -470,32 +470,32 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-24: Test demo kits
 
-- **Depends on:** T-08, T-10, T-12, T-29, T-31, T-52, T-55, T-58, T-61, T-51
+- **Depends on:** T-08, T-10, T-12, T-29, T-31, T-52, T-55, T-58, T-51
 - **Owner role:** testing
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Test anonymous production demo access under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes), using local Supabase and fake AI.
 - **Work:** Derive failing-first cases for the sign-in creation control, three once-shown normal-sign-in accounts, email/code pattern, secure distinct passwords, Auth-only persistence, no credential logging/later responses and all-or-nothing rollback. Test concurrent global 10-minute/day caps, rollover, restart, unavailable counters, 429/Retry-After, no LLM call, no expiry/deletion, kit-scoped Admin operations and per-account/shared-global AI limits. Verify all seeded content and relative sales history against the owning stories, including unpublished-owner and untrusted synthetic review cases. Reuse T-08 isolation guards and T-12 counters rather than assigning their criteria again.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/demo-kits/`, local rollback/concurrency/clock/Auth fixtures and browser cases under `tests/e2e/demo-kits/`; testing owns all fixtures/mocks.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master. SYS-12/SEC-10/route contracts must also be on master; normal sign-in/creation-control integration requires the owning SYS-02 sign-in screen contract and surface. Seed sales sufficiency follows OWN-06/OWN-07 source/aggregation contracts before that evidence can run. T-08, T-10 and T-12 supply shared isolation, sessions and counters; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. Owner prerequisites map to T-52 setup, T-55 menu, T-58 queue and T-61 sales/Prep contracts. T-51 supplies sign-in; source sufficiency cannot be inferred from a seeded date span alone.
+- **Prerequisite:** CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs, SYS-12/SEC-10/route contracts and the SYS-02 sign-in screen are on master. SYS-12.9 seeded sales history is verified as about four weeks of collected orders with items, dated relative to kit creation, under the CUS-03–CUS-05 and OWN-05 order contracts; Dashboard and Prep Advisor result sufficiency is evidenced by T-62 against the kit seed once T-61 contracts exist, not by this task. T-08, T-10 and T-12 supply shared isolation, sessions and counters; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. Owner prerequisites map to T-52 setup, T-55 menu and T-58 queue contracts. T-51 supplies sign-in; source sufficiency cannot be inferred from a seeded date span alone.
 - **Acceptance criteria:**
   - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#54](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/54)
 
 ### T-25: Implement demo kits
 
-- **Depends on:** T-24, T-08, T-10, T-12, T-29, T-31, T-63, T-51
+- **Depends on:** T-24, T-08, T-10, T-12, T-29, T-31, T-51
 - **Owner role:** implementation
 - **Requirements:** SYS-12.4, SYS-12.5, SYS-12.6, SYS-12.7, SYS-12.8, SYS-12.9, SYS-12.10, SYS-12.11, SYS-12.12; SEC-10.1, SEC-10.2, SEC-10.3 — [SYS-12](specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Implement self-service demo kits under the [shared route contract](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
 - **Work:** Add the sign-in Create demo kit control and POST /api/demo-kits with one-time credential display, secure account/code generation, Supabase Auth-only password storage and atomic complete-kit creation/rollback. Extend T-12's durable counter/window mechanism for both global kit caps, fail closed and return the specified 429/Retry-After response. Seed the kit's Customer, approved owner/café/menu/hours/pickup rules/relative sales history, separate unpublished owner/pending application and untrusted pending reviews using owning-story states. Apply existing kit Admin controls, account/global AI limits, no LLM call and no automatic expiry/deletion. Reuse T-08 isolation and T-10 session gates; author no tests or ordinary sign-in lifecycle.
 - **File scope:** Proposed `src/app/api/demo-kits/route.ts`, server-only kit provisioning and additive migrations; existing sign-in screen after its owning story exists. Serialize migrations/shared configuration; no hosted execution.
-- **Prerequisite:** BLOCKED until CUS-03–CUS-05, OWN-01–OWN-05 and ADM-01–ADM-03 story specs are on master, plus all T-24 contract/surface prerequisites and its failing-first evidence; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. T-24 maps owner contract prerequisites to T-52/T-55/T-58/T-61. T-51 supplies sign-in and T-63 brings T-54/T-57/T-60 owner source/schema integration; kit creation retains its own SYS/SEC criteria.
+- **Prerequisite:** All T-24 contract/surface prerequisites and its failing-first evidence are required; T-29 and T-31 provide kit Admin operations and the review states used by seeded-content checks. T-24 maps owner contract prerequisites to T-52/T-55/T-58. T-51 supplies sign-in. Seed fields that owner or Customer pairs have not yet added (for example order-item quantities and prices) arrive through additive migrations under the T-52/T-55/T-58 and CUS-03 contracts; later owner and Customer pairs extend that schema rather than duplicate it. Kit creation retains its own SYS/SEC criteria.
 - **Acceptance criteria:**
   - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#55](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/55)
 
 ### T-26: Test daily maintenance
@@ -515,17 +515,17 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 
 ### T-27: Implement daily maintenance
 
-- **Depends on:** T-26, T-16, T-18, T-54, T-57
+- **Depends on:** T-26, T-16, T-18
 - **Owner role:** implementation
 - **Requirements:** SYS-13.1, SYS-13.2, SYS-13.3, SYS-13.4, SYS-13.5, SYS-13.6, SYS-13.7, SYS-13.8; SEC-10.4, SEC-10.5 — [SYS-13](specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance), [SEC-10](specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
 - **Description:** Add the [maintenance route](specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes) and extend delivery triggers.
 - **Work:** Add GET /api/internal/maintenance with server-only environment-specific bearer authentication, constant-time comparison and count-only sanitized outcomes. Invoke T-16's retention cleanup, ensure at most one main Admin under SYS-13.1, retaining an existing main Admin regardless of configured-email changes and reporting conflict without changes when the email is already used but no main Admin exists, then ensure the main showcase café/hidden owner. Preserve step order and independence, idempotence, changed passwords and every no-touch/no-delete/no-LLM restriction. Missing main-Admin variables report that step's failure while other steps run. Add the Vercel production cron entry and extend T-18's production deploy workflow with one maintenance call after each successful deploy; reuse its workflow/configuration ownership rather than recreating it. No tests or hosted execution.
 - **File scope:** Proposed `src/app/api/internal/maintenance/route.ts` and server-only maintenance modules; Vercel cron configuration; extend existing `.github/workflows/` production deployment from T-18. Serialize shared workflow/configuration edits.
-- **Prerequisite:** BLOCKED on the owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01); T-26 evidence and all its contract prerequisites; T-16 and T-18; SYS-13.8 kit no-touch uses T-26's T-06 workspace fixture, without a T-25 prerequisite. Human approval/execution remains required for production delivery. T-26 maps the owner contract prerequisites to T-52/T-55; T-54/T-57 provide their domain schema/management implementation for showcase provisioning without requiring unrelated owner sales/queue screens.
+- **Prerequisite:** The owning café/menu/hours story contracts for showcase data (OWN-01–OWN-03 and ADM-01) are on master; T-26 evidence and all its contract prerequisites; T-16 and T-18; SYS-13.8 kit no-touch uses T-26's T-06 workspace fixture, without a T-25 prerequisite. Human approval/execution remains required for production delivery. T-26 maps the owner contract prerequisites to T-52/T-55. Showcase provisioning writes the existing café, menu and hours schema directly; any missing field arrives through an additive migration under those contracts, which T-54/T-57 then extend. No owner screen is required.
 - **Acceptance criteria:**
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#57](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/57)
 
 ### T-34: Specify shared account and role-navigation contracts
@@ -998,7 +998,7 @@ implementation also requires the paired failing-first evidence.
 - **Owner role:** testing
 - **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
 - **Description:** Derive failing-first coverage for all OWN-06/OWN-07 criteria and [Prep evaluation cases](specs/stories/OWN-07-prep-advisor.md#evaluation-cases), consuming shared AI infrastructure.
-- **Work:** Cover three scoped sales views, source-backed SGD amounts, Singapore date/weekday boundaries, renamed/removed-item history under T-61, no-café/no-sales/source failures and AI-independent top items. Cover strict Prep request/authorized aggregate-only provider context, exact quoted evidence, complete rejection, empty suggestions/source, sufficiency/direction fixtures, same-café/date/source/version cache, bounded manual refresh and failed-refresh preservation, disabled/limited/unavailable fallbacks, source 503, no domain writes, inert label injection, forged evidence and content-free audit. Exercise all 12 existing evaluation cases plus T-61-approved quality cases with fake captures; distinguish deterministic safety from quality. Reuse T-12/T-14/T-16 tests without reallocating their SYS/SEC criteria.
+- **Work:** Cover three scoped sales views, source-backed SGD amounts, Singapore date/weekday boundaries, renamed/removed-item history under T-61, no-café/no-sales/source failures and AI-independent top items. Cover strict Prep request/authorized aggregate-only provider context, exact quoted evidence, complete rejection, empty suggestions/source, sufficiency/direction fixtures, same-café/date/source/version cache, bounded manual refresh and failed-refresh preservation, disabled/limited/unavailable fallbacks, source 503, no domain writes, inert label injection, forged evidence and content-free audit. Exercise all 12 existing evaluation cases plus T-61-approved quality cases with fake captures; distinguish deterministic safety from quality. Reuse T-12/T-14/T-16 tests without reallocating their SYS/SEC criteria. Include one case showing the SYS-12.9 demo-kit seed yields non-trivial Dashboard and Prep Advisor results; T-24/T-25 own the seed itself.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/owner-sales/` and `tests/{unit,integration,e2e}/prep-advisor/`, controlled local sales/clock/cache/failure fixtures and evaluation evidence; browser files only under respective `tests/e2e/` directories; database/route files declare node environment.
 - **Prerequisite:** T-61 and all governing specs on master, plus shared access/session, admission, validated LLM operations and cache/audit repositories. Local sales fixtures permit failing-first tests before queue/menu UI integration; no demo-kit or live-provider prerequisite.
 - **Acceptance criteria:**
@@ -1158,7 +1158,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
   - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded using local Supabase/fake AI in the issue-scoped [handoff](templates/handoff.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#62](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/62)
 
 ### T-33: Implement Moderation Assistant
@@ -1174,5 +1174,5 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] T-32's full ADM-04 suite passes, including main/kit boundaries, transient complete results, injection/forged/stale advice, exact fallback/error behavior and explicit per-review control.
   - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI; the issue-scoped [handoff](templates/handoff.md) reports checks and evaluation limits without live calls or deployment.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#63](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/63)
