@@ -13,6 +13,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
   - [Owner order queue](#owner-order-queue)
+  - [Owner café application and settings](#owner-café-application-and-settings)
 - [Authentication and authorization](#authentication-and-authorization)
   - [Demo-kit creation](#demo-kit-creation)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
@@ -325,6 +326,7 @@ Claude Code wrapper loads its workflow instructions.
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. Uses the local Supabase scripts, bans hosted resets/deletions and linking, and keeps fixtures testing-owned. |
 | `.agents/skills/sdd-implement/references/soc-llm.md` | Guidance for server-only SoC calls, INTEGRATION-SPEC transport rules, zero retries, bounded failures, output validation, credential protection and mocked verification. |
 | `.agents/skills/session-log/SKILL.md` | Drafts one numbered session log, resolves author attribution, records key prompts and corrections, and limits scope, length and file changes. |
+| `.agents/skills/handoff/SKILL.md` | Writes a plain-text five-section briefing of the current conversation to `logs/<username>/handoff.txt` (or the next free `handoff-N.txt`) for pasting into a new session; prose only, grounded in the conversation. |
 | `.codex/rules/allow.rules` | Lets `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e. Adds `bun run db:start`, `bun run db:reset`, `bun run db:check` and `bun run test` for local Supabase Docker, `bun install --frozen-lockfile` for lockfile installs, and the read-only `bun run lint`, `typecheck`, `check:specs`, `check:traceability` and `git status`, with match/not_match examples. Prefix rules match a command prefix, so extra arguments also match; human review of package.json scripts and configs is the backstop, not exact enforcement. |
 | `.codex/rules/guardrails.rules` | Forbids agents from committing, tagging, rebasing, pushing, rewriting history, opening or merging PRs, deploying with Vercel and pushing to the hosted Supabase database. Also forbids `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. |
 | `workflow/scripts/check-specs.ts` | CLI for `bun run check:specs`: prints drift errors and warnings and exits 1 on any error. |
@@ -724,8 +726,9 @@ conflicts have distinct messages.
 `20261022000000_cafe_eligibility.sql` adds the café profile/submission/cutoff
 fields and `suspension_version`, weekly-hour fields and canonical order `state`,
 `cancellation_reason` and `cancelled_at`. It consumes the merged owner/order
-contracts; it does not supply Owner submission/settings/fulfilment writers or
-Customer ordering screens. Those writers must use the café lock and current
+contracts. Owner submission and settings writers are described in
+[Owner café application and settings](#owner-café-application-and-settings);
+fulfilment writers remain separate work and must use the café lock and current
 state/version contracts in the
 [shared boundaries](../workflow/specs/INTEGRATION-SPEC.md#owner-cafe-management-boundary).
 
@@ -762,6 +765,53 @@ audit/RLS controls. Five supplementary cases in `tests/unit/cafe-admin-http.test
 distinguish source unavailability from transaction failure and check safe errors.
 Cross-story resubmission/collection states are local fixtures;
 Owner endpoints are not prerequisites for this acceptance evidence.
+
+### Owner café application and settings
+
+[OWN-01](../workflow/specs/stories/OWN-01-cafe-application.md),
+[OWN-02](../workflow/specs/stories/OWN-02-cafe-profile-hours.md) and
+[OWN-04](../workflow/specs/stories/OWN-04-pickup-rules.md) are implemented
+against the
+[owner café management boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-cafe-management-boundary).
+
+- **Routes.** `src/app/api/owner/cafe/route.ts` (`GET`),
+  `applications/route.ts`, `cafe/resubmit/route.ts` and
+  `cafe/settings/route.ts` (`POST`) delegate to `src/server/owner/http.ts`.
+  Each checks exact Origin, JSON media type, verified owner role, the
+  65,536-byte body bound and strict Zod validation
+  (`src/lib/owner/cafe-input.ts`) before source access. Errors are safe,
+  field-named messages; responses are private/no-store; other methods get 405
+  with `Allow`.
+- **Source.** `src/server/owner/source.ts` calls session-bound RPCs and maps
+  database errors to the owner error codes (`503 SOURCE_UNAVAILABLE`,
+  `500 INTERNAL_ERROR` without raw SQL detail).
+- **Migration.** `20261023000000_owner_cafe.sql` adds `cafes.created_at`
+  (owner operations address the owner's earliest café by `created_at, id`),
+  the RLS-enabled, privilege-revoked `cafe_application_attempts` and
+  `cafe_application_keys` tables, the invoker read `public.owner_cafe()` and
+  three definer writers: `submit_owner_cafe_application`,
+  `resubmit_owner_cafe_application` and `save_owner_cafe_settings`. Writers
+  derive owner/workspace from the protected profile, repeat validation for
+  direct Data API callers, serialize per owner with advisory locks, lock the
+  café row (serializing with ADM-01/ADM-02) and commit atomically. They never
+  write approval, suspension, `suspension_version`, ownership, Admin reasons
+  or audit rows. No raw table write grant is added.
+- **Idempotency and conflicts.** Submissions carry a `submissionKey`; a replay
+  or identical repeat returns the existing attempt, different content gives
+  409. Resubmission and settings carry `expectedSuspensionVersion`; a changed
+  version returns the fixed suspension-conflict 409.
+- **Pages.** `/owner/application` (no-café form, status, latest decision,
+  current suspension reason, two-step resubmission) and `/owner/cafe`
+  (empty state, read-only pending/rejected summary, approved settings form)
+  gate access with `src/app/owner/_components/owner-access.tsx`. The nav
+  "Café profile" link targets `/owner/cafe`; `/owner/profile` redirects there.
+  `suspensionReason` is returned only while the café is suspended, otherwise
+  `null`. Form controls stay disabled until hydration. An overtaken settings
+  save stores the draft in same-tab `sessionStorage` and restores it once.
+
+Tests: `tests/e2e/owner-cafe/` (applications, settings, screens),
+`tests/integration/owner-cafe/` (route handlers and RLS permissions) and the
+supplementary `tests/unit/owner-cafe-input.test.ts`.
 
 ## Authentication and authorization
 
@@ -894,7 +944,9 @@ The sign-in screen also mounts the [Create demo kit flow](#demo-kit-creation).
   and Suspense with public loading text, then fixed homes and role-only links.
   Wrong-role browser requests go to the caller's own home. Customer catalogue
   and Admin moderation/audit pages provide the domain reads described in this
-  guide; remaining entry pages contain headings. Owner Dashboard adds an
+  guide; owner application and café profile pages are described under
+  [Owner café application and settings](#owner-café-application-and-settings);
+  remaining entry pages contain headings. Owner Dashboard adds an
   RLS-bound, owner/workspace café-existence check and no-café application link.
   The shared shell itself grants no domain operation permission.
 - `/api/auth/sign-up`, `/api/auth/sign-in` and `/api/auth/sign-out` own cookie
@@ -1450,6 +1502,11 @@ and workflow/PLAN.md rather than copying requirements here. -->
 
 ## Known limitations
 
+Owner one-café and duplicate name/address rules are enforced by the serialized
+owner writers, not by database unique constraints; any future café writer must
+reuse those functions or locks. Non-ASCII case-insensitive duplicate detection
+depends on the database `lower()` locale and is untested.
+
 The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
@@ -1459,8 +1516,9 @@ Customer catalogue/detail reads and Customer pickup/history/cancellation and col
 are available. Ordering requires a valid protected Customer name: new demo kits
 supply it, while current signup and older unnamed accounts do not. Customer
 review writing and other role domain pages remain unavailable or entry headings,
-with the owner no-café state. Owner fulfilment race integration remains unverified;
-owner café mutations, the remaining AI screens, maintenance provisioning, scheduled
+with the owner no-café state. Owner café application, resubmission and
+settings are available. Owner fulfilment race integration remains unverified;
+the remaining AI screens, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally and consumed by Admin
 triage. Live provider compatibility and model quality remain unverified;

@@ -1,1 +1,4 @@
-export default function Page() { return <h1 className="text-2xl font-semibold">Café profile</h1>; }
+import { redirect } from "next/navigation";
+
+/** Legacy path: OWN-02's combined settings page, linked as "Café profile", is /owner/cafe. */
+export default function Page() { redirect("/owner/cafe"); }

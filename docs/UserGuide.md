@@ -13,7 +13,10 @@
   - [4.4 View and cancel your orders](#44-view-and-cancel-your-orders)
   - [4.5 Review a collected order](#45-review-a-collected-order)
 - [5. Café owner guide](#5-café-owner-guide)
-  - [5.2 Run the order queue](#52-run-the-order-queue)
+  - [5.1 Café owner features at a glance](#51-café-owner-features-at-a-glance)
+  - [5.2 Apply for a café](#52-apply-for-a-café)
+  - [5.3 Manage your café profile, hours and pickup rules](#53-manage-your-café-profile-hours-and-pickup-rules)
+  - [5.4 Run the order queue](#54-run-the-order-queue)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -32,7 +35,8 @@ role. Admins can decide café applications, suspend or un-suspend approved café
 manually moderate reviews and inspect their workspace’s audit log. Customers
 can browse cafés, inspect menus, opening hours and public reviews, place pickup
 pre-orders with a valid protected account name, read order history, cancel pending orders, and review collected purchases.
-Owner café management tools are not yet available.
+Café owners can apply for a café and manage an approved café's description,
+opening hours and pickup cutoff.
 
 ### 1.1 What you need
 
@@ -98,8 +102,9 @@ again.” and does not confirm that sign-out succeeded.
 
 Browse cafés provides the Customer tools in section 4; Moderation queue and
 Audit log provide the Admin tools in section 6. My orders provides retained
-purchases and pending-order cancellation; the remaining owner entries open
-role page headings.
+purchases and pending-order cancellation. Café application, Café profile and
+Order queue provide the owner tools in section 5; Menu opens a role page
+heading.
 
 ### 1.5 Demo accounts for testers
 
@@ -337,24 +342,90 @@ temporarily unavailable. Try again.”
 
 Review text displays as plain text. Public café reviews continue to use
 “Verified customer” and show only pending/kept reviews for an eligible café.
-Owner fulfilment is not yet available, so collected examples currently use
-local test fixtures.
+An order becomes collected when the café owner marks it collected in the order
+queue (section 5.4).
 
 ## 5. Café owner guide
 
 ### 5.1 Café owner features at a glance
 
-**Where:** **Dashboard** → **Café application**.
+Café owners can apply to register one café, follow its review status, resubmit
+a rejected application, and manage an approved café's description, weekly
+opening hours and pickup cutoff, and run the order queue. Sales and menu tools
+are not yet implemented. Dashboard shows “You do not have a café yet.” when your
+account has no café.
 
-1. Sign in as a Café owner and open Dashboard.
-2. If your account has no café, it shows “You do not have a café yet.”
-3. Select **Café application** to open the application entry page at
-   `/owner/application`.
+### 5.2 Apply for a café
 
-The entry page currently contains a heading; it does not submit an application.
-Sales, menu and café profile tools are not yet implemented here.
+**Where:** **Café application** (`/owner/application`).
 
-### 5.2 Run the order queue
+1. Sign in as a Café owner and select **Café application**.
+2. Fill in **Café name** (2–100 characters), **Description** (optional, at most
+   500 characters), **Area** (Central, North, South, East or West) and **Public
+   pickup address** (10–200 characters). Spaces at either end are removed
+   before the length is checked.
+3. Under **Weekly opening hours (Singapore time)**, select **Add opening
+   interval** for each opening period, then choose its weekday, opening and
+   closing times. Tick **closes next day** for overnight hours. You can add up
+   to fourteen intervals, at most two starting on the same weekday, and they
+   must not overlap. Leave the list empty to stay closed.
+4. Enter **Last pickup cutoff (minutes before closing)**: a whole number from 0
+   to 180. It starts at 15.
+5. Select **Submit application**.
+
+The page then shows **Application status** with “Pending review”, the
+submission time in SGT and your **Submitted details**. Your café stays hidden
+from customers until an Admin approves it. You can have one pending or approved
+café; another café in your workspace cannot use the same name and pickup
+address.
+
+If a field is invalid, the form keeps your input, marks the field and shows a
+message naming it, for example “Café name: must be 2–100 characters after
+trimming spaces.” or “Opening interval 2: intervals must not overlap.” If the
+connection drops, the page says “Unable to confirm the submission. Try again;
+an unchanged retry will not create a duplicate.”
+
+**Status and decisions.** After an Admin decides, the status page shows
+“Approved” or “Rejected” and, under **Latest Admin decision**, the decision,
+its time and the Admin's reason. An approved café shows whether it is visible
+to customers. While an Admin has suspended it, the page shows **Suspended by an
+Admin** with the suspension reason; the reason is no longer shown after the
+café is un-suspended.
+
+**Resubmit a rejected application.**
+
+1. On **Café application**, select **Resubmit application**.
+2. Review or change any field. Fields start with your submitted values.
+3. Select **Confirm resubmission**. The application returns to “Pending
+   review”; resubmitting does not approve the café.
+
+### 5.3 Manage your café profile, hours and pickup rules
+
+**Where:** **Café profile** (`/owner/cafe`).
+
+1. Select **Café profile**. Without a café, the page says “You do not have a
+   café yet.” and offers **Apply for a café**.
+2. While the application is pending or rejected, the page shows your details
+   read-only. Change a rejected application by resubmitting it (section 5.2).
+3. For an approved café, **Approved details** shows the name, area and pickup
+   address, which cannot be changed.
+4. Under **Profile, hours and pickup rules**, edit **Description**, the weekly
+   opening intervals and **Last pickup cutoff (minutes before closing)** using
+   the same limits as the application.
+5. Select **Save changes**. The page says “Café settings saved.”
+
+All three settings save together; if one is invalid, nothing is saved and the
+invalid field is marked. Opening hours and times are always Singapore time,
+whatever your device's time zone. Customers are offered pickup times up to the
+cutoff before each closing time; existing orders keep their pickup times.
+
+A suspended café can still be managed; the page says “This café is suspended
+and hidden from customers.” If an Admin suspends or un-suspends the café while
+you are editing, saving opens **Café application** instead. When you return to
+**Café profile**, your unsaved changes are restored with “Your unsaved changes
+were restored. Review them and save again.”
+
+### 5.4 Run the order queue
 
 **Where:** owner navigation → **Order queue** (`/owner/orders`).
 
@@ -477,7 +548,7 @@ Admins can change the suspension state of approved cafés in their own workspace
 
 The Admin reason remains private; the fixed cancellation reason does not reveal
 it. Owner access to retained café records remains available. Customers see the
-fixed reason in **My orders**. Owner management screens remain outside this build.
+fixed reason in **My orders**. The owner can still manage the suspended café (section 5.3).
 An empty list shows “No approved cafés.” Loading shows “Loading cafés…”.
 
 Both café screens show “Enter a reason of 1–300 characters.” for an invalid
@@ -532,11 +603,10 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Favourites and Café owner domain tools remain entry shells or unavailable.
+Favourites and the Café owner menu and sales tools remain entry shells or
+unavailable.
 Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
-kits supply it; current signup and older unnamed accounts do not. Owner
-fulfilment actions are not available, so accepted/ready/collected examples use
-seeded kit purchases or local test fixtures. Account password/email changes,
+kits supply it; current signup and older unnamed accounts do not. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 
