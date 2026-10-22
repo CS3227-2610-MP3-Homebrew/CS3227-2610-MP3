@@ -1158,7 +1158,7 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] Every ADM-04 criterion has deterministic named failing-first coverage; ADM-04-E01–E13 evaluation evidence distinguishes boundary assertions from classification-quality assessment.
   - [ ] No unauthorized fallback, live provider call, automatic moderation, persisted suggestion, model-authored Admin reason or duplicate SYS/SEC ownership is introduced.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded using local Supabase/fake AI in the issue-scoped [handoff](templates/handoff.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#62](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/62)
 
 ### T-33: Implement Moderation Assistant
@@ -1174,5 +1174,5 @@ Missing story contracts below block execution, not criterion allocation.
   - [ ] T-32's full ADM-04 suite passes, including main/kit boundaries, transient complete results, injection/forged/stale advice, exact fallback/error behavior and explicit per-review control.
   - [ ] AI-use events remain content-free/internal and never become Admin-action audit entries; ordinary manual moderation remains usable on every authorized fallback.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI; the issue-scoped [handoff](templates/handoff.md) reports checks and evaluation limits without live calls or deployment.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#63](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/63)
