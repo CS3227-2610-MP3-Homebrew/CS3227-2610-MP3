@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createSessionClient } from '@/server/supabase/session-client';
 import { pickupSlots } from './pickup';
 import { OrderError, orderSchema, type CreateOrder } from './schema';
+import type { CustomerOrderView } from '@/lib/orders/views';
 
 const failure = z.strictObject({ error: z.enum(['INVALID_REQUEST', 'NOT_FOUND', 'STATE_CONFLICT']), accountName: z.literal(true).optional() });
 async function rpc(name: string, args: Record<string, unknown>, mutation = false): Promise<unknown> {
@@ -29,8 +30,10 @@ function decode<T>(schema: z.ZodType<T>, value: unknown, mutation = false): T {
   if (!result.success) throw new OrderError(mutation ? 'INTERNAL_ERROR' : 'SOURCE_UNAVAILABLE');
   return result.data;
 }
-export async function listOrders(page: number) {
-  const data = decode(z.strictObject({ items: z.array(orderSchema) }), await rpc('customer_order_history', { p_page: page }));
+export async function listOrders(page: number, view: CustomerOrderView = 'all') {
+  const data = decode(z.strictObject({ items: z.array(orderSchema) }), view === 'all'
+    ? await rpc('customer_order_history', { p_page: page })
+    : await rpc('customer_order_history_filtered', { p_page: page, p_view: view }));
   return { items: data.items.slice(0, 20), page, pageSize: 20 as const, hasNextPage: data.items.length > 20 };
 }
 export async function readOrder(orderId: string) {

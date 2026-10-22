@@ -1,0 +1,361 @@
+.surface {
+  width: 100%;
+  line-height: 1.6;
+}
+
+.surface :where(h1, h2),
+.surface :global(nav[aria-label="Main navigation"])::before {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.surface :where(input:not([type="radio"], [type="checkbox"], [type="hidden"]), select, textarea, button),
+.surface :global(nav[aria-label="Main navigation"] button) {
+  min-height: 2.75rem;
+  border: 1px solid var(--homey-border);
+  border-radius: 0.75rem;
+  background: var(--homey-input);
+  color: var(--homey-text);
+  padding: 0.65rem 0.9rem;
+  font: inherit;
+}
+
+.surface :where(input, select, textarea) {
+  max-width: 100%;
+}
+
+.surface :where(form, fieldset, label, input, select, textarea) {
+  min-width: 0;
+}
+
+.surface textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.surface :where(input[type="radio"], input[type="checkbox"]) {
+  accent-color: var(--homey-accent);
+}
+
+.surface :where(input, textarea)::placeholder {
+  color: var(--homey-muted);
+  opacity: 1;
+}
+
+.surface button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.surface button[type="submit"],
+.surface [class~="bg-black"],
+.surface [class~="bg-zinc-900"] {
+  border-color: var(--homey-accent);
+  background: var(--homey-accent);
+  color: var(--homey-on-accent);
+  padding-inline: 1.5rem;
+}
+
+.surface button[type="submit"]:hover:not(:disabled),
+.surface [class~="bg-black"]:hover:not(:disabled),
+.surface [class~="bg-zinc-900"]:hover:not(:disabled) {
+  background: var(--homey-accent-hover);
+}
+
+.surface button:disabled,
+.surface fieldset:disabled button {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.surface :where(a, button, input, select, textarea):focus-visible,
+.surface :global(nav[aria-label="Main navigation"]) :where(a, button):focus-visible {
+  outline: 3px solid var(--homey-sage);
+  outline-offset: 4px;
+}
+
+.surface a:not(.cafeCard) {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.content > :where(section:not(.browse), article, h1, p) {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.content h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.content h2 {
+  font-size: 1.5rem;
+}
+
+.content :where(article, section, li, div, p, tr)[class~="border"],
+.content [class~="border-t"] {
+  border-color: var(--homey-border);
+}
+
+.content :where(article, section)[class~="border"] {
+  border-radius: 1.25rem;
+  background: var(--homey-card);
+  color: var(--homey-text);
+}
+
+.surface [class~="bg-zinc-100"] {
+  background: var(--homey-input);
+  color: var(--homey-text);
+}
+
+.surface :where(input, textarea, select)[aria-invalid="true"] {
+  border-color: var(--homey-error);
+  box-shadow: 0 0 0 1px var(--homey-error);
+}
+
+.content [class~="border-red-700"] {
+  border-color: var(--homey-error);
+}
+
+.surface [role="alert"] {
+  color: var(--homey-error);
+}
+
+.surface [role="alert"][class~="border"] {
+  border-color: var(--homey-error);
+  background: var(--homey-error-surface);
+}
+
+.content [role="status"],
+.content header > p[class~="border"] {
+  border: 1px solid var(--homey-border);
+  border-radius: 0.75rem;
+  background: var(--homey-input);
+  color: var(--homey-muted);
+  padding: 0.75rem 1rem;
+}
+
+.surface nav {
+  flex-wrap: wrap;
+}
+
+.surface nav a[aria-current="page"] {
+  border-radius: 0.5rem;
+  background: var(--homey-input);
+  color: var(--homey-sage);
+  padding: 0.35rem 0.65rem;
+  font-weight: 600;
+}
+
+.surface table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.surface :where(th, td) {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.surface th {
+  background: var(--homey-input);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.surface tbody tr {
+  border-top: 1px solid var(--homey-border);
+}
+
+.surface tbody tr:hover {
+  background: var(--homey-input);
+}
+
+.surface td :where(button, textarea) {
+  white-space: normal;
+}
+
+.failure,
+.loading {
+  width: calc(100% - 2.5rem);
+  max-width: 32rem;
+  margin: 2rem auto;
+}
+
+.signIn {
+  max-width: 68rem;
+  margin: auto;
+  padding: clamp(1.5rem, 5vw, 4rem) 1.25rem;
+}
+
+.brand {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.brandName {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.5rem, 7vw, 4rem);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.brand p + p {
+  margin-top: 0.75rem;
+}
+
+.signIn > main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.signIn > main > section,
+.failure,
+.loading,
+.content > :where(section:not(.browse), article, h1, p),
+.browse > header,
+.browse > form,
+.browse > section[aria-labelledby="brew-finder-heading"],
+.cafeCard,
+.surface :global(nav[aria-label="Main navigation"]) {
+  border: 1px solid var(--homey-border);
+  border-radius: 1.5rem;
+  background: var(--homey-card);
+  color: var(--homey-text);
+  box-shadow: var(--homey-shadow);
+}
+
+.signIn > main > section {
+  flex: 1 1 20rem;
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.signIn > main > p[role="status"] {
+  flex-basis: 100%;
+  max-width: none;
+  padding: 1rem;
+  text-align: center;
+}
+
+.signIn h1 {
+  font-size: 2.25rem;
+}
+
+.signIn :global(section[aria-label="Demo kit"]) :global(section) {
+  border-color: var(--homey-border);
+  border-radius: 0.75rem;
+  background: var(--homey-input);
+}
+
+.browse > header {
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.browse h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.browse > form,
+.browse > section[aria-labelledby="brew-finder-heading"] {
+  padding: 1.5rem;
+}
+
+.browse > form > label {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.browse label[for="brew-query"] {
+  flex-basis: 18rem;
+}
+
+.browse :global(li) {
+  border-color: var(--homey-border);
+}
+
+.cafeCard {
+  min-height: 15rem;
+  padding: 1.5rem;
+}
+
+.cafeCard:hover {
+  outline: 2px solid var(--homey-border);
+  outline-offset: 2px;
+}
+
+.cafeCard h2 {
+  font-size: 1.65rem;
+  overflow-wrap: anywhere;
+}
+
+.availability {
+  color: var(--homey-sage);
+  font-weight: 600;
+}
+
+.closed {
+  filter: grayscale(1);
+}
+
+.soldOut {
+  filter: grayscale(1);
+  background: var(--homey-input);
+  color: var(--homey-muted);
+}
+
+.cafeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.surface .cafeActions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  border: 1px solid var(--homey-border);
+  border-radius: 0.75rem;
+  background: var(--homey-input);
+  color: var(--homey-text);
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.surface .cafeActions .primaryAction {
+  background: var(--homey-accent);
+  border-color: var(--homey-accent);
+  color: var(--homey-on-accent);
+}
+
+.closed .availability {
+  color: var(--homey-muted);
+}
+
+.surface :global(nav[aria-label="Main navigation"]) {
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.5rem;
+}
+
+.surface :global(nav[aria-label="Main navigation"])::before {
+  content: "Homebrew";
+  margin-right: auto;
+  font-size: 1.75rem;
+}
+
+.surface :global(nav[aria-label="Main navigation"] a) {
+  text-underline-offset: 0.3em;
+}

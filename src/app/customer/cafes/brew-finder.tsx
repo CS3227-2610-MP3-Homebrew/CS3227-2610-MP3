@@ -75,7 +75,7 @@ export default function BrewFinder({ query, children }: { query: CatalogueQuery;
         </label>
         <button type="submit" disabled={pending} className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">Search</button>
       </form>
-      <p id="brew-query-help" className="mt-2 text-sm">Up to 1,000 characters. Search uses your current café filters.</p>
+      <p id="brew-query-help" className="mt-2 text-sm">Up to 1,000 characters. Search uses your applied café filters. Click Apply to use changed filters.</p>
       <div aria-live="polite" className="mt-3">
         {pending && <p role="status">Searching for cafés…</p>}
         {message && <p role="status">{message}</p>}

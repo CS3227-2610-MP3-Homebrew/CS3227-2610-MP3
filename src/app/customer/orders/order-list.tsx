@@ -3,9 +3,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { Order } from '@/server/orders/schema';
 import { money, singaporeTime } from './presentation';
+import { matchesOrderView, type CustomerOrderView } from '@/lib/orders/views';
 
 const events = [['placedAt', 'Placed'], ['pickupAt', 'Pickup'], ['acceptedAt', 'Accepted at'], ['readyAt', 'Ready at'], ['collectedAt', 'Collected at'], ['rejectedAt', 'Rejected at'], ['cancelledAt', 'Cancelled at']] as const;
-export function OrderList({ initialOrders }: { initialOrders: Order[] }) {
+export function OrderList({ initialOrders, view = 'all', onOrderChanged }: { initialOrders: Order[]; view?: CustomerOrderView; onOrderChanged?: () => void }) {
   const [snapshot, setSnapshot] = useState({ source: initialOrders, orders: initialOrders });
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -14,20 +15,23 @@ export function OrderList({ initialOrders }: { initialOrders: Order[] }) {
   if (snapshot.source !== initialOrders) {
     setSnapshot({ source: initialOrders, orders: initialOrders });
   }
-  const { orders } = snapshot;
+  const orders = snapshot.orders.filter(order => matchesOrderView(order.state, view));
   async function cancel(orderId: string) {
     if (busy) return;
     setBusy(orderId); setMessage('');
     try {
       const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       const body = await response.json();
-      if (response.ok) setSnapshot(current => ({ ...current, orders: current.orders.map(order => order.orderId === orderId ? body.order : order) }));
+      if (response.ok) {
+        setSnapshot(current => ({ ...current, orders: current.orders.map(order => order.orderId === orderId ? body.order : order) }));
+        onOrderChanged?.();
+      }
       else setMessage(typeof body.error?.message === 'string' ? body.error.message : 'Unable to cancel this order. Refresh to check its current state.');
     } catch { setMessage('Unable to confirm cancellation. Refresh to check the current order before trying again.'); }
     finally { setBusy(null); }
   }
   return <div className="space-y-6">{message && <p role="alert" className="rounded-lg border p-4">{message}</p>}
-    {!orders.length && <p>No orders yet.</p>}
+    {!orders.length && <p>{view === 'active' ? 'No active orders.' : view === 'past' ? 'No past orders.' : 'No orders yet.'}</p>}
     {orders.map(order => <article key={order.orderId} className="space-y-4 rounded-xl border border-black/15 p-5">
       <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">{order.cafeName}</h2><p className="break-all text-sm">Order {order.orderId}</p></div><p className="rounded border px-3 py-1 capitalize">{order.state}</p></header>
       {order.cancellationReason && <p className="font-semibold">{order.cancellationReason}</p>}

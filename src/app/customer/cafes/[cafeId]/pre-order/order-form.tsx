@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { money, singaporeTime } from '@/app/customer/orders/presentation';
+import theme from '@/app/_components/homey-theme.module.css';
 
 type Item = { itemId: string; name: string; priceCents: number; soldOut: boolean };
 export function OrderForm({ cafeId, menu, slots }: { cafeId: string; menu: Item[]; slots: string[] }) {
@@ -34,7 +35,7 @@ export function OrderForm({ cafeId, menu, slots }: { cafeId: string; menu: Item[
   return <form onSubmit={placeOrder} className="space-y-6">
     <p>Payment at pickup. Pay at the counter when you collect your drinks.</p>
     <fieldset disabled={busy} className="space-y-3"><legend className="mb-3 text-xl font-semibold">Choose drinks</legend>
-      {menu.length ? menu.map(item => <div key={item.itemId} className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-black/15 p-4">
+      {menu.length ? menu.map(item => <div key={item.itemId} className={`flex flex-wrap items-center justify-between gap-4 rounded-lg border border-black/15 p-4 ${item.soldOut ? theme.soldOut : ''}`}>
         <div><p className="font-semibold">{item.name}</p><p>{money(item.priceCents)} each{item.soldOut ? ' · Sold out' : ''}</p></div>
         <label className="flex items-center gap-3">Quantity <span className="sr-only">for {item.name}</span><input aria-label={`${item.name} quantity`} className="w-20 rounded border p-2" type="number" min={0} max={20} step={1} value={quantities[item.itemId] ?? 0} disabled={item.soldOut} onChange={event => setQuantities(current => ({ ...current, [item.itemId]: Number(event.target.value) }))} /></label>
       </div>) : <p>No drinks available.</p>}
