@@ -879,7 +879,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] Every listed criterion has named positive/negative failing-first evidence, including main/kit access and time boundaries; no additional permission or owner/cardinality rule is inferred.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes, checks not reached and expected missing implementation are recorded in the issue-scoped [handoff](templates/handoff.md), using local Supabase/fake or disabled AI only.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#109](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/109)
 
 ### T-54: Implement owner café application, profile, hours and pickup rules
@@ -894,7 +894,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-53 coverage passes for all 24 criteria and any formally approved amendments, including private reason scope, suspension access, time/cutoff validation and immutable purchases.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` pass; issue-scoped [handoff](templates/handoff.md) records actual evidence and any external surface limit. Acceptance tests/configuration/fixtures are unchanged.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#110](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/110)
 
 ### T-55: Finalize owner menu lifecycle and edit contracts
@@ -969,7 +969,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] All ten listed OWN-05 criteria have named failing-first cases, including both race orderings, no partial mutation and indistinguishable foreign references.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff; tests use only local Supabase/fake or disabled AI.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#115](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/115)
 
 ### T-60: Implement owner order queue
@@ -984,7 +984,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-59 suite passes for all ten OWN-05 criteria, exact state/race outcomes and scoped private queue data without modifying purchase snapshots.
   - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff records evidence and confirms testing-owned files are unchanged.
-- **Status:** blocked
+- **Status:** done
 - **Issue:** [#116](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/116)
 
 ### T-61: Finalize sales aggregates and Prep Advisor decision contracts

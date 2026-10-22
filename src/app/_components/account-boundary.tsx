@@ -38,7 +38,7 @@ export function AccountPage(props: { mode: "sign-up" | "sign-in"; searchParams: 
 
 const navigation = {
   customer: [["Browse cafés", "/customer/cafes"], ["My orders", "/customer/orders"]],
-  owner: [["Café application", "/owner/application"], ["Dashboard", "/owner/dashboard"], ["Order queue", "/owner/orders"], ["Menu", "/owner/menu"], ["Café profile", "/owner/profile"]],
+  owner: [["Café application", "/owner/application"], ["Dashboard", "/owner/dashboard"], ["Order queue", "/owner/orders"], ["Menu", "/owner/menu"], ["Café profile", "/owner/cafe"]],
   admin: [["Moderation queue", "/admin/moderation"], ["Café applications", "/admin/applications"], ["Cafés", "/admin/cafes"], ["Audit log", "/admin/audit"]],
 } as const;
 async function VerifiedRoleShell({ role, children }: { role: keyof typeof roleHomes; children: ReactNode }) {
