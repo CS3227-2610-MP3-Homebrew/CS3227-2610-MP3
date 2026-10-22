@@ -17,6 +17,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
   - [Moderation Assistant](#moderation-assistant)
+  - [Owner sales and Prep Advisor](#owner-sales-and-prep-advisor)
 - [Security](#security)
 - [How to test](#how-to-test)
 - [Deployment and environments](#deployment-and-environments)
@@ -1087,6 +1088,52 @@ preserve returned partial token counts, including zero; absent counts remain
 unknown and cost is null. Counts do not measure monetary consumption or confirm
 provider entitlement. The seam does not parse model output or render the
 feature's non-AI fallback.
+
+### Owner sales and Prep Advisor
+
+[OWN-06](../workflow/specs/stories/OWN-06-sales-dashboard.md),
+[OWN-07](../workflow/specs/stories/OWN-07-prep-advisor.md) and the
+[owner sales boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-sales-boundary)
+govern the Dashboard sales views and the Prep panel.
+
+- `20261023000200_owner_sales.sql` defines one sale source,
+  `private.sale_lines`: own-café `collected` orders dated by the Singapore date
+  of `collected_at`, with retained `total_cents` and line snapshots.
+  `public.owner_sales()` and `public.owner_prep_source(cafe)` are SECURITY
+  INVOKER reads, so `orders_read`/`order_items_read` RLS supplies café and
+  workspace scope; both derive the owner first and raise 42501 for other roles.
+  `owner_sales` returns 28 zero-filled daily rows, seven weekday rows and the
+  top 10 items ranked by quantity, revenue, then item reference in code-point
+  order, named by the latest collected snapshot. `owner_prep_source` uses the
+  28 completed dates before today, returns `{input: null}` with fewer than 7
+  distinct sale dates or no candidate still on the menu, and otherwise seven
+  `{itemId}:{weekday}` aggregates for up to 10 ranked candidates named by the
+  current menu row. Archived-item exclusion waits for OWN-13.
+- `src/server/owner/sales.ts` validates both RPC results with Zod and serves
+  `GET /api/owner/sales` (no query keys; 503 on any source failure, `sales:
+  null` only without a café).
+- `src/server/owner/prep-advisor.ts` follows the Moderation Assistant pattern:
+  `createPrepHandler` checks method, Origin and the shared strict AI request,
+  then owner role, then the café source (404 when not owned, 503 when
+  unavailable). Insufficient source returns `no_source_data` without dispatch,
+  except that disabled AI takes precedence, as in the shared operation. The
+  composed handler calls `createConfiguredAiState().runOperation` with scope
+  `{cafeId, businessDate}`; the source snapshot is the only provider context,
+  and refresh uses the shared café daily-refresh admission.
+- OWN-07.16 direction consistency lives in the shared Prep validator
+  (`src/server/llm/schemas.ts`): for each suggestion, `more` requires
+  `7 × q > T` and `less` requires `7 × q < T`, computed with BigInt over the
+  supplied aggregates. It applies to provider and cached results, so a failing
+  suggestion rejects the whole result before any cache write. The prompt and
+  contract version `"1"` are unchanged.
+- The Dashboard page renders sales server-side; `prep-panel.tsx` posts once on
+  mount and on **Refresh advice**, and renders advice or the typed fallback
+  with the same `TopItemsTable` as the sales view. Item names come from the
+  café's current menu and render as React text.
+
+Tests: `tests/integration/prep-advisor/` (validation and evaluation cases,
+route seam, database source, cache/refresh with the shared ai-state harness)
+and `tests/e2e/owner-sales/` (sales read, isolation and the Dashboard).
 
 ### AI caches, eligibility and audit
 

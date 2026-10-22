@@ -13,6 +13,7 @@
   - [4.4 View and cancel your orders](#44-view-and-cancel-your-orders)
   - [4.5 Review a collected order](#45-review-a-collected-order)
 - [5. Café owner guide](#5-café-owner-guide)
+  - [5.3 View your sales](#53-view-your-sales)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -20,6 +21,7 @@
   - [6.4 Suspend or un-suspend a café](#64-suspend-or-un-suspend-a-café)
 - [7. AI features](#7-ai-features)
   - [7.1 Triage pending reviews](#71-triage-pending-reviews)
+  - [7.2 Get preparation advice](#72-get-preparation-advice)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
 - [10. Troubleshooting](#10-troubleshooting)
@@ -351,7 +353,25 @@ local test fixtures.
    `/owner/application`.
 
 The entry page currently contains a heading; it does not submit an application.
-Sales, order queue, menu and café profile tools are not yet implemented here.
+Order queue, menu and café profile tools are not yet implemented here.
+
+### 5.3 View your sales
+
+**Where:** owner navigation → **Dashboard** (`/owner/dashboard`).
+
+A sale is an order you marked collected. Each one counts on the Singapore date
+it was collected, using the prices the customer paid, not today's menu prices.
+The Dashboard covers the last 28 days, including today so far:
+
+- **Daily totals:** one row per day, newest first, with orders and revenue.
+  Days without sales show 0 and S$0.00.
+- **Top items:** up to 10 items ranked by quantity sold, then revenue. Renamed
+  or removed items keep their row under the name from their latest sale.
+- **Sales by day of week:** Monday to Sunday, with orders, items and revenue.
+
+With no completed sales in that period, the Dashboard shows “No completed sales
+in the last 28 days.” If sales cannot be loaded, it says so instead of showing
+zeros. Without a café, it links to **Café application**.
 
 ## 6. Admin guide
 
@@ -498,7 +518,34 @@ most one provider attempt. If AI cannot run, the manual queue remains usable:
 | “Unable to triage reviews. Reload and try again.” | The request could not obtain a successful response; reload explicitly. |
 
 AI suggestions can be wrong. Local checks use fake responses and do not measure
-classification accuracy. Brew Finder and Prep Advisor screens remain unavailable.
+classification accuracy. The Brew Finder screen remains unavailable.
+
+### 7.2 Get preparation advice
+
+Prep Advisor suggests which items to prepare more or less of on each weekday,
+using only your café's totals from the 28 completed days before today.
+
+**Where:** **Dashboard** → **Prep Advisor** panel.
+
+1. The panel loads when you open the Dashboard. Each suggestion names the item,
+   the weekday and “prepare more” or “prepare less”, then quotes the recorded
+   quantities behind it. It is labelled as AI-generated advice.
+2. Select **Refresh advice** to ask again. Refreshes are limited per café per
+   day; advice is otherwise reused until Singapore midnight or until your sales
+   change.
+3. Decide for yourself. Nothing changes your menu, orders or café automatically.
+
+The panel shows your top-items table instead of advice when:
+
+| Message | Meaning |
+| --- | --- |
+| “AI advice is disabled right now. Showing your top items instead.” | AI is disabled or live credentials are absent. |
+| “AI advice has reached its usage limit for now. Showing your top items instead.” | A usage cap or provider limit applied. |
+| “AI advice is unavailable right now. Showing your top items instead.” | The AI call failed or returned advice that did not match your sales. |
+| “Not enough completed sales yet for preparation advice. Showing your top items instead.” | Fewer than 7 different days had sales in the period, or no sold item is still on your menu. |
+
+A suggestion is only shown if it agrees with the numbers: “more” needs that
+weekday to be above the item's weekday average, “less” below it.
 
 ## 8. Reference
 
