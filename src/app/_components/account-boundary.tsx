@@ -6,6 +6,7 @@ import Link from "next/link";
 import { accountMessages, notices, roleHomes } from "@/lib/accounts/fields";
 import { resolveAccountAccess, type AccountAccess } from "@/server/auth/account-access";
 import { AccountForm } from "./account-form";
+import { DemoKit } from "./demo-kit";
 import { SignOut } from "./sign-out";
 
 export const checkingAccount = <p role="status" className="p-6">Checking account…</p>;
@@ -31,7 +32,7 @@ async function AccountEntry({ mode, searchParams }: { mode: "sign-up" | "sign-in
   if (access.kind === "retry" || access.kind === "unavailable") return <AccountFailure kind={access.kind} />;
   const query = await searchParams;
   const notice = typeof query.notice === "string" && Object.hasOwn(notices, query.notice) ? notices[query.notice as keyof typeof notices] : undefined;
-  return <main>{mode === "sign-in" && notice && <p className="mx-auto max-w-md px-6 pt-6" role="status">{notice}</p>}<AccountForm mode={mode} /></main>;
+  return <main>{mode === "sign-in" && notice && <p className="mx-auto max-w-md px-6 pt-6" role="status">{notice}</p>}<AccountForm mode={mode} />{mode === "sign-in" && <DemoKit />}</main>;
 }
 export function AccountPage(props: { mode: "sign-up" | "sign-in"; searchParams: Promise<Record<string, string | string[] | undefined>> }) { return <Suspense fallback={checkingAccount}><AccountEntry {...props} /></Suspense>; }
 

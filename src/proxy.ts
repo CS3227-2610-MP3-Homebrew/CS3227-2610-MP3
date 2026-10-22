@@ -5,9 +5,9 @@ import { markCatalogueQuery } from "@/server/catalogue/proxy-query";
 
 /** Refresh transport and preserve strict catalogue query validation; never authorize. */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  // Account routes own admission and their isolated provisional-cookie buffer.
+  // Account routes own their cookie buffer; anonymous demo creation owns admission.
   // Transport denials and active-account conflicts must have no refresh effects.
-  if (request.nextUrl.pathname.startsWith("/api/auth/")) return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith("/api/auth/") || request.nextUrl.pathname === "/api/demo-kits") return NextResponse.next();
   markCatalogueQuery(request);
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
