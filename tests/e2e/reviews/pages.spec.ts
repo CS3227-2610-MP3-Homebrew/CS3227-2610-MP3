@@ -5,11 +5,14 @@ import { setup, login, url, pageUrl, stored, malicious, localSql, q, submit, rev
 // Labels are semantic constraints; the form may choose select or radio ratings.
 async function enterRating(page: import('@playwright/test').Page, value: string) {
   const select = page.getByRole('combobox', { name: /rating/i });
+  const radio = page.getByRole('radio', { name: new RegExp(`^${value}(?:\\s|$)`) });
+  const numeric = page.getByRole('spinbutton', { name: /rating/i });
+  // SYS-05.1 streams private form content after the initial navigation shell.
+  await expect(select.or(radio).or(numeric).first()).toBeVisible();
   if (await select.count()) await select.selectOption(value);
   else {
-    const radio = page.getByRole('radio', { name: new RegExp(`^${value}(?:\\s|$)`) });
     if (await radio.count()) await radio.check();
-    else await page.getByRole('spinbutton', { name: /rating/i }).fill(value);
+    else await numeric.fill(value);
   }
 }
 test('CUS-05.1 CUS-05.8: My orders opens review form and renders submitted markup as inert text with no AI calls', async ({ page }) => {
@@ -35,7 +38,7 @@ test('CUS-05.10: invalid form values remain available for correction with safe a
   const textbox = page.getByRole('textbox', { name: /review|feedback|text/i });
   const input = '  \n \t  '; await enterRating(page, '4'); await textbox.fill(input);
   await page.getByRole('button', { name: /submit.*review|post.*review/i }).click();
-  await expect(textbox).toHaveValue(input); await expect(page.getByRole('alert')).toContainText(/text|nonblank|non-blank|whitespace|1.*1,?000/i);
+  await expect(textbox).toHaveValue(input); await expect(page.getByRole('main').getByRole('alert')).toContainText(/text|nonblank|non-blank|whitespace|1.*1,?000/i);
   expect(stored(f.orderId)).toEqual([]);
   await textbox.fill('Corrected feedback'); const response = page.waitForResponse(r => new URL(r.url()).pathname === url(f.orderId) && r.request().method() === 'POST');
   await page.getByRole('button', { name: /submit.*review|post.*review/i }).click(); expect((await response).status()).toBe(201);
