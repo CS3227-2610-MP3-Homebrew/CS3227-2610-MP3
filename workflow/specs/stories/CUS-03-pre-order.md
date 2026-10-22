@@ -19,6 +19,19 @@ quantity 1–20 per line, supporting reasonable bulk purchases from a home café
 The initial state is pending. Owner rule editing and queue actions remain
 OWN-04/OWN-05; this story defines no owner endpoint or sales aggregation.
 
+## Related domain contracts
+
+[Customer registration](SYS-01-sign-up.md#acceptance-criteria) supplies the
+trimmed 2–100-code-point profile name, without uniqueness checking. Order
+creation snapshots it server-side for the owner queue; CreateOrder never
+accepts a customer name or identity override. Missing/invalid profile names
+follow the canonical 409 account-setup conflict; source failure remains 503.
+The [owner settings contract](../INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+supplies current hours/cutoff, and the [owner menu contract](../INTEGRATION-SPEC.md#owner-menu-boundary)
+supplies current items/prices/availability. A permanently deleted item is absent
+and gives 404 on a stale selection; a live sold-out item gives 409. Later owner
+changes never rewrite a successful purchase or its retained item references.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with the Customer credentials from a demo kit.

@@ -14,6 +14,18 @@ authorized, deterministically filtered catalogue. It does not decide catalogue
 eligibility or execute orders. The non-AI fallback is the filtered list sorted
 by rating.
 
+## Related domain contracts
+
+The [owner menu contract](../INTEGRATION-SPEC.md#owner-menu-boundary) permanently
+deletes current menu rows; deleted and sold-out items cannot enter selected
+candidates or survive the final availability check, including cached advice.
+Names and current fields resolve from authorized records under CUS-01/CUS-02;
+retained purchase snapshots do not make deleted menu items recommendable.
+Customer profile names, rejection reasons and lifecycle timestamps are not
+added to provider context or cache input. Candidate caps, fallback rating order,
+explicit submit/loading and valid empty-model success keep their canonical
+semantics; owner contract reconciliation changes no prompt or AI envelope.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.

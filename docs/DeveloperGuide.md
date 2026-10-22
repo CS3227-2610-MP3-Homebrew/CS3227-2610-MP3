@@ -10,6 +10,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Development workflow](#development-workflow)
 - [Data model and database schema](#data-model-and-database-schema)
   - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
+  - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
 - [Authentication and authorization](#authentication-and-authorization)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
@@ -62,6 +63,11 @@ reuse). Its request-time Suspense pattern follows the installed Next.js guidance
 (idea reuse); quick-pick literals implement the internal ADM-04 contract as is.
 No external snippet or workflow file was added by this pair; MP2 totals remain unchanged.
 
+The Customer catalogue reuses the existing session-bound Supabase client,
+account access resolver and streamed role shell (internal code reuse). Its
+request-time rendering and original-query proxy integration use installed
+Next.js guidance as idea reuse; no external snippet or new workflow file was
+added. The five-file MP2 reuse totals remain unchanged.
 Café eligibility reuses those same session/RLS, transport, audit and Suspense
 patterns (internal code/idea reuse), including the existing moderation Admin
 lookup and audit ledger. No external snippet, dependency or workflow was added;
@@ -447,6 +453,63 @@ are displayed alongside the café name. Fixed editable quick-pick reasons
 and explicit per-review confirmation are application controls; AI triage and its
 endpoint are not available.
 
+### Customer catalogue and café details
+
+The Customer pages implement [CUS-01](../workflow/specs/stories/CUS-01-browse-cafes.md)
+and [CUS-02](../workflow/specs/stories/CUS-02-cafe-page.md), using the
+[canonical read boundary](../workflow/specs/INTEGRATION-SPEC.md#customer-catalogue-and-detail-boundary).
+`src/app/customer/cafes/` contains browse filters, synchronous cards and the
+`[cafeId]` detail page. Each page checks request-time Customer access within the
+existing streamed account shell; public loading content contains no protected
+catalogue data. No `use cache` directive or AI request is introduced.
+
+- `src/lib/catalogue/query.ts` validates strict per-endpoint query keys, duplicates,
+  exact enum values, compatible time fields, canonical UTC minute instants and
+  positive safe-integer pages. Browse supports `timeMode=all|now|at`, `at`,
+  `drinkType`, `area` and `page`; detail accepts no query keys and reviews accepts
+  only `page`. The HTML detail page uses review pagination.
+- `src/lib/catalogue/clock.ts` supplies Singapore recurring-hour calculations and
+  browser date conversion, including overnight/week boundaries and merged
+  adjacent intervals. Current opening status uses the source's database clock;
+  a chosen instant affects filtering, while card status remains current.
+- `src/server/catalogue/source.ts` validates the session-bound RPC snapshot,
+  applies AND filters, exact-ratio rating order and 20-item pagination. Display
+  averages use half-up one-decimal rounding. Detail menus use Unicode code-point
+  name/reference order, hours use weekday/opening time, and reviews retain
+  PostgreSQL microsecond instants through UTC normalization and newest-first
+  ordering before pagination. Only pending/kept original reviews contribute.
+- `20261022000000_customer_catalogue.sql` adds café description/area/pickup address,
+  menu drink type/integer cents/sold-out fields and weekday/closing/overnight
+  hours. `customer_catalogue_source()` is SECURITY INVOKER with an empty search
+  path and explicit authenticated execution grants. A single statement returns
+  database time and approved, non-suspended, session-workspace cafés under RLS.
+  A narrow private predicate associates visible reviews with an eligible café
+  without reading another Customer's order through the session client. The RPC
+  projects only public review fields and the fixed `Verified customer` label;
+  the existing direct-table limitation is recorded below.
+- `src/server/catalogue/http.ts` serves GET `/api/customer/cafes`,
+  `/api/customer/cafes/{cafeId}` and `/api/customer/cafes/{cafeId}/reviews` with
+  independent current Auth/Customer checks, request IDs and private/no-store JSON.
+  Safe errors are `400 INVALID_REQUEST`, `401 UNAUTHENTICATED`, `403 FORBIDDEN`,
+  `404 NOT_FOUND` and `503 SOURCE_UNAVAILABLE`. Missing and ineligible references
+  share the same 404; source failures are never successful empty results.
+  Explicit POST/PUT/PATCH/DELETE handlers return JSON `405 METHOD_NOT_ALLOWED`
+  with `Allow: GET, HEAD, OPTIONS`, without reading a body or domain record.
+- `skipProxyUrlNormalize` in `next.config.ts` preserves the original query for
+  `src/server/catalogue/proxy-query.ts` before Next's URL reconstruction can
+  discard special keys. The proxy overwrites the internal validation-result
+  header on every matching GET, including opaque references with asset suffixes.
+  Routes consume the marker only after authorization and repeat normal parsing;
+  the marker grants no access. Existing session-refresh transport remains in place.
+
+Catalogue tests live under `tests/unit/catalogue/`,
+`tests/integration/catalogue/` and `tests/e2e/catalogue/`. They cover deterministic
+clock/card rules, delayed-source streaming, safe source errors, strict HTTP
+queries/methods, full-precision review pagination, public rendering, moderation
+visibility, current eligibility, role denial and main/kit isolation. The paired
+suites can be selected with `bun run test -- tests/unit/catalogue tests/integration/catalogue`
+and `bun run test:e2e -- tests/e2e/catalogue`; local database-mutating suites run
+serially. These commands do not replace the full verification gate.
 ### Café applications and suspension
 
 The [ADM-01 application](../workflow/specs/stories/ADM-01-cafe-applications.md)
@@ -630,10 +693,11 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
   consumed once; absent/invalid values and other provider headers are omitted.
 - `src/app/_components/account-boundary.tsx` uses request-time `connection()`
   and Suspense with public loading text, then fixed homes and role-only links.
-  Wrong-role browser requests go to the caller's own home. Role entry pages
-  contain headings; only owner Dashboard adds an RLS-bound, owner/workspace
-  café-existence check and no-café application link. These shells grant no domain
-  operation permission or fabricated domain data.
+  Wrong-role browser requests go to the caller's own home. Customer catalogue
+  and Admin moderation/audit pages provide the domain reads described in this
+  guide; remaining entry pages contain headings. Owner Dashboard adds an
+  RLS-bound, owner/workspace café-existence check and no-café application link.
+  The shared shell itself grants no domain operation permission.
 - `/api/auth/sign-up`, `/api/auth/sign-in` and `/api/auth/sign-out` own cookie
   admission, so the proxy skips refresh there. Other requests retain normal
   refresh and preserve incoming session evidence on a failed check so the gate
@@ -1073,10 +1137,10 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, café decisions/suspension and the read-only audit screen
-are available. Customer/owner domain pages remain entry headings, with the owner
-no-café state; Owner application/settings/fulfilment and Customer order writers,
-AI screens, demo-kit creation, maintenance provisioning, scheduled
+Manual Admin moderation, the read-only audit screen and Customer catalogue/detail
+reads are available. Customer ordering/review writing and other role domain pages
+remain unavailable or entry headings, with the owner no-café state; café
+mutations, AI screens, demo-kit creation, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally, without an AI feature
 endpoint or UI. Live provider compatibility and model
@@ -1098,6 +1162,12 @@ not every logout/ban/password-change policy or its propagation time. Future
 callers must integrate the gate and independently enforce domain permissions;
 the Shared account browser cases additionally use real local Auth. Domain
 endpoint authorization remains the owning integration's responsibility.
+
+The catalogue RPC and app review responses omit reviewer account/order fields,
+but the pre-existing reviews-table SELECT grant/RLS permits another Customer’s
+visible review account and order references through the direct Supabase Data API.
+[SR-01](../workflow/handoffs/71-customer-catalogue/08-security-reviewer.md#sr-01--p2--pre-existing-raw-review-access-exposes-reviewer-and-order-references)
+records this P2 limitation; the catalogue projection does not remediate it.
 
 The account routes set stricter initial cookie attributes, but the pre-existing
 proxy uses SSR default cookie options: a normal refresh can replace HttpOnly/Secure

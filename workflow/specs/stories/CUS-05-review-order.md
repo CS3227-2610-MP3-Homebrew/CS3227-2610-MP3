@@ -19,6 +19,17 @@ text is required, nonblank and 1–1,000 Unicode code points. Validate trimmed
 nonblankness but preserve the exact original valid text, including whitespace
 and newlines. These are customer field limits, independent of AI schema bounds.
 
+## Related domain contracts
+
+Review eligibility uses the authoritative collected state from the
+[shared order boundary](../INTEGRATION-SPEC.md#customer-pickup-and-order-boundary)
+and [owner queue contract](../INTEGRATION-SPEC.md#owner-order-queue-boundary).
+The owner UI label Completed means collected; it does not create a new review
+state. A retained own collected purchase remains reviewable after suspension
+or deletion of its original menu items. Order customer-name snapshots never
+become public review author names: public reviews retain “Verified customer”.
+Moderation visibility and immutable content remain ADM-03's responsibility.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in using a demo-kit Customer account.
