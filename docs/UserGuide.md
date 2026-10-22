@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [1. Getting started](#1-getting-started)
+  - [1.5 Demo accounts for testers](#15-demo-accounts-for-testers)
 - [2. Navigating Homebrew](#2-navigating-homebrew)
 - [3. Your account (all roles)](#3-your-account-all-roles)
 - [4. Customer guide](#4-customer-guide)
@@ -25,12 +26,11 @@
 ## 1. Getting started
 
 Homebrew provides sign-up, sign-in, sign-out and navigation for your account's
-role.
-Ordering and café management tools are not yet available.
 role. Admins can decide café applications, suspend or un-suspend approved cafés,
-manually moderate reviews and inspect their workspace’s audit log. 
-Customers can browse cafés and inspect menus, opening hours and public reviews.
-Ordering and café management tools are not yet available.
+manually moderate reviews and inspect their workspace’s audit log. Customers
+can browse cafés, inspect menus, opening hours and public reviews, place pickup
+pre-orders with a valid protected account name, and view or cancel their own
+pending orders. Owner café management tools are not yet available.
 
 ### 1.1 What you need
 
@@ -95,14 +95,43 @@ again.” and does not confirm that sign-out succeeded.
 | Admin | Moderation queue (`/admin/moderation`) | Moderation queue; Café applications; Cafés; Audit log |
 
 Browse cafés provides the Customer tools in section 4; Moderation queue and
-Audit log provide the Admin tools in section 6. The other entries currently
-open role page headings.
+Audit log provide the Admin tools in section 6. My orders provides retained
+purchases and pending-order cancellation; the remaining owner entries open
+role page headings.
 
 ### 1.5 Demo accounts for testers
 
-Existing demo-kit credentials can sign in, but this build has no Create demo kit
-control or credential display. Obtain approved test credentials through your
-team; this guide publishes no credentials.
+Anyone can create a separate demo workspace with Customer, Café owner and Admin
+accounts without signing in.
+
+**Where:** Sign in → **Try Homebrew** → **Create demo kit**.
+
+1. Select **Create demo kit**. While the button is disabled, the page says
+   “Creating your demo kit…”.
+2. Save all three sets of **Email** and **Password** details before leaving the
+   page. The page says “Save these credentials now. They are shown only here,
+   once. Use the sign-in form above for each account.” Reloading or leaving
+   clears the display; credentials cannot be retrieved later.
+3. Enter one account's details in the ordinary sign-in form. To try another
+   role, select **Sign out**, then sign in with that account's saved details.
+4. As Customer, browse the approved café and its menu, including a sold-out item.
+   As Admin, inspect the pending second café application and the clearly
+   synthetic pending reviews. Approval, suspension and moderation controls use
+   the ordinary reasons, confirmations and audit log within your kit.
+
+Each kit also has about four weeks of sample collected purchases, unreviewed
+collected orders and a pending order. New kit Customers can use Pre-order for
+pickup and My orders, including pending-order cancellation. Review submission,
+the owner queue and sales/Prep Advisor screens remain unavailable in this build. The pending café's separate owner has no published
+credentials. Kits have no automatic expiry or deletion, and creating a kit
+makes no AI request. Kit accounts keep their own AI user allowances while the
+application's global AI limits remain shared.
+
+Creation is limited across users to at most five kits per fixed ten-minute
+window and thirty per Singapore calendar day. A refusal says “Demo kit limit
+reached. Try again in N seconds.”, with the actual wait replacing N. Wait before
+trying again. A temporary failure says “Demo kit service is temporarily
+unavailable. Try again.” No account credentials are shown on failure.
 
 ## 2. Navigating Homebrew
 
@@ -233,11 +262,12 @@ without reloading to retain its submission key. If the pre-order source cannot
 be read, the page shows “Pre-order information is temporarily unavailable. Try
 again.”
 
-**Account limitation:** current sign-up and demo provisioning do not populate
-the required Customer name. Those accounts receive “Customer name is
+**Account limitation:** current sign-up and older unnamed accounts do not
+populate the required Customer name. New demo-kit Customers have a protected
+name and can order. Unnamed accounts receive “Customer name is
 unavailable. Account setup must be completed before ordering.” and no order is
 created. There is no account-name repair control in this build; the available
-ordering flow is exercised with named local test accounts.
+ordering flow is available to new demo-kit Customers and named local test accounts.
 
 ### 4.4 View and cancel your orders
 
@@ -437,10 +467,10 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 Customer review writing and favourites and Café owner domain tools remain
 entry shells or unavailable. Customer ordering requires the protected account
-name described in [Pre-order for pickup](#43-pre-order-for-pickup); current
-sign-up/demo provisioning does not supply it yet. Owner fulfilment actions are
-not available, so accepted/ready/collected examples use local test fixtures.
-Demo-kit creation, account password/email changes,
+name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
+kits supply it; current signup and older unnamed accounts do not. Owner
+fulfilment actions are not available, so accepted/ready/collected examples use
+seeded kit purchases or local test fixtures. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 
@@ -452,6 +482,8 @@ sign-out are not available in the current account UI.
 | “Unable to complete account setup. Try again.” | Retry sign-up explicitly when ready. |
 | “Account setup could not be completed. Try signing in; account access is unavailable until setup is resolved.” | Try Sign in; access may remain unavailable until setup is resolved. |
 | “Too many attempts. Try again later.” | Wait before trying again. |
+| “Demo kit limit reached. Try again in N seconds.” | Wait for the displayed duration before creating another kit. |
+| “Demo kit service is temporarily unavailable. Try again.” | Retry creation later; only a successful response supplies credentials. |
 | “An account is already signed in.” | Use that account or sign out before signing in to another. |
 | “Check the account fields and try again.” | Review the email, password and sign-up role, then submit again. |
 | “Unable to complete the request. Try again.” | Check connectivity and retry explicitly; the message does not confirm success. |

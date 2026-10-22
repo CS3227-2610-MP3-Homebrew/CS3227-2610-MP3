@@ -8,15 +8,9 @@ import { accountActor, AccountOperationError, createAccountHandlers, type Accoun
 import { isAuthCookie, isSourceFailure } from "./account-access";
 import { createAccountTransport } from "./account-transport";
 
-/** Server deployment setting only; request host/forwarding headers never supply trust. */
-export function trustedOrigin() {
-  const configured = process.env.APP_ORIGIN ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
-  const environment = getConfiguration().environment;
-  const value = configured ?? (["local", "ci"].includes(environment) ? `http://127.0.0.1:${process.env.PORT ?? "3000"}` : "");
-  const url = new URL(value);
-  if (!["http:", "https:"].includes(url.protocol) || url.origin !== value || url.username || url.password) throw new Error("Account origin unavailable.");
-  return value;
-}
+import { trustedOrigin } from "@/server/http/origin";
+export { trustedOrigin } from "@/server/http/origin";
+
 function authFault(error: AuthError, retryAfter?: string): AccountFault {
   if (["email_exists", "user_already_exists"].includes(error.code ?? "")) return { kind: "duplicate" };
   if (error.status === 429) return { kind: "throttled", ...(retryAfter ? { retryAfter } : {}) };

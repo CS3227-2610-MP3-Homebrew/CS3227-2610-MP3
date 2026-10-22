@@ -13,6 +13,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
 - [Authentication and authorization](#authentication-and-authorization)
+  - [Demo-kit creation](#demo-kit-creation)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
   - [Moderation Assistant](#moderation-assistant)
@@ -78,6 +79,14 @@ Café eligibility reuses those same session/RLS, transport, audit and Suspense
 patterns (internal code/idea reuse), including the existing moderation Admin
 lookup and audit ledger. No external snippet, dependency or workflow was added;
 the MP2 reuse totals are unchanged.
+
+Demo kits reuse the existing private usage-counter store/locking pattern,
+workspace RLS, ordinary Admin RPCs and shared HTTP primitives (internal code
+reuse). Installed Next.js “Preserving UI state” guidance informed the
+layout-effect cleanup for Activity boundaries (idea reuse); the implementation
+adds request cancellation and synchronous pagehide clearing for credentials.
+No external application snippet or workflow file was copied; MP2 reuse totals
+remain five files (two Adapted, two Rewritten, one As is).
 
 ## Setting up, getting started
 
@@ -442,8 +451,8 @@ count. `private.ai_usage_admissions` retains successful single-use admission
 identities and timestamps, referencing their operation. All three tables enable
 RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
 
-Demo-kit creation and remaining story fields/lifecycle transitions remain later
-work. Internal AI caches/audit and callable retention cleanup are implemented as
+Demo-kit creation is described [below](#demo-kit-creation). Remaining story
+fields/lifecycle transitions remain later work. Internal AI caches/audit and callable retention cleanup are implemented as
 [described below](#ai-caches-eligibility-and-audit); cleanup is not scheduled.
 
 ### Manual moderation and Admin audit
@@ -592,9 +601,10 @@ govern the implemented Pre-order and My orders surfaces.
 The added nullable `profiles.name` stores the protected Customer name consumed
 by creation; `orders.customer_name` retains its snapshot. Missing, untrimmed or
 invalid names produce the specified safe account-setup conflict without an
-order/key. Current SYS-01 signup and demo provisioning do not capture/populate
-this field. This pair does not add a profile repair endpoint or change account
-contracts; successful order tests provision valid synthetic protected names.
+order/key. Current SYS-01 signup and older unnamed accounts do not populate
+this field; new demo kits seed a valid protected Customer name. The CUS-03 pair
+does not add a profile repair endpoint or change account contracts; successful
+order tests also provision valid synthetic protected names.
 Owner acceptance/collection and menu/settings writers remain separate work.
 
 The order suites contain 25 spec-derived Vitest cases in `tests/unit/orders/`
@@ -757,7 +767,7 @@ The reviewed account integration implements [SYS-01](../workflow/specs/stories/S
 [SYS-02](../workflow/specs/stories/SYS-02-sign-in-out.md),
 [SYS-03](../workflow/specs/stories/SYS-03-role-navigation.md) and the
 [Shared HTTP/browser contracts](../workflow/specs/INTEGRATION-SPEC.md#shared-account-contracts).
-The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
+The sign-in screen also mounts the [Create demo kit flow](#demo-kit-creation).
 
 - `src/lib/accounts/fields.ts` supplies shared strict field schemas, safe text,
   fixed notices and role homes. Client forms disable repeat submissions, clear
@@ -765,8 +775,11 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
 - `src/server/http/json.ts` supplies private/no-store JSON/error responses with
   opaque request IDs, exact Origin and JSON media checks, and the streamed
   65,536-byte UTF-8 body reader shared by accounts, moderation, café actions
-  and LLM operations. The reader preserves account overflow-only awaited
+  and LLM operations, plus anonymous demo creation. The reader preserves account overflow-only awaited
   cancellation and the Admin/LLM abortable cancellation and lock cleanup.
+- `src/server/http/origin.ts` owns exact configured-origin resolution; the Auth
+  adapter re-exports it for existing consumers. Caller host/forwarding headers
+  never establish origin trust.
 - `src/server/auth/accounts.ts` retains POST/method admission, strict account
   fields, account-specific errors and session orchestration. Handlers retain
   their existing method → Origin → media → body → fields → identity order.
@@ -804,6 +817,72 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
   remote `scope: "local"`, clears browser cookies even when remote revocation
   fails, and exposes the fixed uncertainty notice without claiming all-device
   sign-out or immediate revocation of issued access tokens.
+
+### Demo-kit creation
+
+[`SYS-12.4–12.12`](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits)
+and [`SEC-10.1–10.3`](../workflow/specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards)
+own the demo flow; its public contract is
+[POST /api/demo-kits](../workflow/specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
+
+- `src/app/_components/demo-kit.tsx` is mounted only on Sign in. It keeps the
+  three published credentials in transient client state, with no browser storage.
+  Activity cleanup clears hidden-page state and aborts pending requests;
+  synchronous pagehide cleanup clears it before browser-history capture.
+- `src/app/api/demo-kits/route.ts` lazily constructs a server-only privileged
+  client after admission. The proxy skips session refresh on this anonymous
+  endpoint; the feature still independently checks method, exact Origin,
+  JSON media, the shared 65,536-byte body bound and strict `{}` before reserving
+  capacity. All responses are private/no-store JSON with opaque request IDs.
+- `src/server/demo-kits/index.ts` owns transport, admission and provisioning.
+  Node crypto generates a 128-bit shared email code and an independent 192-bit
+  random password per identity. The published roles are Customer, owner and
+  Admin; a separate owner is created for the pending café. Passwords go only to
+  Auth and the once-shown creation response, never to seed RPC arguments,
+  application tables, caches or telemetry. No model call is made.
+- `20261022000003_demo_kits.sql` follows CUS-03’s
+  `20261022000002_customer_orders.sql`, reuses its canonical snapshots and
+  bigint money fields. It adds three service-role-only, empty-search-path RPCs
+  without adding duplicate snapshot columns. `reserve_demo_kit`
+  reuses `private.ai_usage_counters` and the existing per-environment transaction
+  lock, checking both fixed ten-minute and Singapore-day bounds before either
+  increment. Database time controls production membership; explicit clock
+  fixtures are accepted only in local/CI. Unavailable counters fail closed;
+  exhaustion returns 429 `RATE_LIMITED` and `Retry-After` seconds.
+- `publish_demo_kit` validates four distinct confirmed Auth identities against
+  the generated email namespace, refuses reassignment and publishes their
+  protected profiles, workspace and all domain data in one transaction. A
+  repeated server call with the same workspace/identity tuple reconciles a lost
+  acknowledgement. Auth/seed failures trigger bounded identity compensation;
+  `discard_demo_identities` additionally handles a lost Auth acknowledgement
+  without deleting any identity that has a profile. Neither RPC is available
+  to anonymous or authenticated application clients.
+- The kit contains one approved café, one separate-owner pending café, three
+  menu items, weekly hours, a cutoff, fifty-six collected purchases across about
+  four weeks, a pending purchase and three synthetic pending moderation reviews.
+  Historical item names/quantities/prices and SGD-cent totals are stored as
+  snapshots. Seed items populate CUS-03’s canonical `name` and `item_ref`;
+  orders carry `SGD` currency and the Customer profile
+  has the protected name `Demo Customer`. The merged CUS-03 screens support
+  kit ordering/history/cancellation; owner writers remain separate work. Dashboard/Prep result quality is
+  verified by T-62, rather than inferred from this dataset's date span.
+- Existing workspace RLS, role restrictions, reason/audit/text-preservation and
+  reversible Admin actions are unchanged. Kit user AI counters remain separate
+  while global AI provider caps are shared with main. No expiry field,
+  automatic kit deletion or new domain write grant is added.
+
+`DEMO_KITS_PER_10_MINUTES` and `DEMO_KITS_PER_DAY` are server-only nonnegative
+integer settings, capped at 5 and 30. Local/CI default to 5/30 only when absent;
+dev/prod must configure both. Missing/invalid hosted values fail closed. Zero
+refuses creation. Use the exact trusted `APP_ORIGIN`/`VERCEL_URL` origin and
+server-only `SUPABASE_SECRET_KEY` as for account provisioning.
+
+Verification lives in `tests/integration/demo-kits/` and
+`tests/e2e/demo-kits/`; internal lifetime regressions are covered by
+`tests/unit/demo-kit-lifetime.test.tsx`. Local Auth/SQL fault fixtures cover
+four identity failures and a seed failure after all identities exist; durable
+admission fixtures cover concurrency, rollover, reconstruction and outages.
+Run the integration/database suites without concurrent external fixture writers.
 
 ## AI features and the shared LLM module
 
@@ -1162,6 +1241,9 @@ loopback and `PORT`. Registration requires server-only `SUPABASE_SECRET_KEY`;
 never expose it through a `NEXT_PUBLIC_` variable. See
 [Shared accounts](#shared-accounts-and-role-navigation) for the transport boundary.
 
+Demo creation also requires server-only `DEMO_KITS_PER_10_MINUTES` and
+`DEMO_KITS_PER_DAY` in dev/prod; see [Demo-kit creation](#demo-kit-creation).
+
 The repository contains static delivery configuration for
 [SYS-07.1](../workflow/specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 The [environment and delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery)
@@ -1285,12 +1367,13 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, the read-only audit screen and Customer catalogue/detail
-reads and Customer pickup/history/cancellation surfaces are available. Ordering
-requires a valid protected Customer name; current signup/demo provisioning does
-not yet populate it. Customer review writing and other role domain pages remain
-unavailable or entry headings, with the owner no-café state. Owner fulfilment
-race integration remains unverified; AI screens, demo-kit creation, maintenance provisioning, scheduled
+Manual Admin moderation, advisory Admin triage, the read-only audit screen,
+Customer catalogue/detail reads and Customer pickup/history/cancellation surfaces
+are available. Ordering requires a valid protected Customer name: new demo kits
+supply it, while current signup and older unnamed accounts do not. Customer
+review writing and other role domain pages remain unavailable or entry headings,
+with the owner no-café state. Owner fulfilment race integration remains unverified;
+owner café mutations, the remaining AI screens, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally and consumed by Admin
 triage. Live provider compatibility and model quality remain unverified;
@@ -1299,6 +1382,17 @@ rendering, plus scheduled cleanup, require their owning integrations. The admiss
 per-environment transaction lock serializes admissions; no production load test
 has been run. Cleanup exists but nothing schedules it yet, and no monetary
 quota guarantee is supplied.
+Demo creation's Auth staging and domain publication are separate service operations.
+Publication is atomic and ordinary failure compensation is tested, but retries
+are bounded and no durable recovery worker is implemented. Process termination
+or simultaneous Auth/Postgres unavailability can leave unprofiled staged
+identities; a complete kit may remain if publication committed but its
+acknowledgement stays unavailable. The
+[security review](../workflow/handoffs/54-demo-kits/03-security-reviewer.md#open-issues-and-coverage-limits)
+records this SYS-12.6 fault-tolerance/coverage limitation without asserting a
+credential-disclosure or authority bypass. Such unprofiled identities have no
+protected domain role; no hosted crash-recovery claim is made.
+
 The workspace helper requires trusted actor context and supplies only a scope
 prerequisite; Admin triage now supplies its own RLS source/route consumer and
 uses no result cache.
