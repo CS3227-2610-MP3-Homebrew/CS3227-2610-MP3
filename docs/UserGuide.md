@@ -16,6 +16,7 @@
   - [5.1 Café owner features at a glance](#51-café-owner-features-at-a-glance)
   - [5.2 Apply for a café](#52-apply-for-a-café)
   - [5.3 Manage your café profile, hours and pickup rules](#53-manage-your-café-profile-hours-and-pickup-rules)
+  - [5.4 Run the order queue](#54-run-the-order-queue)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -104,9 +105,9 @@ again.” and does not confirm that sign-out succeeded.
 
 Browse cafés provides the Customer tools in section 4; Moderation queue and
 Audit log provide the Admin tools in section 6. My orders provides retained
-purchases and pending-order cancellation. Café application and Café profile
-provide the owner tools in section 5; Order queue and Menu open role page
-headings.
+purchases and pending-order cancellation. Café application, Café profile and
+Order queue provide the owner tools in section 5; Menu opens a role page
+heading.
 
 ### 1.5 Demo accounts for testers
 
@@ -351,8 +352,8 @@ temporarily unavailable. Try again.”
 
 Review text displays as plain text. Public café reviews continue to use
 “Verified customer” and show only pending/kept reviews for an eligible café.
-Owner fulfilment is not yet available, so collected examples currently use
-local test fixtures.
+An order becomes collected when the café owner marks it collected in the order
+queue (section 5.4).
 
 ## 5. Café owner guide
 
@@ -360,9 +361,9 @@ local test fixtures.
 
 Café owners can apply to register one café, follow its review status, resubmit
 a rejected application, and manage an approved café's description, weekly
-opening hours and pickup cutoff. Sales, order queue and menu tools are not yet
-implemented. Dashboard shows “You do not have a café yet.” when your account has
-no café.
+opening hours and pickup cutoff, and run the order queue. Sales and menu tools
+are not yet implemented. Dashboard shows “You do not have a café yet.” when your
+account has no café.
 
 ### 5.2 Apply for a café
 
@@ -433,6 +434,30 @@ and hidden from customers.” If an Admin suspends or un-suspends the café whil
 you are editing, saving opens **Café application** instead. When you return to
 **Café profile**, your unsaved changes are restored with “Your unsaved changes
 were restored. Review them and save again.”
+
+### 5.4 Run the order queue
+
+**Where:** owner navigation → **Order queue** (`/owner/orders`).
+
+Customers pay at the counter; the queue never takes payment. Each card shows
+the customer's name as it was when they ordered, the items, quantities and
+prices they bought, the total, and the pickup and event times in Singapore time.
+
+1. **Active** (the default) lists New, Accepted and Ready for pick up orders.
+   **History** lists Completed, Rejected and Cancelled orders. Use the filter
+   links under each view to show one state. Orders are sorted by pickup time,
+   then placement time, 10 per page.
+2. On a **New** order, select **Accept order**, or select **Reject…**, enter a
+   reason (up to 100 words, shown to the customer) and select **Confirm
+   reject**. **Keep order** closes the form without changes.
+3. On an **Accepted** order, select **Mark ready for pick up**.
+4. When the customer collects it, select **Mark collected**. The order moves
+   to History as Completed.
+
+If the customer cancelled, an Admin suspended the café, or someone else already
+acted, the queue shows “Order changed. Refresh to see its current state.” and
+reloads the page you were on. Completed, Rejected and Cancelled orders cannot be
+reopened. Without a café, the queue shows **Apply for a café** instead.
 
 ## 6. Admin guide
 
@@ -627,12 +652,10 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Favourites and the Café owner order queue, menu and sales tools remain entry
-shells or unavailable.
+Favourites and the Café owner menu and sales tools remain entry shells or
+unavailable.
 Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
-kits supply it; current signup and older unnamed accounts do not. Owner
-fulfilment actions are not available, so accepted/ready/collected examples use
-seeded kit purchases or local test fixtures. Account password/email changes,
+kits supply it; current signup and older unnamed accounts do not. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 

@@ -1008,7 +1008,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] All ten listed OWN-05 criteria have named failing-first cases, including both race orderings, no partial mutation and indistinguishable foreign references.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff; tests use only local Supabase/fake or disabled AI.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#115](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/115)
 
 ### T-60: Implement owner order queue
@@ -1023,7 +1023,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-59 suite passes for all ten OWN-05 criteria, exact state/race outcomes and scoped private queue data without modifying purchase snapshots.
   - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff records evidence and confirms testing-owned files are unchanged.
-- **Status:** blocked
+- **Status:** done
 - **Issue:** [#116](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/116)
 
 ### T-61: Finalize sales aggregates and Prep Advisor decision contracts

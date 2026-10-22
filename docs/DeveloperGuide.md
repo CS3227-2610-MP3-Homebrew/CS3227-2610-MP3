@@ -12,6 +12,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
+  - [Owner order queue](#owner-order-queue)
   - [Owner café application and settings](#owner-café-application-and-settings)
 - [Authentication and authorization](#authentication-and-authorization)
   - [Demo-kit creation](#demo-kit-creation)
@@ -634,6 +635,43 @@ respect SYS-02's active-account conflict. Role-denial cases use literal titles
 so static traceability can recognize their criterion IDs; interpolated titles
 are intentionally ignored by that scanner. Actual owner acceptance/collection
 race integration remains unverified until the owning writers exist.
+
+### Owner order queue
+
+The [OWN-05 story](../workflow/specs/stories/OWN-05-order-queue.md) and
+[owner order queue boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-order-queue-boundary)
+govern `/owner/orders` and its JSON routes.
+
+- `src/server/owner-orders/query.ts` parses `view`/`filter`/`page` strictly
+  (each key at most once, exact enum spelling, compatible view/filter pairs).
+  As with Customer orders, the proxy validates the raw URL first and replaces
+  any caller-supplied flag; the handler parses again.
+- `src/server/owner-orders/http.ts` serves `GET /api/owner/orders` and
+  `POST /api/owner/orders/{orderId}/{accept|reject|ready|collect}`. POSTs check
+  the trusted Origin, JSON media type and bounded body, then strict Zod bodies
+  (`{}` or `{reason}`), before the owner session check and any database call.
+  Errors reuse the shared codes; 409 carries “Order changed. Refresh to see its
+  current state.”. `source.ts` maps failed reads to 503 and failed mutations to
+  500, as the Customer order source does.
+- `20261023000100_owner_order_queue.sql` adds `owner_order_queue`, a SECURITY
+  INVOKER read whose scope comes from the existing `orders_read` RLS policy
+  (own cafés in the verified workspace, including suspended ones), and
+  `owner_order_action`, a SECURITY DEFINER transition with an empty search
+  path. The action derives the owner, finds the order through its own café and
+  workspace (otherwise `NOT_FOUND`), locks café then order — the same order as
+  Customer cancellation and Admin suspension — checks the single allowed prior
+  state, and sets state, event time and any rejection reason in one update.
+  Rejection reasons are trimmed and limited to 100 ECMAScript-whitespace words
+  in both Zod and SQL. `OwnerOrder` is the Customer `Order` projection plus the
+  retained `customerName` snapshot; no profile ID, email or phone is read.
+- The page is a server component that reads the queue directly; the client
+  list (`queue-list.tsx`) posts actions, drops orders that leave the active
+  view, and on 409 shows the conflict message and refetches the selected page.
+  Text renders through React, so names and reasons stay inert.
+
+The suites are `tests/integration/owner-queue/` (route failure mapping, body
+bounds and direct RLS) and `tests/e2e/owner-queue/` (API transitions, races
+with Customer cancellation and Admin suspension, isolation and the page).
 
 ### Customer collected-order reviews
 
