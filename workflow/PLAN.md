@@ -21,12 +21,19 @@ Owner story sources: [OWN-01](specs/stories/OWN-01-cafe-application.md),
 [OWN-04](specs/stories/OWN-04-pickup-rules.md),
 [OWN-05](specs/stories/OWN-05-order-queue.md),
 [OWN-06](specs/stories/OWN-06-sales-dashboard.md),
-[OWN-07](specs/stories/OWN-07-prep-advisor.md) and
-[OWN-08](specs/stories/OWN-08-boost-request.md).
+[OWN-07](specs/stories/OWN-07-prep-advisor.md),
+[OWN-08](specs/stories/OWN-08-boost-request.md),
+[OWN-09](specs/stories/OWN-09-prep-sheet.md),
+[OWN-10](specs/stories/OWN-10-pause-orders.md),
+[OWN-11](specs/stories/OWN-11-closure-dates.md),
+[OWN-12](specs/stories/OWN-12-slot-order-limit.md),
+[OWN-13](specs/stories/OWN-13-archive-menu-items.md),
+[OWN-14](specs/stories/OWN-14-no-show.md) and
+[OWN-15](specs/stories/OWN-15-sales-export.md).
 Shared story sources: [SYS-01](specs/stories/SYS-01-sign-up.md),
 [SYS-02](specs/stories/SYS-02-sign-in-out.md) and
 [SYS-03](specs/stories/SYS-03-role-navigation.md).
-Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Shared adds one pair, Customer five, Café owner five and Admin three: 26 pairs total, with 14 specification tasks across 66 tasks.
+Foundations cover SYS-04–SYS-13 and SEC-01–SEC-10 in 12 testing/implementation pairs; Shared adds one pair, Customer five, Café owner twelve and Admin three: 33 pairs total, with 14 specification tasks across 80 tasks.
 Changed criteria and new tasks require their governing specs on master before execution; missing story contracts block the affected tasks.
 
 ## Conventions
@@ -50,9 +57,9 @@ Changed criteria and new tasks require their governing specs on master before ex
   [handoff conventions](handoffs/README.md) and the [report template](templates/handoff.md).
   Tests use local Docker Supabase and fake/disabled LLM only. Hosted execution
   and deployment verification are human steps.
-- CUS-01–CUS-07, OWN-01–OWN-08 and ADM-01–ADM-04 story files exist.
+- CUS-01–CUS-07, OWN-01–OWN-15 and ADM-01–ADM-04 story files exist.
   T-52/T-55/T-58 own the application/settings/menu/queue contracts; T-61/T-64
-  retain the sales/advice/boost decisions. Dependent tasks require their
+  own the sales/advice/boost decisions. Dependent tasks require their
   governing contracts on master. New file scopes
   below identify their owning tasks. Core
   schema uses the technical entities, relationships and ownership columns now; later story-specific fields,
@@ -774,7 +781,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] All 13 evaluation cases have explicit evidence; no cache/provider/result can grant record access or an order write.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#77](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/77)
 
 ### T-47: Implement Brew Finder search integration
@@ -789,7 +796,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-46's full criterion/evaluation suite passes with fake/disabled AI and independent catalogue/order authorization.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#78](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/78)
 
 ### T-48: Test stretch favourite saving
@@ -826,9 +833,10 @@ then consume its suspension effect without a dependency cycle.
 
 ## Café owner
 
-Five pairs cover café setup/profile/pickup rules (OWN-01/OWN-02/OWN-04), menu
-(OWN-03), fulfilment queue (OWN-05), sales/Prep Advisor (OWN-06/OWN-07) and stretch
-boost requests (OWN-08). Each pair owns only its listed story criteria. Shared
+Twelve pairs cover café setup/profile/pickup rules (OWN-01/OWN-02/OWN-04), menu
+(OWN-03), fulfilment queue (OWN-05), sales/Prep Advisor (OWN-06/OWN-07), stretch
+boost requests (OWN-08) and one pair for each stretch owner operation OWN-09–OWN-15,
+as the owner requested one story per pair. Each pair owns only its listed story criteria. Shared
 SYS/SEC criteria retain their foundation owners. Contract tasks T-52, T-55,
 T-58, T-61 and T-64 own specification completion, not executable coverage.
 
@@ -837,8 +845,10 @@ contracts use menu-history and queue source decisions; boost decisions also
 require ADM-06. Local authorized fixtures permit owner tests before Customer
 order creation or Admin decision screens, avoiding a cycle through T-29/T-43.
 Owner application/profile layout is owned by T-54, menu by T-57, queue by T-60
-and Dashboard sales/Prep by T-63; T-66 extends the selected owner surface only
-for stretch. Shared-file edits are serialized, and missing contracts never
+and Dashboard sales/Prep by T-63; T-66 and T-68–T-80 extend those surfaces only
+for stretch. OWN-10, OWN-11 and OWN-12 all change pickup-slot and order-creation
+validation shared with T-43, so their implementation edits to that code are
+serialized. Shared-file edits are serialized, and missing contracts never
 become implementation choices. Execution requires governing specs on master;
 implementation also requires the paired failing-first evidence.
 
@@ -987,37 +997,37 @@ implementation also requires the paired failing-first evidence.
 - **File scope:** Existing OWN-06/OWN-07, canonical sales/Prep sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`; narrowly related OWN-05 source-event amendment only if required by the chosen sales contract; own spec handoff. No application or executable tests.
 - **Prerequisite:** Human analytics/advice decisions, T-55 menu-history and T-58 queue/source contracts; security limits/prompt/output schema are available. Source/model/schema validation alone does not settle directional correctness. Coordinate the SYS-12 seed sufficiency contract without duplicating demo provisioning.
 - **Acceptance criteria:**
-  - [ ] Sales figures, top-item fallback and Prep sufficiency/direction can be independently evaluated with explicit normal/edge fixtures; no invented threshold or business window remains.
-  - [ ] Reviewed contracts and all related criterion/coverage amendments are on master before dependent execution; spec/traceability outcomes and evaluation limits are recorded.
-- **Status:** awaiting-decision
+  - [x] Sales figures, top-item fallback and Prep sufficiency/direction can be independently evaluated with explicit normal/edge fixtures; no invented threshold or business window remains.
+  - [x] Reviewed contracts and all related criterion/coverage amendments are on master before dependent execution; spec/traceability outcomes and evaluation limits are recorded.
+- **Status:** done
 - **Issue:** [#117](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/117)
 
 ### T-62: Test owner sales Dashboard and Prep Advisor
 
 - **Depends on:** T-61, T-08, T-10, T-12, T-14, T-16
 - **Owner role:** testing
-- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
+- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7, OWN-06.8, OWN-06.9, OWN-06.10, OWN-06.11; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14, OWN-07.15, OWN-07.16 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
 - **Description:** Derive failing-first coverage for all OWN-06/OWN-07 criteria and [Prep evaluation cases](specs/stories/OWN-07-prep-advisor.md#evaluation-cases), consuming shared AI infrastructure.
-- **Work:** Cover three scoped sales views, source-backed SGD amounts, Singapore date/weekday boundaries, renamed/removed-item history under T-61, no-café/no-sales/source failures and AI-independent top items. Cover strict Prep request/authorized aggregate-only provider context, exact quoted evidence, complete rejection, empty suggestions/source, sufficiency/direction fixtures, same-café/date/source/version cache, bounded manual refresh and failed-refresh preservation, disabled/limited/unavailable fallbacks, source 503, no domain writes, inert label injection, forged evidence and content-free audit. Exercise all 12 existing evaluation cases plus T-61-approved quality cases with fake captures; distinguish deterministic safety from quality. Reuse T-12/T-14/T-16 tests without reallocating their SYS/SEC criteria. Include one case showing the SYS-12.9 demo-kit seed yields non-trivial Dashboard and Prep Advisor results; T-24/T-25 own the seed itself.
+- **Work:** Cover three scoped sales views, source-backed SGD amounts, Singapore date/weekday boundaries, renamed/removed-item history under T-61, no-café/no-sales/source failures and AI-independent top items. Cover strict Prep request/authorized aggregate-only provider context, exact quoted evidence, complete rejection, empty suggestions/source, sufficiency/direction fixtures, same-café/date/source/version cache, bounded manual refresh and failed-refresh preservation, disabled/limited/unavailable fallbacks, source 503, no domain writes, inert label injection, forged evidence and content-free audit. Exercise all 17 evaluation cases, including the direction-consistency cases E13–E15, with fake captures; distinguish deterministic safety from quality. Reuse T-12/T-14/T-16 tests without reallocating their SYS/SEC criteria. Include one case showing the SYS-12.9 demo-kit seed yields non-trivial Dashboard and Prep Advisor results; T-24/T-25 own the seed itself.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/owner-sales/` and `tests/{unit,integration,e2e}/prep-advisor/`, controlled local sales/clock/cache/failure fixtures and evaluation evidence; browser files only under respective `tests/e2e/` directories; database/route files declare node environment.
 - **Prerequisite:** T-61 and all governing specs on master, plus shared access/session, admission, validated LLM operations and cache/audit repositories. Local sales fixtures permit failing-first tests before queue/menu UI integration; no demo-kit or live-provider prerequisite.
 - **Acceptance criteria:**
-  - [ ] Every one of the 21 listed story criteria has named failing-first coverage; all Prep adversarial cases map to guardrails and normal direction examples follow the approved comparison contract.
+  - [ ] Every one of the 27 listed story criteria has named failing-first coverage; all Prep adversarial cases map to guardrails and normal direction examples follow the approved comparison contract.
   - [ ] Exact `bun run verify` and relevant browser results plus fake-provider/evaluation limits are recorded in an issue-scoped handoff without live calls or hosted data.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#118](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/118)
 
 ### T-63: Implement owner sales Dashboard and Prep Advisor
 
 - **Depends on:** T-62, T-61, T-54, T-57, T-60, T-08, T-10, T-12, T-14, T-16
 - **Owner role:** implementation
-- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
+- **Requirements:** OWN-06.1, OWN-06.2, OWN-06.3, OWN-06.4, OWN-06.5, OWN-06.6, OWN-06.7, OWN-06.8, OWN-06.9, OWN-06.10, OWN-06.11; OWN-07.1, OWN-07.2, OWN-07.3, OWN-07.4, OWN-07.5, OWN-07.6, OWN-07.7, OWN-07.8, OWN-07.9, OWN-07.10, OWN-07.11, OWN-07.12, OWN-07.13, OWN-07.14, OWN-07.15, OWN-07.16 — [OWN-06](specs/stories/OWN-06-sales-dashboard.md#acceptance-criteria), [OWN-07](specs/stories/OWN-07-prep-advisor.md#acceptance-criteria).
 - **Description:** Implement Dashboard sales and the advisory Prep panel using the [shared AI HTTP envelope](specs/INTEGRATION-SPEC.md#ai-routes-and-result-envelope), existing server-only operations and [cache eligibility](specs/TECHNICAL-SPEC.md#cache-eligibility-and-scope).
 - **Work:** Build authorized source aggregates and daily/top-item/weekday views exactly under T-61, preserving retained purchase amounts and Singapore time. Add `POST /api/ai/prep-advisor` with strict café/refresh selection, current owner/workspace/RLS source checks and the existing shared controls before provider/cache/fallback use. Construct only canonical aggregate inputs; reuse T-14 prompt/schema/operation and T-12/T-16 admission/cache/audit. Render AI-labelled item/weekday/more-less advice and server-quoted evidence as escaped text, empty advice, loading, explicit bounded refresh and typed safe top-items fallback; never apply a suggestion. Ordinary sales remain usable without AI, and unavailable source never becomes invented zero data. No duplicated provider transport, policy/storage or T-21/T-22 SEC ownership.
 - **File scope:** Proposed owner Dashboard sales/Prep components under `src/app/owner/dashboard/`, `src/app/api/ai/prep-advisor/route.ts`, T-61-approved Dashboard read boundary and server-only sales/Prep source adapters under `src/server/owner/`; required additive aggregate-source migrations. Reuse `src/server/llm/` repositories without changing canonical policy/prompt/schema by inference; no tests/fixtures/mocks.
 - **Prerequisite:** T-62 failing-first evidence, T-61 contracts on master, T-54 owner layout, T-57 menu-history and T-60 queue/source semantics plus shared T-08/T-10/T-12/T-14/T-16 infrastructure. T-25 provisioning and T-21/T-22 later cross-feature acceptance are not prerequisites.
 - **Acceptance criteria:**
-  - [ ] T-62 suite passes for all 21 criteria; ordinary sales and every authorized fallback remain useful; advice quotes only source numbers and changes no domain record.
+  - [ ] T-62 suite passes for all 27 criteria; ordinary sales and every authorized fallback remain useful; advice quotes only source numbers and changes no domain record.
   - [ ] Exact `bun run verify` and relevant browser tests pass; issue-scoped handoff records controlled fake-provider/evaluation evidence and any quality limitations.
 - **Status:** blocked
 - **Issue:** [#119](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/119)
@@ -1032,22 +1042,22 @@ implementation also requires the paired failing-first evidence.
 - **File scope:** Existing OWN-08, owning optional boost sections of `workflow/specs/TECHNICAL-SPEC.md` and `INTEGRATION-SPEC.md`, own spec handoff. ADM-06 story authoring/coverage belongs to its Admin specification owner and is not included in this owner task.
 - **Prerequisite:** Human boost term/placement decisions and an approved ADM-06 story/decision contract; PRODUCT-SPEC contains ADM-06 but no story file exists. Source owner request/no-payment boundaries already exist.
 - **Acceptance criteria:**
-  - [ ] Owner request, recorded fee and time-limited badge terms are exact, coordinate with ADM-06 and preserve existing Customer eligibility and MVP navigation.
-  - [ ] Reviewed owner/shared/Admin dependency contracts are on master before execution; spec/traceability results and any missing ADM-06 prerequisite are reported.
-- **Status:** awaiting-decision
+  - [x] Owner request, recorded fee and time-limited badge terms are exact, coordinate with ADM-06 and preserve existing Customer eligibility and MVP navigation.
+  - [x] Reviewed owner/shared/Admin dependency contracts are on master before execution; spec/traceability results and any missing ADM-06 prerequisite are reported.
+- **Status:** done
 - **Issue:** [#120](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/120)
 
 ### T-65: Test stretch owner boost requests
 
 - **Depends on:** T-64, T-54, T-08, T-10
 - **Owner role:** testing
-- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
+- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5, OWN-08.6, OWN-08.7, OWN-08.8, OWN-08.9 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
 - **Description:** Derive failing-first tests for the optional [OWN-08 boundary](specs/stories/OWN-08-boost-request.md#requirements) after boost terms and ADM-06 coordination are specified.
 - **Work:** Cover own/workspace-only requests, fee recorded without payment/provider action, no owner Admin decision authority, unchanged approval/suspension, ordinary Customer eligibility, badge expiry and shared session/role/foreign-record failures. Test lifecycle/duplicates/time/placement only as resolved by T-64 and the separate ADM-06 contract. Use local decision/time fixtures; do not implement Admin boost UI, allocate its criteria, change ranking without a governing amendment or require live payment.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/owner-boosts/`, testing-owned optional boost/clock/decision fixtures; browser files under `tests/e2e/owner-boosts/`; database/route files declare node environment.
 - **Prerequisite:** T-64, OWN-08/shared and separate ADM-06 decision contracts on master; T-54 owner surface and T-08/T-10 access controls. Local Admin-decision fixtures may support failing-first tests; end-to-end decision integration additionally needs the separately owned Admin surface.
 - **Acceptance criteria:**
-  - [ ] All five listed OWN-08 criteria have named failing-first cases with explicit clock/scope/fee-only assertions; optional behavior does not enter MVP.
+  - [ ] All nine listed OWN-08 criteria have named failing-first cases with explicit clock/scope/fee-only assertions; optional behavior does not enter MVP.
   - [ ] Exact `bun run verify` and relevant browser outcomes are recorded in the issue-scoped handoff with no payment, deployment or hosted execution.
 - **Status:** blocked
 - **Issue:** [#121](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/121)
@@ -1056,16 +1066,226 @@ implementation also requires the paired failing-first evidence.
 
 - **Depends on:** T-65, T-64, T-54, T-08, T-10
 - **Owner role:** implementation
-- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
+- **Requirements:** OWN-08.1, OWN-08.2, OWN-08.3, OWN-08.4, OWN-08.5, OWN-08.6, OWN-08.7, OWN-08.8, OWN-08.9 — [OWN-08](specs/stories/OWN-08-boost-request.md#acceptance-criteria).
 - **Description:** Implement the optional owner boost request using the approved OWN-08 technical/integration and ADM-06 coordination contracts.
 - **Work:** Extend only the approved existing owner surface and add T-64-approved request/read handlers, validation and scoped boost persistence/RLS. Record the specified fee without charging it; apply only authorized lifecycle/time/badge behavior consistent with the separate Admin decision contract. Recheck current café/workspace eligibility for any public badge surface; a request cannot approve/un-suspend or confer Admin authority. Do not author Admin decisions/screens, payment logic, arbitrary catalogue ranking or new MVP navigation. Serialize shared café/profile/migration edits with T-54 and Admin boost ownership.
 - **File scope:** Approved optional owner interaction under `src/app/owner/`, T-64-approved owner boost Route Handlers and server-only boost domain code under `src/server/owner/`, additive boost/RLS migrations; Customer badge projection only if the canonical approved contract assigns that owner surface. No tests/fixtures/mocks or Admin boost implementation.
 - **Prerequisite:** T-65 failing-first evidence, T-64/OWN-08/shared/ADM-06 contracts on master and T-54 owner surface; separately owned Admin decision integration is required before claiming end-to-end boost activation. Missing Admin behavior is not implemented as an owner workaround.
 - **Acceptance criteria:**
-  - [ ] T-65 suite passes for all five OWN-08 criteria; recorded fee triggers no payment and expired/ineligible badges confer no visibility.
+  - [ ] T-65 suite passes for all nine OWN-08 criteria; recorded fee triggers no payment and expired/ineligible badges confer no visibility.
   - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff identifies separately owned Admin integration evidence and leaves acceptance tests unchanged.
 - **Status:** blocked
 - **Issue:** [#122](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/122)
+
+### T-67: Test stretch owner prep sheet
+
+- **Depends on:** T-58, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-09.1, OWN-09.2, OWN-09.3, OWN-09.4, OWN-09.5, OWN-09.6, OWN-09.7 — [OWN-09](specs/stories/OWN-09-prep-sheet.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the read-only [prep sheet](specs/stories/OWN-09-prep-sheet.md#sheet-contents) and its [read contract](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+- **Work:** Cover accepted-only selection for today's Singapore pickup date, item totals grouped by retained reference with the specified sort, the order list fields and sort, absence of prices and contact data, the pending notice, the 23:45/00:00 date boundary independent of host timezone, no record changes on open/print, the print layout, empty/no-café/503 states, and session/role/kit/RLS denials. Use local order fixtures in every state.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-prep-sheet/`; browser cases only under `tests/e2e/owner-prep-sheet/`; route/database files declare node environment. Reuse existing role harnesses.
+- **Prerequisite:** OWN-09 and the owner stretch boundary on master; T-58 queue contracts and T-08/T-10 access controls.
+- **Acceptance criteria:**
+  - [ ] All seven OWN-09 criteria have named failing-first cases, including the Singapore midnight boundary and no-disclosure checks.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff; tests use only local Supabase and fake or disabled AI.
+- **Status:** todo
+- **Issue:** [#140](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/140)
+
+### T-68: Implement stretch owner prep sheet
+
+- **Depends on:** T-67, T-58, T-60, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-09.1, OWN-09.2, OWN-09.3, OWN-09.4, OWN-09.5, OWN-09.6, OWN-09.7 — [OWN-09](specs/stories/OWN-09-prep-sheet.md#acceptance-criteria).
+- **Description:** Implement `/owner/orders/prep-sheet` and `GET /api/owner/prep-sheet` under the [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+- **Work:** Add the read handler with session/role/owner/workspace checks and session-bound RLS, a server-only projection of today's accepted orders in Singapore time, the page with item totals, order list, pending notice and empty/no-café/failure states, a Prep sheet link on Order queue and a print stylesheet hiding navigation and actions. No mutation, prices or new navigation entry.
+- **File scope:** Proposed `src/app/owner/orders/prep-sheet/`, `src/app/api/owner/prep-sheet/route.ts`, server-only code under `src/server/owner/`; a link on the T-60 Order queue surface. No tests, fixtures or mocks.
+- **Prerequisite:** T-67 failing-first evidence and T-60 Order queue surface.
+- **Acceptance criteria:**
+  - [ ] T-67 suite passes for all seven OWN-09 criteria without changing any order or menu record.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#141](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/141)
+
+### T-69: Test stretch owner ordering pause
+
+- **Depends on:** T-52, T-36, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-10.1, OWN-10.2, OWN-10.3, OWN-10.4, OWN-10.5, OWN-10.6, OWN-10.7 — [OWN-10](specs/stories/OWN-10-pause-orders.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [pause behavior](specs/stories/OWN-10-pause-orders.md#pause-behavior) and its Customer effects.
+- **Work:** Cover saving and reading the flag, idempotent repeats, Customer catalogue/café page/slot results while paused, the exact creation conflict, both race orderings between pause and creation, unchanged existing orders and queue actions, replay of existing submissions, slots after resume, pending/rejected/version conflicts, suspension behavior, and session/role/foreign/kit/RLS denials.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-pause/`; browser cases only under `tests/e2e/owner-pause/`; route/database files declare node environment.
+- **Prerequisite:** OWN-10 and the owner stretch boundary on master; T-52 owner café and T-36 order contracts.
+- **Acceptance criteria:**
+  - [ ] All seven OWN-10 criteria have named failing-first cases, including both race orderings.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#142](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/142)
+
+### T-70: Implement stretch owner ordering pause
+
+- **Depends on:** T-69, T-54, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-10.1, OWN-10.2, OWN-10.3, OWN-10.4, OWN-10.5, OWN-10.6, OWN-10.7 — [OWN-10](specs/stories/OWN-10-pause-orders.md#acceptance-criteria).
+- **Description:** Implement the pause flag, `POST /api/owner/cafe/ordering` and its Customer effects under the [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary) and [integrity rules](specs/TECHNICAL-SPEC.md#owner-stretch-operations-integrity).
+- **Work:** Add the additive `ordersPaused` migration with RLS, the owner handler with the suspension-version guard, the Order queue control, the Customer `acceptingOrders` projection and café-page message, empty slot reads while paused and the creation check inside the order transaction. Serialize edits to shared slot/creation code with T-72 and T-74.
+- **File scope:** Proposed `src/app/api/owner/cafe/ordering/route.ts`, owner code under `src/server/owner/`, the Order queue surface, Customer slot/creation/detail code from T-43/T-41, additive migration. No tests, fixtures or mocks.
+- **Prerequisite:** T-69 failing-first evidence, T-54 owner layout and T-43 order creation.
+- **Acceptance criteria:**
+  - [ ] T-69 suite passes for all seven OWN-10 criteria with no change to existing orders.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#143](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/143)
+
+### T-71: Test stretch owner closure dates
+
+- **Depends on:** T-52, T-35, T-36, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-11.1, OWN-11.2, OWN-11.3, OWN-11.4, OWN-11.5, OWN-11.6, OWN-11.7, OWN-11.8 — [OWN-11](specs/stories/OWN-11-closure-dates.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [closure rules](specs/stories/OWN-11-closure-dates.md#closure-rules) across owner and Customer reads.
+- **Work:** Cover saving, listing and replacing closures; date-range, count, note and malformed-date validation; no slots and creation conflicts on a closure date; overnight truncation with the cutoff at 00:00; open-now/open-at/open state/next opening and café-page notices; unchanged existing orders with the reported count; removal restoring slots; state/version/404 conflicts; suspension; and session/role/foreign/kit/RLS denials. Control the clock with local fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-closures/`; browser cases only under `tests/e2e/owner-closures/`; route/database files declare node environment.
+- **Prerequisite:** OWN-11 and the owner stretch boundary on master; T-52 owner café, T-35 catalogue and T-36 order contracts.
+- **Acceptance criteria:**
+  - [ ] All eight OWN-11 criteria have named failing-first cases, including overnight and timezone boundaries.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#144](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/144)
+
+### T-72: Implement stretch owner closure dates
+
+- **Depends on:** T-71, T-54, T-41, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-11.1, OWN-11.2, OWN-11.3, OWN-11.4, OWN-11.5, OWN-11.6, OWN-11.7, OWN-11.8 — [OWN-11](specs/stories/OWN-11-closure-dates.md#acceptance-criteria).
+- **Description:** Implement closure storage, the closure routes and their effect on opening time under the [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+- **Work:** Add the closure table with RLS, the list/save/remove handlers with validation and the suspension-version guard, the Café profile Closure dates section, and closure handling in the shared opening-time calculation used by slots, creation, open state, filters and next opening. Add the Customer café-page notice. Serialize shared slot/creation edits with T-70 and T-74.
+- **File scope:** Proposed `src/app/api/owner/closures/`, owner code under `src/server/owner/`, Café profile surface, Customer opening-time/slot/detail code from T-41/T-43, additive migration. No tests, fixtures or mocks.
+- **Prerequisite:** T-71 failing-first evidence, T-54 owner layout, T-41 catalogue and T-43 order creation.
+- **Acceptance criteria:**
+  - [ ] T-71 suite passes for all eight OWN-11 criteria; no existing order changes.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#145](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/145)
+
+### T-73: Test stretch owner per-slot order limit
+
+- **Depends on:** T-52, T-36, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-12.1, OWN-12.2, OWN-12.3, OWN-12.4, OWN-12.5, OWN-12.6, OWN-12.7, OWN-12.8 — [OWN-12](specs/stories/OWN-12-slot-order-limit.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [limit rules](specs/stories/OWN-12-slot-order-limit.md#limit-rules), including concurrency.
+- **Work:** Cover saving and reading 1–50 or null; strict validation; slot omission by counted states; the exact full-slot conflict; exactly one winner for the last place under concurrent creation; places freed by rejection, cancellation and no-show but not collection; lowering below existing counts; state/version conflicts; suspension; and session/role/foreign/kit/RLS denials.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-slot-limit/`; browser cases only under `tests/e2e/owner-slot-limit/`; route/database files declare node environment.
+- **Prerequisite:** OWN-12 and the owner stretch boundary on master; T-52 owner café and T-36 order contracts. No-show cases use a local state fixture.
+- **Acceptance criteria:**
+  - [ ] All eight OWN-12 criteria have named failing-first cases, including the concurrent last-place race.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#146](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/146)
+
+### T-74: Implement stretch owner per-slot order limit
+
+- **Depends on:** T-73, T-54, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-12.1, OWN-12.2, OWN-12.3, OWN-12.4, OWN-12.5, OWN-12.6, OWN-12.7, OWN-12.8 — [OWN-12](specs/stories/OWN-12-slot-order-limit.md#acceptance-criteria).
+- **Description:** Implement `maxOrdersPerSlot`, `POST /api/owner/cafe/slot-limit` and capacity checks under the [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary) and [integrity rules](specs/TECHNICAL-SPEC.md#owner-stretch-operations-integrity).
+- **Work:** Add the additive column with RLS, the owner handler with the suspension-version guard, the Café profile control, slot omission in pickup reads and a serialized per café/slot count check inside order creation. Serialize shared slot/creation edits with T-70 and T-72.
+- **File scope:** Proposed `src/app/api/owner/cafe/slot-limit/route.ts`, owner code under `src/server/owner/`, Café profile surface, Customer slot/creation code from T-43, additive migration. No tests, fixtures or mocks.
+- **Prerequisite:** T-73 failing-first evidence, T-54 owner layout and T-43 order creation.
+- **Acceptance criteria:**
+  - [ ] T-73 suite passes for all eight OWN-12 criteria and no slot is overbooked under concurrency.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#147](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/147)
+
+### T-75: Test stretch owner menu archiving
+
+- **Depends on:** T-55, T-35, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-13.1, OWN-13.2, OWN-13.3, OWN-13.4, OWN-13.5, OWN-13.6, OWN-13.7 — [OWN-13](specs/stories/OWN-13-archive-menu-items.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [archive rules](specs/stories/OWN-13-archive-menu-items.md#archive-rules) across owner, Customer and AI source reads.
+- **Work:** Cover exclusion from café-page menus, drink filters, Brew Finder and Prep Advisor candidate sources; missing-item 404 on order creation; restore with unchanged fields; owner Menu labels, edits, removal and name uniqueness; unchanged snapshots and sales history; wrong-state/version conflicts; suspension; and session/role/foreign/kit/RLS denials. AI source checks use source selectors and fake providers only.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-menu-archive/`; browser cases only under `tests/e2e/owner-menu-archive/`; route/database files declare node environment.
+- **Prerequisite:** OWN-13 and the owner stretch boundary on master; T-55 menu and T-35 catalogue contracts.
+- **Acceptance criteria:**
+  - [ ] All seven OWN-13 criteria have named failing-first cases.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#148](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/148)
+
+### T-76: Implement stretch owner menu archiving
+
+- **Depends on:** T-75, T-57, T-41, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-13.1, OWN-13.2, OWN-13.3, OWN-13.4, OWN-13.5, OWN-13.6, OWN-13.7 — [OWN-13](specs/stories/OWN-13-archive-menu-items.md#acceptance-criteria).
+- **Description:** Implement the `archived` flag and archive/restore routes under the [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+- **Work:** Add the additive column with RLS, the two handlers with the suspension-version guard, Menu labels and actions, and exclusion of archived items from Customer menu/filter/order validation and the shared catalogue and Prep source selectors. No change to order snapshots.
+- **File scope:** Proposed `src/app/api/owner/menu/[itemId]/archive/` and `restore/` routes, owner menu code under `src/server/owner/`, the T-57 Menu surface, Customer catalogue/order code and shared AI source selectors, additive migration. No tests, fixtures or mocks.
+- **Prerequisite:** T-75 failing-first evidence, T-57 Menu surface, T-41 catalogue and T-43 order creation.
+- **Acceptance criteria:**
+  - [ ] T-75 suite passes for all seven OWN-13 criteria; archived items never reach Customer or AI reads.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#150](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/150)
+
+### T-77: Test stretch owner no-show marking
+
+- **Depends on:** T-58, T-36, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-14.1, OWN-14.2, OWN-14.3, OWN-14.4, OWN-14.5, OWN-14.6, OWN-14.7 — [OWN-14](specs/stories/OWN-14-no-show.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [no-show rules](specs/stories/OWN-14-no-show.md#no-show-rules) and their Customer, review and sales effects.
+- **Work:** Cover the transition from accepted and ready after `pickupAt`, the early-action and wrong-state conflicts, races with collection and suspension, terminal preservation, owner history label and filter, Customer "Not collected", review ineligibility, exclusion from sales, and session/role/foreign/kit/RLS denials. Control the clock with local fixtures.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-no-show/`; browser cases only under `tests/e2e/owner-no-show/`; route/database files declare node environment.
+- **Prerequisite:** OWN-14 and the shared state matrix on master; T-58 queue and T-36 order contracts.
+- **Acceptance criteria:**
+  - [ ] All seven OWN-14 criteria have named failing-first cases, including both race pairs.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#151](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/151)
+
+### T-78: Implement stretch owner no-show marking
+
+- **Depends on:** T-77, T-60, T-43, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-14.1, OWN-14.2, OWN-14.3, OWN-14.4, OWN-14.5, OWN-14.6, OWN-14.7 — [OWN-14](specs/stories/OWN-14-no-show.md#acceptance-criteria).
+- **Description:** Implement the `no_show` state and `POST /api/owner/orders/{orderId}/no-show` under the [shared state matrix](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary) and [owner stretch boundary](specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+- **Work:** Add the additive state and `noShowAt` migration with RLS, the serialized transition with pickup-time check, the queue action, label and history filter, and the Customer "Not collected" label. Confirm suspension and review eligibility leave `no_show` unchanged and ineligible.
+- **File scope:** Proposed no-show route under `src/app/api/owner/orders/`, owner queue code under `src/server/owner/`, the T-60 queue surface, Customer My orders projection from T-43, additive migration. No tests, fixtures or mocks.
+- **Prerequisite:** T-77 failing-first evidence, T-60 queue and T-43 My orders.
+- **Acceptance criteria:**
+  - [ ] T-77 suite passes for all seven OWN-14 criteria with exactly one winner in every race.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#152](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/152)
+
+### T-79: Test stretch owner sales CSV export
+
+- **Depends on:** T-61, T-08, T-10
+- **Owner role:** testing
+- **Requirements:** OWN-15.1, OWN-15.2, OWN-15.3, OWN-15.4, OWN-15.5, OWN-15.6, OWN-15.7 — [OWN-15](specs/stories/OWN-15-sales-export.md#acceptance-criteria).
+- **Description:** Derive failing-first coverage for the [export format](specs/stories/OWN-15-sales-export.md#export-format) and its safety rules.
+- **Work:** Cover collected-only row selection by Singapore collection date, the byte-order mark, exact header, CRLF, date/time/amount formats and sort, RFC 4180 quoting and formula-prefix escaping of hostile item names, range validation, header-only empty ranges, attachment and no-store headers, absence of customer data, and session/role/no-café/kit/RLS behavior.
+- **File scope:** Proposed `tests/{unit,integration,e2e}/owner-sales-export/`; browser cases only under `tests/e2e/owner-sales-export/`; route/database files declare node environment.
+- **Prerequisite:** OWN-15, OWN-06's sale definition and the owner stretch boundary on master.
+- **Acceptance criteria:**
+  - [ ] All seven OWN-15 criteria have named failing-first cases, including formula-injection names.
+  - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff.
+- **Status:** todo
+- **Issue:** [#153](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/153)
+
+### T-80: Implement stretch owner sales CSV export
+
+- **Depends on:** T-79, T-63, T-08, T-10
+- **Owner role:** implementation
+- **Requirements:** OWN-15.1, OWN-15.2, OWN-15.3, OWN-15.4, OWN-15.5, OWN-15.6, OWN-15.7 — [OWN-15](specs/stories/OWN-15-sales-export.md#acceptance-criteria).
+- **Description:** Implement `GET /api/owner/sales/export` and the Dashboard export form, reusing the T-63 [sales source](specs/INTEGRATION-SPEC.md#owner-sales-boundary).
+- **Work:** Add the read handler with strict query parsing, authorization and RLS, a server-only CSV serializer applying the exact format, quoting and formula escaping, the attachment and no-store headers, and the Dashboard form with inline errors. Reuse the sale definition from T-63; add no new sales calculation.
+- **File scope:** Proposed `src/app/api/owner/sales/export/route.ts`, server-only export code under `src/server/owner/`, the T-63 Dashboard surface. No tests, fixtures or mocks.
+- **Prerequisite:** T-79 failing-first evidence and T-63 sales source.
+- **Acceptance criteria:**
+  - [ ] T-79 suite passes for all seven OWN-15 criteria; no customer data or formula reaches the file.
+  - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
+- **Status:** blocked
+- **Issue:** [#154](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/154)
 
 ## Admin
 

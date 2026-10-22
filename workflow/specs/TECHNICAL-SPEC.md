@@ -135,6 +135,8 @@ dates and opening-hours calculations use `Asia/Singapore`.
 | Order submission keys | Verified Customer, unique submission key, normalized creation request identity and resulting order reference. Successful key persists with order history. | Creation/key/items commit together. Only the owning authenticated Customer can obtain a replay through its ordinary order operation; no public key lookup or new role permission. | Exact idempotency request/conflict semantics: CUS-03 and [order boundary](INTEGRATION-SPEC.md#customer-pickup-and-order-boundary). |
 | Reviews | Customer and collected-order references, café relationship, review content and moderation state (`pending`, `kept`, `hidden`) as defined by [ADM-03](stories/ADM-03-review-moderation.md); unique order reference prevents a second review for the same order. Review text and rating are immutable after creation; customers cannot edit or delete reviews in the MVP. | Review creation requires the caller's own collected order. Customers can read their own reviews and visible reviews of eligible cafés. Admins access the moderation queue and keep, hide or restore with a reason, never edit review text. Any further write/read permission remains denied until specified. | Fields and rating scale/formula: CUS-01–CUS-02 and CUS-05. Initial state and moderation transitions: [ADM-03](stories/ADM-03-review-moderation.md); AI label/action relationship: [ADM-04](stories/ADM-04-moderation-assistant.md). |
 | Favourites (stretch only) | Unique Customer/café association, original server saved timestamp; workspace inherited through café and checked against Customer. | Personal Customer-only save/read with current catalogue eligibility independently enforced; no owner/Admin access, sharing, removal or public count. Ineligible associations persist without disclosing café content. | [CUS-07](stories/CUS-07-favourite-cafes.md) and [optional favourite boundary](INTEGRATION-SPEC.md#stretch-favourite-boundary). |
+| Boost requests (stretch only) | Café reference, state (`requested`, `approved`, `rejected`), fixed 1,000-cent SGD fee, server `requestedAt`, and null-until-decided `decidedAt`, `featuredFrom` and `featuredUntil`; workspace inherited through café. | Owners create and read only their own café's requests; no owner update or delete. Admin decisions belong to ADM-06. Customer reads expose only a derived `featured` flag for eligible cafés. | [OWN-08](stories/OWN-08-boost-request.md) and the [owner stretch boundary](INTEGRATION-SPEC.md#owner-stretch-operations-boundary); Admin decision behaviour: ADM-06. |
+| Closure dates (stretch only) | Café reference, Singapore business date and trimmed 0–100-code-point public note; unique café/date; workspace inherited through café. | Owners manage only their own approved café's current and future closures. Customer reads require an eligible parent and see only dates within the pickup horizon. | [OWN-11](stories/OWN-11-closure-dates.md) and the [owner stretch boundary](INTEGRATION-SPEC.md#owner-stretch-operations-boundary). |
 | AI usage counters and admission records | Environment, scope kind/identity, feature, event kind, window start/end, count and server-generated operation/admission identity. Scope/window identity is unique. | Server-only admission operations update counters atomically; clients cannot read or change counters directly. Ownership scopes derive from the verified actor/café. | Adopted usage-limit values: AI-SECURITY-SPEC; mechanism below. |
 | AI caches | Environment, feature, scope identity, input fingerprint, model/contract version, source revision, creation/expiry or Singapore business date, and validated result. | Server-only reads/writes. Every hit repeats caller authorization; Prep Advisor entries are café-scoped; Brew Finder entries cannot cross actor scopes under the [cache scope decision](#cache-eligibility-and-scope). No client Data API access. | Exact feature payloads: INTEGRATION-SPEC; source selection and sales windows: AI/story specifications. |
 | Audit rows | AI-use events: actor, feature/operation, timestamp and outcome; optional provider token counts when returned. Admin-action events: approve, reject, suspend, un-suspend, keep, hide and restore, each with acting Admin, target café or review reference, action, reason and timestamp. Admin-action entries are never deleted automatically. | Server-only insertion, append-only through application permissions; Admins can read the product's audit log. No user can forge actor/outcome or edit history through the Data API. AI-use rows never contain prompts or outputs. | Audit UI fields: [ADM-03](stories/ADM-03-review-moderation.md). AI retention: AI-SECURITY-SPEC. Admin reasons are separate from AI prompt/output payloads. |
@@ -150,8 +152,9 @@ untrusted input cannot select or reassign a workspace.
 
 OWN-01 fixes one pending/approved café per owner, with retained rejected
 application attempts and explicit resubmission. Owner profile/menu/queue APIs
-follow INTEGRATION-SPEC. Aggregate sales rules, boost and runtime-settings
-entities remain reserved to their owning contracts. Optional
+follow INTEGRATION-SPEC. Sales derive from collected orders under OWN-06
+without a separate sales entity. Optional boost and closure entities follow
+OWN-08 and OWN-11; runtime-settings entities remain reserved to ADM-05. Optional
 favourite data is established solely by CUS-07 and does not add an MVP entity.
 
 ### Customer contract data and integrity
@@ -228,8 +231,32 @@ rejected order and visible only within ordinary own-order/own-café scope.
 State, reason and event timestamp commit atomically. No owner cross-profile
 read grant is added: the name is copied during authorized order creation.
 No source customer identity, name or rejection text enters Brew Finder context.
-Sales event selection remains OWN-06's separate decision; recording lifecycle
-timestamps does not choose an aggregate metric or grant extra order access.
+OWN-06 selects `collected` orders dated by the Singapore date of `collectedAt`
+as the sale event, reading only retained amounts and line snapshots. Sales and
+Prep reads are computed from these rows under owner RLS; they add no order
+access beyond the owner's own café.
+
+### Owner stretch operations integrity
+
+These rules apply only when the owning stretch story is provided; contracts are
+in the [owner stretch boundary](INTEGRATION-SPEC.md#owner-stretch-operations-boundary).
+Cafés gain `ordersPaused` (default false, OWN-10) and `maxOrdersPerSlot`
+(null or 1–50, OWN-12); menu items gain `archived` (default false, OWN-13);
+orders gain the terminal `no_show` state and a set-once `noShowAt` (OWN-14).
+Each is an additive migration with explicit RLS, and none is writable through
+a generic owner or profile write.
+
+Order creation checks the pause flag, closure dates and slot count in the same
+transaction that inserts the order. It serializes on the café for pause and on
+the café/pickup instant for slot counts, so a concurrent pause or the last
+slot place admits exactly one outcome. The no-show transition serializes on the
+order with collection and Admin suspension, like the existing state matrix.
+
+Closure dates and boost requests are café children: their workspace is
+inherited through the café and enforced by RLS. A boost's Featured window is
+derived from its stored instants, never extended. Archived items stay in the
+per-café name-uniqueness check and remain excluded from every Customer and AI
+source. Prep sheet and CSV export are read-only projections of own-café orders.
 
 ### RLS and database exposure
 
