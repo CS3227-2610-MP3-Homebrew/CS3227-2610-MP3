@@ -1,17 +1,8 @@
 -- Additive public catalogue fields. Existing foundation fixtures retain valid defaults.
-alter table public.cafes
-  add column description text not null default '',
-  add column area text not null default 'Central' check (area in ('Central','North','South','East','West')),
-  add column pickup_address text not null default '';
 alter table public.menu_items
   add column drink_type text not null default 'other' check (drink_type in ('coffee','matcha','tea','chocolate','juice','other')),
   add column price_cents integer not null default 100 check (price_cents between 1 and 1000000),
   add column sold_out boolean not null default false;
-alter table public.opening_hours
-  add column weekday integer not null default 1 check (weekday between 1 and 7),
-  add column closes_at time without time zone not null default '17:00',
-  add column closes_next_day boolean not null default false;
-
 -- Reviews inherit their cafe from private orders. This narrow predicate avoids
 -- granting Customers access to another customer's order or reviewer identity.
 create function private.customer_review_at_cafe(review_ref uuid, cafe_ref uuid)
