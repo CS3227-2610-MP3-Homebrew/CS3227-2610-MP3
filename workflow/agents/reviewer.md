@@ -25,10 +25,11 @@ local tests outside verify when required; the launcher runs `bun run verify`
 and gives its output to the worker. Use local Supabase and fake/disabled
 application LLM providers. Do not install tools or weaken checks or the sandbox.
 
-From Codex, the launcher needs escalated execution and human approval on every
-run, without an allow rule. The caller coordinates fixes and requests later rounds, up to three per pair.
+From Codex or Claude Code, the launcher needs escalated execution and human
+approval on every run, without an allow rule. The caller coordinates fixes and requests later rounds, up to three per pair.
 Never retry automatically until a pass. The wrapper inherits caller permissions;
-the fresh worker uses the CLI's read-only sandbox. Normal verification may
+the fresh worker uses Codex's read-only sandbox, or under Claude Code no
+edit/write tools and only read-only git commands. Normal verification may
 produce build/cache artifacts.
 
 ## Report

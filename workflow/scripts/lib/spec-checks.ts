@@ -44,8 +44,8 @@ const linkedRoots = ["AGENTS.md", "README.md", "docs", "workflow", ".agents/skil
 const linkExcludes = ["workflow/handoffs/", "logs/"];
 
 /** Workflow files that docs/DeveloperGuide.md must list in its inventory. */
-const inventoryRoots = ["workflow/agents", "workflow/scripts", "workflow/templates", ".agents/skills", ".codex", ".github"];
-const inventoryFiles = ["AGENTS.md", "workflow/specs/README.md", "workflow/handoffs/README.md"];
+const inventoryRoots = ["workflow/agents", "workflow/scripts", "workflow/templates", ".agents/skills", ".codex", ".claude/agents", ".claude/skills", ".github"];
+const inventoryFiles = ["AGENTS.md", ".claude/settings.json", "workflow/specs/README.md", "workflow/handoffs/README.md"];
 
 export function checkRepository(root: string): Finding[] {
   const findings: Finding[] = [];
