@@ -30,6 +30,16 @@ descending, visible-review count descending, then café reference ascending by
 Unicode code point; unrated cafés follow rated cafés. CUS-05 owns input ratings.
 The shared read boundary projects this formula; CUS-06 does not redefine it.
 
+## Related domain contracts
+
+The [owner profile/hour contract](../INTEGRATION-SPEC.md#owner-cafe-management-boundary)
+supplies current profile fields and weekly hours, with at most two intervals per
+starting weekday/fourteen per week and no duplicate or overlapping intervals.
+The [owner menu contract](../INTEGRATION-SPEC.md#owner-menu-boundary) supplies
+current drink types: permanent removal excludes an item from subsequent drink
+matches, while a live sold-out item still participates. These owner constraints
+do not change Customer eligibility, AND filtering or the single rating order.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up; a demo kit also supplies a Customer account for normal sign-in. Normal sign-ups use the main workspace; kit accounts use their own kit workspace.

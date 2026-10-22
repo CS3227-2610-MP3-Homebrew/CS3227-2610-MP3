@@ -18,6 +18,17 @@ Save controls appear within Browse cafés and Café page; a Saved view within
 Browse provides return access, with no separate screen. Associations persist
 server-side across sign-out and devices and are unique per Customer/café.
 
+## Related domain contracts
+
+Favourite identity follows the retained café reference, independent of its
+menu and application-attempt history under the [owner café contract](../INTEGRATION-SPEC.md#owner-cafe-management-boundary).
+Saving does not authorize owner fields, restricted café pages or unavailable
+items. A menu deletion changes subsequent café/menu content without deleting
+the personal favourite association. Current café eligibility still determines
+list omission and return access; regained eligibility restores the association
+at its original saved position. This remains stretch scope with no removal,
+sharing or new standalone screen.
+
 ## Access
 
 - **How a user gets the role:** Chooses Customer at sign-up or signs in with a demo-kit Customer account.
