@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getConfiguration } from "@/server/config";
 import { markCatalogueQuery } from "@/server/catalogue/proxy-query";
+import { markReviewQuery } from "@/server/reviews/customer-query";
 import { markOrderQuery } from "@/server/orders/query";
 
 /** Refresh transport and preserve strict customer query validation; never authorize. */
@@ -11,6 +12,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (request.nextUrl.pathname.startsWith("/api/auth/") || request.nextUrl.pathname === "/api/demo-kits") return NextResponse.next();
   markCatalogueQuery(request);
   markOrderQuery(request);
+  markReviewQuery(request);
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
   const responseHeaders = new Headers();

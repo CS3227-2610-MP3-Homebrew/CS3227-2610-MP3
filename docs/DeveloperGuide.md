@@ -619,6 +619,55 @@ so static traceability can recognize their criterion IDs; interpolated titles
 are intentionally ignored by that scanner. Actual owner acceptance/collection
 race integration remains unverified until the owning writers exist.
 
+### Customer collected-order reviews
+
+The [CUS-05 spec](../workflow/specs/stories/CUS-05-review-order.md) and
+[Customer review boundary](../workflow/specs/INTEGRATION-SPEC.md#customer-review-boundary)
+govern review creation and own-review reads. Collected rows in My orders link
+to `/customer/orders/{orderId}/review`. The request-time Customer page reads
+retained order context and an optional own review through session-bound clients;
+it offers the form only for a collected order without a review. Existing hidden
+reviews remain readable to their author. No live eligible café/menu read is
+required, so suspension or menu deletion does not remove purchase eligibility.
+
+`src/lib/reviews/fields.ts` contains shared strict input/output schemas and safe
+field-rule feedback. Code-point counting and ECMAScript nonblankness checks
+preserve valid text exactly; the form retains state on errors and renders text
+through React text nodes. Client imports stay outside `src/server/reviews/`.
+The server-only customer modules provide current Auth/Customer checks, bounded
+65,536-byte streamed JSON reading, exact trusted Origin/media-type checks,
+strict query/Ref parsing, safe errors and private/no-store responses.
+`customer-query.ts` preserves raw query rejection in the existing proxy before
+Next URL normalization, replacing caller-supplied validation flags; each handler
+still validates and authorizes independently.
+
+GET/POST `/api/customer/orders/{orderId}/review` return only the approved own-review
+projection, without author/workspace identifiers. `customer-source.ts` uses a
+fresh publishable-key session client with automatic database retries disabled.
+The additive `20261022000003_customer_reviews.sql` migration adds an invoker/RLS
+own-read RPC and restricted SECURITY DEFINER creation RPC, both with empty
+search paths and authenticated-only execution. Creation independently validates
+strict input, derives Customer/workspace from the protected profile and
+café/ownership from the collected order, locks café before order and rechecks
+the protected profile under a shared lock. It checks for any prior review,
+inserts pending with database time and retains the existing unique order
+constraint, relationship constraints, immutable-content trigger and moderation
+writer. It never upserts, adds raw table write grants or creates a second
+suspension/moderation operation. Transaction errors roll back creation.
+
+`tests/integration/reviews/` contains three spec-derived SQL/RLS/immutability
+cases, and `tests/e2e/reviews/` contains 62 production-browser/HTTP cases covering
+main/kit creation, Unicode bounds, exact text, concurrent conflicts, hidden
+own reads, adversarial rendering, strict transport, rollback and retained
+eligibility. Five supplementary tests in
+`tests/unit/customer-review-internals.test.ts` cover direct RPC validation and
+role checks, schema precision and raw-query markers. The review page helper
+waits for streamed controls under SYS-05.1 and scopes field feedback to main
+content, excluding Next's separate route announcer. Actual owner collection
+writer/race integration remains unavailable; local fixtures arrange collected
+purchases without granting Customer fulfilment authority. No review submission
+invokes an LLM or changes Admin-action/AI accounting.
+
 ### Café applications and suspension
 
 The [ADM-01 application](../workflow/specs/stories/ADM-01-cafe-applications.md)
@@ -1368,7 +1417,7 @@ protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
 Manual Admin moderation, advisory Admin triage, the read-only audit screen,
-Customer catalogue/detail reads and Customer pickup/history/cancellation surfaces
+Customer catalogue/detail reads and Customer pickup/history/cancellation and collected-order review surfaces
 are available. Ordering requires a valid protected Customer name: new demo kits
 supply it, while current signup and older unnamed accounts do not. Customer
 review writing and other role domain pages remain unavailable or entry headings,
