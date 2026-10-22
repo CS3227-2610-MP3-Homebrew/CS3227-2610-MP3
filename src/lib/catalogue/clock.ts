@@ -8,7 +8,7 @@ const minuteOffset = (time: string) => (Number(time.slice(0, 2)) * 60 + Number(t
 export function singaporeMinuteToInstant(date: string, minute: string): string {
   return wire(Date.parse(`${date}T${minute}:00+08:00`));
 }
-export function openingState(hours: OpeningInterval[], now: string) {
+function openingIntervals(hours: OpeningInterval[], now: string) {
   const instant = Date.parse(now);
   const local = new Date(instant + singaporeOffset);
   const weekday = (local.getUTCDay() + 6) % 7;
@@ -27,6 +27,20 @@ export function openingState(hours: OpeningInterval[], now: string) {
     if (previous && interval[0] <= previous[1]) previous[1] = Math.max(previous[1], interval[1]);
     else merged.push([...interval]);
   }
+  return merged;
+}
+/** Current state transition, independent of how frequently a snapshot is read. */
+export function nextStateChangeAt(hours: OpeningInterval[], now: string): string | null {
+  const instant = Date.parse(now);
+  const merged = openingIntervals(hours, now);
+  const current = merged.find(([start, end]) => start <= instant && instant < end);
+  if (current) return current[1] - current[0] >= week ? null : wire(current[1]);
+  const next = merged.find(([start]) => start > instant);
+  return next ? wire(next[0]) : null;
+}
+export function openingState(hours: OpeningInterval[], now: string) {
+  const instant = Date.parse(now);
+  const merged = openingIntervals(hours, now);
   const current = merged.find(([start, end]) => start <= instant && instant < end);
   const next = merged.find(([start]) => start > instant);
   // A continuously open weekly schedule has no future closed-to-open transition.

@@ -25,7 +25,8 @@
   - [6.4 Suspend or un-suspend a café](#64-suspend-or-un-suspend-a-café)
 - [7. AI features](#7-ai-features)
   - [7.1 Triage pending reviews](#71-triage-pending-reviews)
-  - [7.2 Get preparation advice](#72-get-preparation-advice)
+  - [7.2 Find a café with Brew Finder](#72-find-a-café-with-brew-finder)
+  - [7.3 Get preparation advice](#73-get-preparation-advice)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
 - [10. Troubleshooting](#10-troubleshooting)
@@ -39,6 +40,8 @@ can browse cafés, inspect menus, opening hours and public reviews, place pickup
 pre-orders with a valid protected account name, read order history, cancel pending orders, and review collected purchases.
 Café owners can apply for a café and manage an approved café's description,
 opening hours and pickup cutoff.
+Customers can also use Brew Finder on Browse cafés for advisory drink suggestions.
+Owner café management tools are not yet available.
 
 ### 1.1 What you need
 
@@ -106,7 +109,7 @@ Browse cafés provides the Customer tools in section 4; Moderation queue and
 Audit log provide the Admin tools in section 6. My orders provides retained
 purchases and pending-order cancellation. Café application, Café profile,
 Order queue and Dashboard provide the owner tools in section 5, and Dashboard
-also holds the Prep Advisor (section 7.2); Menu opens a role page heading.
+also holds the Prep Advisor (section 7.3); Menu opens a role page heading.
 
 ### 1.5 Demo accounts for testers
 
@@ -142,6 +145,13 @@ window and thirty per Singapore calendar day. A refusal says “Demo kit limit
 reached. Try again in N seconds.”, with the actual wait replacing N. Wait before
 trying again. A temporary failure says “Demo kit service is temporarily
 unavailable. Try again.” No account credentials are shown on failure.
+
+After a successful maintenance run, ordinary main-workspace Customers can browse
+**Homebrew Showcase**, an approved café with a menu and weekly opening hours.
+Its seeded owner's credentials are not published. Use a demo kit for end-to-end
+testing across roles: main-workspace café applications may remain pending
+indefinitely. Maintenance preserves existing accounts and passwords and does
+not delete or reset your kit.
 
 ## 2. Navigating Homebrew
 
@@ -614,9 +624,48 @@ most one provider attempt. If AI cannot run, the manual queue remains usable:
 | “Unable to triage reviews. Reload and try again.” | The request could not obtain a successful response; reload explicitly. |
 
 AI suggestions can be wrong. Local checks use fake responses and do not measure
-classification accuracy. The Brew Finder screen remains unavailable.
+classification accuracy.
 
-### 7.2 Get preparation advice
+### 7.2 Find a café with Brew Finder
+
+Brew Finder gives signed-in Customers ranked café and drink suggestions within
+their own workspace, including demo kits.
+
+**Where:** Customer navigation → **Browse cafés** → **Brew Finder**.
+
+1. Choose your ordinary café filters, then enter a request in **Brew Finder
+   preferences**, such as “An iced coffee in the East”. Use at most 1,000
+   Unicode code points; spaces and letter case are preserved. An oversized
+   query shows “Describe your preferences in 1,000 characters or fewer.”
+2. Select **Search** or press Enter. Typing and filter changes do not call AI.
+   “Searching for cafés…” appears while Search is disabled to prevent duplicate
+   submission. Editing the query or filters clears earlier advice and cancels
+   pending work; changing filters may clear the query too.
+3. Read **AI-generated advice** in its returned ranking order. Each suggestion
+   names a café and an available matching item with a short reason. The text is
+   advice and may be wrong. “No close match found” means AI returned no suggestions;
+   the ordinary filtered catalogue remains below it.
+4. Open a café using its name. Café access is checked again. To order, use the
+   separate Pre-order flow in section 4.3; searching never places an order.
+
+The ordinary filtered catalogue stays sorted by rating. When AI cannot provide
+advice, the page shows one of these messages and keeps that catalogue usable:
+
+| Message | Meaning |
+| --- | --- |
+| “Brew Finder AI is disabled. Browse the cafés below, sorted by rating.” | AI is disabled or live credentials are absent. |
+| “Brew Finder has reached a usage limit. Browse the cafés below, sorted by rating.” | A user, feature or shared environment cap, or the provider's limit, denied work. |
+| “Brew Finder AI is temporarily unavailable. Browse the cafés below, sorted by rating.” | AI processing failed, advice became stale, or a successful response/current suggestion could not be obtained. |
+| “No available matching items to recommend. Browse the cafés below, sorted by rating.” | No filtered café has an available matching item; sold-out-only cafés may still be browsable. |
+
+One search can make at most one provider request, with no automatic retry.
+Eligible results can be reused for the same account and exact query/filters for
+less than ten minutes; catalogue changes or disabled AI prevent reuse. Usage
+limits still apply to cached searches. If catalogue data itself is unavailable,
+the page or request reports that failure rather than inventing suggestions.
+Local checks use fake/disabled AI and do not measure live ranking quality.
+
+### 7.3 Get preparation advice
 
 Prep Advisor suggests which items to prepare more or less of on each weekday,
 using only your café's totals from the 28 completed days before today.
