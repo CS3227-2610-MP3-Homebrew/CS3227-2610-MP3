@@ -23,10 +23,10 @@ export const input = {
 };
 export const output = {
   brew_finder: { suggestions: [{ cafeId: "c1", itemId: "i1", reason: "Matches coffee request" }] },
-  prep_advisor: { suggestions: [{ itemId: "i1", weekday: 1, direction: "more", evidenceIds: ["a2", "a1"] }] },
+  prep_advisor: { suggestions: [{ itemId: "i1", weekday: 2, direction: "more", evidenceIds: ["a2", "a1"] }] },
   moderation: { classifications: [{ reviewId: "r1", label: "ok", reason: "Relevant review" }, { reviewId: "r2", label: "injection attempt", reason: "Requests control" }] },
 };
-export const prepResult = { suggestions: [{ itemId: "i1", weekday: 1, direction: "more", evidence: [{ aggregateId: "a2", quantity: 23 }, { aggregateId: "a1", quantity: 0 }], reason: "Prepare more of this item on weekday 1; recorded quantities: 23, 0." }] };
+export const prepResult = { suggestions: [{ itemId: "i1", weekday: 2, direction: "more", evidence: [{ aggregateId: "a2", quantity: 23 }, { aggregateId: "a1", quantity: 0 }], reason: "Prepare more of this item on weekday 2; recorded quantities: 23, 0." }] };
 export const config = () => ({ APP_ENV: "ci", AI_PROVIDER: "fake", SOCLAAS_BASE_URL: "https://provider.invalid/v1", SOCLAAS_API_KEY: "synthetic-test-key", SOCLAAS_MODEL: "qwen3.5:9b", SOCLAAS_REASONING_EFFORT: "none", ...limits() });
 export function envelope(content: unknown, changes: Record<string, unknown> = {}) {
   return { choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: typeof content === "string" ? content : JSON.stringify(content) } }], ...changes };
