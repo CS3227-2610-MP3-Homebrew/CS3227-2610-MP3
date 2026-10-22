@@ -14,7 +14,10 @@ un-suspend a café. SGD money and drink-type vocabulary use the shared contract.
 
 ## Item lifecycle and owner menu
 
-Owners can add, edit and permanently remove their own café's items. Editable
+Owners can add, edit and permanently remove their own café's items once its
+café application is approved, including while that approved café is suspended.
+While the café application is pending or rejected, every menu mutation is
+refused with no write; menu reads are unaffected. Editable
 fields are name, drink type, integer price cents and sold-out state; new items
 default to available when soldOut is omitted. Stored names are trimmed and
 2–100 Unicode code points. Item names within one café are
@@ -48,8 +51,8 @@ rewriting is introduced.
 ## Access
 
 - **How a user gets the role:** Chooses Café owner at sign-up or uses a demo-kit owner account.
-- **What it can see and change:** Menu items attached to its own café inside its verified workspace, including owner management during suspension under ADM-02.
-- **What it can never do:** Manage another café's menu, move items across cafés/workspaces, change Admin-controlled café eligibility, or rewrite historical order amounts/items.
+- **What it can see and change:** Menu items attached to its own café inside its verified workspace. Menu mutations require an approved café application, including owner management during suspension under ADM-02; a pending or rejected café's menu cannot be changed.
+- **What it can never do:** Change the menu of a pending or rejected café, manage another café's menu, move items across cafés/workspaces, change Admin-controlled café eligibility, or rewrite historical order amounts/items.
 
 ## Requirements
 
@@ -68,7 +71,8 @@ rewriting is introduced.
 - **`OWN-03.5`:** Given an available own-menu item, when its owner successfully toggles sold out on, then subsequent eligible café-page reads still include it with sold-out state and CUS-03 refuses new orders containing it; toggling sold out off restores availability only subject to current café and order eligibility.
 - **`OWN-03.6`:** Given orders already containing an item, when the owner later changes its name, price or sold-out state, then retained item-name/unit-price/quantity/line-total/order-total snapshots remain unchanged; a new order uses current menu validation and prices under CUS-03.
 - **`OWN-03.7`:** Given a suspended café, when its owner manages the menu, then management remains available while Customer visibility stays blocked under ADM-02; no menu save approves the café or clears suspension.
-- **`OWN-03.8`:** Given no session, a wrong role, or a missing/foreign café/item, when an owner menu JSON operation is requested, then the shared `401 UNAUTHENTICATED`, `403 FORBIDDEN` or indistinguishable `404 NOT_FOUND` applies respectively without protected disclosure or mutation; a forged item-parent relation is denied by server checks and RLS.
+- **`OWN-03.8`:** Given no session, a wrong role, or a missing/foreign café/item, when an owner menu JSON operation is requested, then the shared `401 UNAUTHENTICATED`, `403 FORBIDDEN` or indistinguishable `404 NOT_FOUND` applies respectively without protected disclosure or mutation; a forged item-parent relation is denied by server checks and RLS; a mutation by an owner whose café is pending or rejected is decided by OWN-03.9 instead of an item 404.
+- **`OWN-03.9`:** Given an owner whose own café application is `pending` or `rejected`, when it requests a schema-valid menu create, save or remove, then the response is `409 STATE_CONFLICT` under the shared error shape with “Menu changes are available once your café is approved.”, whatever item reference is supplied, and nothing is written: no item is created, changed or removed; the Menu page shows that message and preserves the owner's unsaved input; the same request for an approved café, suspended or not, proceeds under OWN-03.2 and OWN-03.7, and owner menu reads are unchanged.
 
 #### Edge cases and failure paths
 
@@ -94,7 +98,7 @@ AI-applied menu changes and changing existing purchase snapshots.
 ### `UC-OWN-03-1`: Mark an item sold out
 
 - **Actor:** Signed-in Café owner.
-- **Preconditions:** Own café and available item in the verified workspace.
+- **Preconditions:** Own approved café, suspended or not, and available item in the verified workspace.
 - **Main success scenario:**
   1. Owner opens Menu and selects its item.
   2. Owner turns the sold-out toggle on.
@@ -106,7 +110,8 @@ AI-applied menu changes and changing existing purchase snapshots.
 
 | Action | Own data | Other users' data |
 | --- | --- | --- |
-| Read/manage menu data, price or sold-out state | Items of own café within workspace | Denied, including a forged parent reference |
+| Read menu data | Items of own café within workspace, in any application state | Denied, including a forged parent reference |
+| Create, edit or remove items, prices or sold-out state | Items of own approved café within workspace, including while suspended; denied with no write while pending or rejected | Denied, including a forged parent reference |
 | Change an existing purchase through menu editing | Denied | Denied |
 | Approve café or clear suspension | Denied | Denied |
 | Let AI apply a menu change | Denied | Denied |

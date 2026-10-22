@@ -753,6 +753,20 @@ additionally requires expectedSuspensionVersion: Count from GET /api/owner/cafe;
 apply the same suspension conflict and application-page feedback above.
 Names/types/prices are validated server-side; duplicate names give 409 with no partial write.
 
+Menu mutations are approved only: create, save and remove require the owner's
+café applicationState to be approved, including an approved café that is
+currently suspended. For a pending or rejected café, each mutation returns
+409 STATE_CONFLICT with “Menu changes are available once your café is
+approved.” and writes nothing, matching the pending/wrong-state owner settings
+conflicts above. The Menu page shows that message and preserves unsaved input. The application-state check runs inside the same
+transaction as the write. GET /api/owner/menu is not restricted by application
+state. Mutation checks apply in this order, the first failure deciding the
+response: shared transport, session and role checks (401/403 and the other
+shared transport codes); request validation (400); no café (404); application
+state not approved (409), whatever item reference is supplied; missing or
+foreign item (404); expectedSuspensionVersion mismatch (409 with the suspension
+message above); then duplicate name (409).
+
 | Method/path | Request | Success |
 | --- | --- | --- |
 | GET /api/owner/menu | Optional page, customer page parser | 200 Page<MenuItem>, 20 per page, name/reference ascending. |
