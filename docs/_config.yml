@@ -1,0 +1,11 @@
+title: Homebrew
+description: Discover home cafés. Find your next cup.
+theme: jekyll-theme-cayman
+show_downloads: false
+exclude:
+  - UserGuide.md
+  - DeveloperGuide.md
+  - Reflections.md
+  - TaiaYovelaPang/
+  - naa-siuuuu-ff/
+  - shawnnygoh/

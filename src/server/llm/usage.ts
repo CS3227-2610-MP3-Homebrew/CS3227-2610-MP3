@@ -53,6 +53,8 @@ export type UsageEnvironment = "local" | "ci" | "dev" | "prod";
  */
 export function createUsageAdmission(options: {
   environment: UsageEnvironment; limits: UsageLimits | null; rpc: UsageRpc;
+  /** Composed feature operations distinguish a storage outage from a quota denial. */
+  throwOnUnavailable?: boolean;
   /** Trusted construction-only test seam. Production omits it and uses DB time. */
   databaseClock?: () => Promise<string>;
 }): UsageAdmission {
@@ -60,20 +62,26 @@ export function createUsageAdmission(options: {
   const environment = z.enum(["local", "ci", "dev", "prod"]).safeParse(options.environment);
   const rpc = options.rpc;
   const clock = options.databaseClock;
+  const throwOnUnavailable = options.throwOnUnavailable === true;
+  const unavailable = () => {
+    if (throwOnUnavailable) throw new Error("Usage admission unavailable.");
+    return { admitted: false };
+  };
   return {
     async reserve(input) {
       const request = requestSchema.safeParse(input);
-      if (!policy || !environment.success || !request.success) return { admitted: false };
+      if (!policy || !environment.success || !request.success) return unavailable();
       try {
         const response = await rpc("reserve_ai_usage", {
           p_environment: environment.data, p_request: request.data, p_limits: policy,
           ...(clock ? { p_now: await clock() } : {}),
         });
         const rows = z.array(z.object({ admitted: z.boolean() })).length(1).safeParse(response.data);
-        return { admitted: !response.error && rows.success && rows.data[0].admitted };
+        if (response.error || !rows.success) return unavailable();
+        return { admitted: rows.data[0].admitted };
       } catch {
         // Database/transport detail can contain credentials; expose no raw error.
-        return { admitted: false };
+        return unavailable();
       }
     },
   };

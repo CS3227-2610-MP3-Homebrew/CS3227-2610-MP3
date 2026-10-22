@@ -517,7 +517,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Owned route, step independence, idempotence, credential preservation/redaction and static trigger cases have deterministic failing-first evidence.
   - [ ] `bun run verify` result is recorded; production scheduling/deploy execution evidence remains human-owned.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#56](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/56)
 
 ### T-27: Implement daily maintenance
@@ -532,7 +532,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] T-26's owned maintenance and static trigger cases pass; existing cleanup tests retain their owner.
   - [ ] `bun run verify` passes locally; no deployment, live provider or hosted database verification is claimed.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#57](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/57)
 
 ### T-34: Specify shared account and role-navigation contracts
@@ -781,7 +781,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] All 13 evaluation cases have explicit evidence; no cache/provider/result can grant record access or an order write.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#77](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/77)
 
 ### T-47: Implement Brew Finder search integration
@@ -796,7 +796,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-46's full criterion/evaluation suite passes with fake/disabled AI and independent catalogue/order authorization.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#78](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/78)
 
 ### T-48: Test stretch favourite saving

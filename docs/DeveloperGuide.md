@@ -15,8 +15,10 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Owner café application and settings](#owner-café-application-and-settings)
 - [Authentication and authorization](#authentication-and-authorization)
   - [Demo-kit creation](#demo-kit-creation)
+  - [Daily maintenance](#daily-maintenance)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
+  - [Brew Finder](#brew-finder)
   - [Moderation Assistant](#moderation-assistant)
 - [Security](#security)
 - [How to test](#how-to-test)
@@ -76,6 +78,11 @@ account access resolver and streamed role shell (internal code reuse). Its
 request-time rendering and original-query proxy integration use installed
 Next.js guidance as idea reuse; no external snippet or new workflow file was
 added. The five-file MP2 reuse totals remain unchanged.
+Brew Finder reuses that catalogue's filter/rating comparator and merged opening
+intervals, the authorized café detail endpoint, and the shared fixed
+LLM/admission/cache/audit lifecycle (internal code reuse). Its client form and
+route handler follow the installed Next.js guidance (idea reuse). No external
+snippet, dependency or workflow file was added; MP2 totals remain unchanged.
 Café eligibility reuses those same session/RLS, transport, audit and Suspense
 patterns (internal code/idea reuse), including the existing moderation Admin
 lookup and audit ledger. No external snippet, dependency or workflow was added;
@@ -88,6 +95,12 @@ layout-effect cleanup for Activity boundaries (idea reuse); the implementation
 adds request cancellation and synchronous pagehide clearing for credentials.
 No external application snippet or workflow file was copied; MP2 reuse totals
 remain five files (two Adapted, two Rewritten, one As is).
+
+Daily maintenance reuses T-16's `createAiState().cleanup()` repository, shared
+private JSON responses and Supabase Auth Admin creation (internal code reuse).
+It extends the existing production deployment workflow and follows the installed
+Next.js Route Handler guidance. No external snippet, new dependency or new
+workflow file was added; MP2 reuse totals are unchanged.
 
 ## Setting up, getting started
 
@@ -343,7 +356,7 @@ Claude Code wrapper loads its workflow instructions.
 | `.agents/skills/sdd-orchestrate/agents/openai.yaml` | UI metadata and default prompt for the coordination skill. |
 | `.github/workflows/ci.yml` | On PRs to and pushes on master, with pinned actions, runs `bun run verify`'s steps in parallel jobs: lint, typecheck, traceability, spec check and build in one; Vitest in three shards, each starting and resetting local Supabase and checking every application table for RLS; and Chromium Playwright in three shards, each with its own local Supabase. A final `verify` job, the ruleset's required check, passes only when all of them passed. |
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
-| `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
+| `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment, then invokes maintenance once and checks its step outcomes. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
 | `.claude/agents/spec.md` | Claude Code subagent wrapper loading the spec-agent instructions with `opus` at medium effort and only Read, Bash, Edit and Write. |
 | `.claude/agents/testing.md` | Claude Code subagent wrapper loading testing.md with `opus` at medium effort and only Read, Bash, Edit and Write. |
@@ -455,7 +468,8 @@ RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
 
 Demo-kit creation is described [below](#demo-kit-creation). Remaining story
 fields/lifecycle transitions remain later work. Internal AI caches/audit and callable retention cleanup are implemented as
-[described below](#ai-caches-eligibility-and-audit); cleanup is not scheduled.
+[described below](#ai-caches-eligibility-and-audit); [daily maintenance](#daily-maintenance)
+now wires cleanup to the production schedule and post-deploy call.
 
 ### Manual moderation and Admin audit
 
@@ -858,7 +872,8 @@ perform protected reads behind the gate with independent near-data authorization
 Callers still own record/workspace predicates, RLS-bound queries and any endpoint's
 input, origin and lifecycle rules. A prior proxy/UI check never authorizes a
 later operation. The shared account integration below consumes this foundation;
-AI feature consumers and kit/maintenance provisioning remain separate work.
+AI feature consumers, [kit provisioning](#demo-kit-creation) and
+[maintenance provisioning](#daily-maintenance) compose those shared boundaries.
 
 ### Shared accounts and role navigation
 
@@ -985,7 +1000,130 @@ four identity failures and a seed failure after all identities exist; durable
 admission fixtures cover concurrency, rollover, reconstruction and outages.
 Run the integration/database suites without concurrent external fixture writers.
 
+### Daily maintenance
+
+The server-only [SYS-13 maintenance route](../workflow/specs/TECHNICAL-SPEC.md#sys-13--daily-maintenance)
+implements the [maintenance HTTP contract](../workflow/specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes)
+and [SEC-10.4/10.5 safeguards](../workflow/specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards).
+
+- `src/app/api/internal/maintenance/route.ts` exposes `GET /api/internal/maintenance`.
+  It uses `Authorization: Bearer <CRON_SECRET>` rather than a browser session.
+  The proxy skips session refresh for this exact path. The feature hashes the
+  supplied and expected authorization strings to equal-size buffers and uses
+  Node's `timingSafeEqual`; missing/incorrect bearer returns private 401
+  `UNAUTHENTICATED` before configuration, Auth, SQL or cleanup work.
+- `src/server/maintenance/index.ts` owns authentication, ordered execution and
+  provisioning. Each authorized GET awaits `cleanup`, `main-admin`, then
+  `showcase-cafe`. Exceptions or invalid internal outcomes become a count-zero
+  `failure`, and later steps still run. The response is exactly
+  `{requestId, steps: [{step, outcome, count}]}`, with `Cache-Control: private, no-store`.
+  Outcomes are `success`, `conflict` or `failure`; no exception, credential,
+  email or domain record is serialized or logged. Authorized unsupported
+  methods return 405 with `Allow: GET` and do no work.
+- Cleanup calls T-16's `createAiState().cleanup()` for the configured environment.
+  It never invokes generation or admission. Because the existing repository
+  returns no deletion total, cleanup's count is completed invocations (one on
+  success), not deleted rows. Provisioning counts newly published Admins or
+  showcase cafés (one), and no-op/conflict/failure counts are zero.
+- `20261022000005_daily_maintenance.sql` follows master's
+  `20261022000004_customer_reviews.sql`. Its RLS-protected private
+  `maintenance_provisioning` table stores reservations, never passwords.
+  `prepare_maintenance` and `publish_maintenance` have empty search paths,
+  revoked public/anonymous/authenticated access and service-role-only execution.
+  Transaction advisory locks serialize admission/publication across instances;
+  protected Auth app metadata binds each publication to its reservation.
+- The main Admin step requires server-only `MAIN_ADMIN_EMAIL` and
+  `MAIN_ADMIN_PASSWORD`. Missing/invalid configuration reports failure while
+  cleanup/showcase continue. The email is normalized to lowercase before
+  reservation and Auth creation. An existing main Admin is retained even after
+  configured-email/password changes. Without one, any existing account using
+  that email causes conflict with no promotion, reset or other account change.
+  Otherwise Supabase Auth creates the confirmed identity and publication adds
+  its main Admin profile. A two-minute reservation fences concurrent identity
+  creation; successful publication releases it immediately. No ordinary
+  sign-up or kit role gains a new Admin-creation permission.
+- The showcase step creates **Homebrew Showcase** in main with an unpublished
+  owner, approved state, two available drinks and 09:00–18:00 Singapore hours
+  every day. The owner's independent 192-bit random password goes only to Auth.
+  Repeated publication is a no-op; existing accounts, user/domain records,
+  pending applications, passwords and kits are preserved. Maintenance never
+  calls the LLM or deletes accounts/domain data; T-16 retains ownership of AI
+  retention and active enforcement-state preservation.
+
+`tests/integration/maintenance/` covers bearer denials, ordered independent
+steps, configured-email conflicts, concurrent main Admin creation, password
+preservation, showcase pre/post-state and idempotence, kit no-touch, retention
+invocation and static production triggers. Internal projection, method and lazy
+route-initialization checks live in `tests/unit/maintenance/`. Use local Supabase
+only; no hosted trigger or live model call is part of these tests.
+
+### Maintenance recovery limits
+
+Auth creation and profile publication are separate service operations.
+Maintenance never compensates by deleting or resetting identities. If main
+Admin creation succeeds but its response/publication is lost, the existing
+email causes a later run to report conflict; it is never adopted or promoted.
+A reservation whose process terminated before Auth creation expires after two
+minutes. Showcase can reconcile its own marked unpublished Auth identity on a
+later run without resetting its password. Hosted scheduling, deployed domain
+reachability and these failure paths have not been exercised against hosted
+services; humans must inspect the sanitized step outcomes and resolve any
+configuration/account conflict.
+
 ## AI features and the shared LLM module
+
+### Brew Finder
+
+[CUS-06](../workflow/specs/stories/CUS-06-brew-finder.md) is integrated into
+`/customer/cafes` by `src/app/customer/cafes/brew-finder.tsx`. The server-rendered
+ordinary catalogue remains the filtered, rating-sorted fallback. Search/Enter
+explicitly submits, duplicate submissions are blocked, and query/filter edits
+clear advice and abort pending work. Responses are parsed before rendering.
+Suggestions retain model order; names/items come from independent authorized
+detail GETs and reasons render as escaped text without Markdown/HTML handling.
+Opening a café and ordering continue through their ordinary authorization.
+
+`src/app/api/ai/brew-finder/route.ts` exports the server-only catalogue handler
+for all methods. POST uses exact Origin checks, shared bounded strict JSON
+validation, verified Customer identity and `readCatalogueSource()` through the
+session client/RLS. Unsupported methods return private JSON 405 with `Allow:
+POST`. Source outages return `503 SOURCE_UNAVAILABLE`; AI-stage failures return
+the unchanged typed fallback envelope, with private/no-store responses.
+
+The catalogue adapter reuses `selectCatalogueCafes` for canonical filters/rating
+order, discards cafés without available matching items, selects up to 20 cafés
+and 20 name/reference-ordered items each, independently of catalogue pagination.
+Only query and café/item reference/name/area/drink-type data reach the fixed
+provider operation. Labels/context are validated without truncation. The cache
+source revision additionally carries the complete authorized catalogue's
+eligibility, merged-schedule state/next transition, menu availability and visible
+rating sum/count; raw reviews and private fields are excluded.
+
+The handler binds a fresh operation UUID, verified actor/scope, exact query and
+strict filters to `createConfiguredAiState().runOperation`. Shared model/contract
+identity and the database-clock ten-minute expiry remain unchanged. Current
+eligible candidate IDs are checked before admission/dispatch. The optional
+trusted `revalidate` callback checks current identity, filter membership and
+item availability around readiness auditing before cache publication/delivery;
+the handler checks again at HTTP delivery. Invalid advice is rejected as a whole,
+and cached advice also requires a fresh complete source revision to match the
+initial snapshot before delivery. Source-read failures remain 503 even if the shared lifecycle catches the
+callback failure. Valid empty suggestions remain cacheable AI success.
+
+Configured AI-state admission uses `throwOnUnavailable` so unavailable/malformed
+admission storage yields `unavailable`, while a genuine cap denial yields
+`usage_limited`. The standalone admission API retains its default fail-closed
+boolean behavior. No quota limits, prompts, provider transport, retries,
+database schema or dependencies changed.
+
+`tests/integration/brew-finder/` covers the HTTP and actual local cache/quota/audit
+composition with fake providers; `tests/e2e/brew-finder/` covers real disabled-AI
+HTTP and browser interactions using intercepted advice. The supplementary
+`tests/unit/brew-finder-state.test.ts` checks strict infrastructure-failure
+mapping, stale pre-dispatch eligibility and schedule-transition identity.
+The [Brew Finder integration contract](../workflow/specs/INTEGRATION-SPEC.md#brew-finder--cus-06)
+owns exact prompts, selection and empty-result semantics. No live provider
+compatibility or recommendation-quality claim follows from fake-provider tests.
 
 ### Moderation Assistant
 
@@ -1385,6 +1523,13 @@ outside master's ancestry fails this check. Both workflows then follow this orde
    stdin, keeping the token out of external process arguments. The captured
    deployment host stays inside one quoted endpoint argument; the JSON body
    contains no captured text.
+4. Production alone makes one non-retried GET to
+   `https://homebrew-cs3227-prod.vercel.app/api/internal/maintenance` after a
+   successful deploy. The `production` environment supplies `CRON_SECRET`;
+   shell builtin `printf` feeds its bearer header to curl through stdin so
+   the credential is not an external process argument. Curl has a 120-second
+   limit and fails on HTTP errors. `jq` requires three successful step outcomes;
+   a conflict or failure fails this workflow step without undoing deployment.
 
 Migration and deployment share one environment-bound job, so the configured
 production approval covers both. There is no manual-dispatch trigger; humans
@@ -1398,6 +1543,7 @@ Credentials are supplied as follows; no values belong in documentation or source
 | --- | --- | --- |
 | `VERCEL_TOKEN` | Project-scoped secret in each GitHub environment | Step env on pull and deploy; the dev deploy step also sets the alias through the REST API using a header from stdin. The token is never an external process argument. |
 | `SUPABASE_DB_URL` | Secret in each GitHub environment, for its selected database | Migration step only; passed through a quoted shell variable. |
+| `CRON_SECRET` | Secret in the production GitHub environment, matching Vercel Production | Post-deploy maintenance step only; bearer header via stdin. |
 | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Variables in each GitHub environment | Job env; both environments must identify the same Vercel project. |
 
 Checkout, tool setup, global installation, ancestry checking, migrations,
@@ -1434,9 +1580,13 @@ requirements from the delivery contract:
    and [AI policy table](../workflow/specs/AI-SECURITY-SPEC.md#limits-and-configuration).
    The delivery contract requires application secrets at request time, never
    build time; this configuration pair does not verify runtime consumers.
-5. For maintenance, the contract reserves a production GitHub environment
-   `CRON_SECRET` equal to Vercel Production's value. These workflows do not
-   reference it or invoke maintenance; T-27 owns that extension.
+5. Set the production GitHub environment's `CRON_SECRET` equal to Vercel
+   Production's value. `vercel.json` schedules the maintenance endpoint with
+   UTC `0 19 * * *` (about 03:00 Singapore daily); Vercel Cron supplies its
+   production bearer. The workflow also invokes it once after each successful
+   production deploy. Confirm the schedule, canonical production domain,
+   runtime secret availability and count-only step outcomes after a human
+   deployment; local static tests do not establish hosted execution.
 6. A human merges reviewed changes to `master` for dev delivery, then creates
    and pushes a `v*` tag at a commit reachable from `master` for production.
    A listed reviewer approves the production environment job. Humans verify the
@@ -1474,7 +1624,7 @@ protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
 Manual Admin moderation, advisory Admin triage, the read-only audit screen,
-Customer catalogue/detail reads and Customer pickup/history/cancellation and collected-order review surfaces
+Customer catalogue/detail reads, Brew Finder and Customer pickup/history/cancellation and collected-order review surfaces
 are available. Ordering requires a valid protected Customer name: new demo kits
 supply it, while current signup and older unnamed accounts do not. Customer
 review writing and other role domain pages remain unavailable or entry headings,
@@ -1483,12 +1633,12 @@ settings are available. Owner fulfilment race integration remains unverified;
 the remaining AI screens, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally and consumed by Admin
-triage. Live provider compatibility and model quality remain unverified;
-other features' source authorization, persistent cache eligibility and browser
-rendering, plus scheduled cleanup, require their owning integrations. The admission service's
+triage and Brew Finder. Live provider compatibility and model quality remain unverified;
+remaining features' source authorization, persistent cache eligibility and browser
+rendering require their owning integrations. The admission service's
 per-environment transaction lock serializes admissions; no production load test
-has been run. Cleanup exists but nothing schedules it yet, and no monetary
-quota guarantee is supplied.
+has been run. [Maintenance recovery limits](#maintenance-recovery-limits) cover
+Auth/publication partial failures; no monetary quota guarantee is supplied.
 Demo creation's Auth staging and domain publication are separate service operations.
 Publication is atomic and ordinary failure compensation is tested, but retries
 are bounded and no durable recovery worker is implemented. Process termination
