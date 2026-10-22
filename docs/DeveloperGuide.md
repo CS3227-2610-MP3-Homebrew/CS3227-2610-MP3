@@ -15,6 +15,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Authentication and authorization](#authentication-and-authorization)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
+  - [Moderation Assistant](#moderation-assistant)
 - [Security](#security)
 - [How to test](#how-to-test)
 - [Deployment and environments](#deployment-and-environments)
@@ -62,6 +63,11 @@ Supabase client, bounded JSON reader and trusted-origin helper (internal code
 reuse). Its request-time Suspense pattern follows the installed Next.js guidance
 (idea reuse); quick-pick literals implement the internal ADM-04 contract as is.
 No external snippet or workflow file was added by this pair; MP2 totals remain unchanged.
+Moderation Assistant reuses the existing review RLS policy, shared HTTP primitives,
+LLM operation/admission/audit composition and ordinary per-review confirmation
+(internal code reuse). Its client boundary follows installed Next.js guidance
+(idea reuse); no external snippet, dependency or workflow was added, so the MP2
+totals remain unchanged.
 
 The Customer catalogue reuses the existing session-bound Supabase client,
 account access resolver and streamed role shell (internal code reuse). Its
@@ -450,8 +456,8 @@ See the [shared transport and field contracts](../workflow/specs/INTEGRATION-SPE
 The audit screen supports all seven recorded action types, including the café
 entries supplied by the implementation below. Café and review target references
 are displayed alongside the café name. Fixed editable quick-pick reasons
-and explicit per-review confirmation are application controls; AI triage and its
-endpoint are not available.
+and explicit per-review confirmation are application controls; the advisory
+Moderation Assistant described below reuses them.
 
 ### Customer catalogue and café details
 
@@ -708,13 +714,50 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
 
 ## AI features and the shared LLM module
 
+### Moderation Assistant
+
+[ADM-04](../workflow/specs/stories/ADM-04-moderation-assistant.md) is implemented
+by `src/app/api/ai/moderation/route.ts`, the server-only domain handler
+`src/server/reviews/moderation-assistant.ts` and the queue's
+`moderation-table.tsx` client boundary. Shared transport primitives remain under
+`src/server/http/`. All exported methods use the handler: POST is accepted,
+other methods return the private JSON 405 with `Allow: POST`.
+
+`createModerationHandler` checks exact trusted Origin, the shared bounded strict
+request schema, verified Admin identity and the complete current pending
+selection before invoking AI. Production source reads select only
+`id,text,moderation_state` through the publishable-key session client; existing
+`reviews_read` RLS derives workspace access from the protected current profile.
+Missing and foreign references both give `404 NOT_FOUND`; empty, duplicate,
+oversized and no-longer-pending selections give `400 INVALID_REQUEST`.
+Unavailable source data gives `503 SOURCE_UNAVAILABLE`. Responses are
+`Cache-Control: private, no-store`.
+
+The server builds only `{reviews: [{reviewId, text}]}` and a fresh operation UUID
+for `createConfiguredAiState().runOperation`, using the verified Admin as actor
+and scope. Shared fixed prompts, complete-result validation, durable run/provider
+admission, zero retry, disable precedence and content-free AI audit apply.
+No review mutation or Admin-action audit is part of triage; no moderation result
+cache is read or written. The configured batch cap is bounded by 20.
+
+The client sends one current-page request and validates a complete five-label
+response before rendering escaped text. Suggestions highlight an action without
+selecting it; the existing action/reason-only route independently authorizes
+and confirms each manual mutation. Suggestions survive a successful action for
+remaining rows, while page/tab changes, reload and restored browser history
+clear them. Leaving aborts an outstanding request. No storage API persists advice.
+Disabled, usage-limited and unavailable results show the exact manual-queue
+messages documented in [the User Guide](UserGuide.md#71-triage-pending-reviews).
+
+
 The server-only usage foundation implements
 [durable admission](../workflow/specs/TECHNICAL-SPEC.md#admission-and-windows)
 and the assigned [usage controls](../workflow/specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 It supplies an internal reservation and dispatch seam. Shared validated feature
 operations, provider transport, durable AI result caches and content-free AI
-audit are also implemented under `src/server/llm/`; there is no production
-feature endpoint or AI screen consuming them yet.
+audit are also implemented under `src/server/llm/`. Admin Moderation Assistant
+consumes them through `POST /api/ai/moderation` and the Pending queue. Other AI
+feature endpoints/screens remain separate integrations.
 
 The operations implement the shared
 [LLM boundary](../workflow/specs/TECHNICAL-SPEC.md#llm-module),
@@ -881,7 +924,8 @@ exits nonzero. This checks RLS coverage; the separate role matrix tests check
 current policy correctness. Future tables and consumers need their own tests. See the
 [security specification](../workflow/specs/AI-SECURITY-SPEC.md) for later application
 and AI requirements. The usage RPC described above is the deliberately exposed
-AI infrastructure operation; no AI feature HTTP endpoint is implemented.
+AI infrastructure operation. The Admin triage HTTP boundary consumes it only
+after verifying the session, role and authorized pending review selection.
 
 <!-- The allow rule runs package.json scripts and config files outside the
 sandbox, so changes to package.json, next.config.ts, eslint.config.mjs and .codex/
@@ -889,6 +933,17 @@ need human review. Forbidden rules match command text, so they are a guardrail
 rather than a complete block. -->
 
 ## How to test
+
+Moderation Assistant tests are in `tests/integration/moderation-assistant/` and
+`tests/e2e/moderation-assistant/`; the latter run with
+`bun run test:e2e tests/e2e/moderation-assistant`. They reuse local moderation
+fixtures, injected fake-provider captures and browser response interception;
+actual HTTP requests run with AI disabled. `tests/unit/moderation-advice-lifetime.test.tsx`
+checks browser-history restoration and cancellation. The evaluation record
+`tests/integration/moderation-assistant/evaluation.md` maps E01–E13 and explicitly
+distinguishes deterministic boundary evidence from unmeasured model quality.
+No live provider calls are used by these checks.
+
 
 Manual moderation/audit acceptance cases live in
 `tests/integration/{moderation,audit}/` and `tests/e2e/{moderation,audit}/`.
@@ -1137,20 +1192,21 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, the read-only audit screen and Customer catalogue/detail
-reads are available. Customer ordering/review writing and other role domain pages
+Manual Admin moderation, advisory Admin triage, the read-only audit screen and
+Customer catalogue/detail reads are available. Customer ordering/review writing and other role domain pages
 remain unavailable or entry headings, with the owner no-café state; café
-mutations, AI screens, demo-kit creation, maintenance provisioning, scheduled
+mutations, the remaining AI screens, demo-kit creation, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
-transport and AI caches/audit are implemented internally, without an AI feature
-endpoint or UI. Live provider compatibility and model
-quality remain unverified; source authorization, persistent cache eligibility,
-browser rendering and scheduled cleanup require their owning integrations. The admission service's
+transport and AI caches/audit are implemented internally and consumed by Admin
+triage. Live provider compatibility and model quality remain unverified;
+other features' source authorization, persistent cache eligibility and browser
+rendering, plus scheduled cleanup, require their owning integrations. The admission service's
 per-environment transaction lock serializes admissions; no production load test
 has been run. Cleanup exists but nothing schedules it yet, and no monetary
 quota guarantee is supplied.
 The workspace helper requires trusted actor context and supplies only a scope
-prerequisite; no actual AI source/cache/route consumer is implemented here.
+prerequisite; Admin triage now supplies its own RLS source/route consumer and
+uses no result cache.
 Hosted confirmation-off evidence is the recorded human check, not automated
 configuration or drift prevention. The catalogue check proves RLS is enabled;
 the role matrix tests cover current policies, not future consumers. The
