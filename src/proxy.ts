@@ -9,7 +9,7 @@ import { markOrderQuery } from "@/server/orders/query";
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Account routes own their cookie buffer; anonymous demo creation owns admission.
   // Transport denials and active-account conflicts must have no refresh effects.
-  if (request.nextUrl.pathname.startsWith("/api/auth/") || request.nextUrl.pathname === "/api/demo-kits") return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith("/api/auth/") || request.nextUrl.pathname === "/api/demo-kits" || request.nextUrl.pathname === "/api/internal/maintenance") return NextResponse.next();
   markCatalogueQuery(request);
   markOrderQuery(request);
   markReviewQuery(request);
