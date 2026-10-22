@@ -1,0 +1,19 @@
+Who this is for:
+This is for the agent taking over as orchestrator for naa-siuuuu-ff, who owns the Café owner role (OWN stories) on Homebrew, a CS3227 project. The work is to finish OWN-01 to OWN-07 by following .agents/skills/sdd-orchestrate/SKILL.md. Stretch stories OWN-08 to OWN-15 are out of scope.
+
+What we covered:
+Three of the four owner pairs are merged into upstream master. PR #158 covers café application, profile, hours and pickup rules (T-53/T-54, OWN-01/02/04). It was reviewed by reviewer and security-reviewer subagents, because review.sh cannot run here without the codex or claude CLI. PR #165 is the order queue (T-59/T-60, OWN-05). PR #167 is the sales Dashboard and Prep Advisor (T-62/T-63, OWN-06/07). Both were done in single-agent mode with self-review. Each pair's verify and full e2e passed locally before merge, and CI passed. The menu pair T-56/T-57 (OWN-03, issues #112/#113) is in the multi-agent loop. Its testing agent was launched and was still running when this was written.
+
+What was confirmed:
+The human allows commits, pushes to origin (naa-siuuuu-ff/CS3227-2610-MP3) and PRs to upstream master. Never force-push, rebase or reset, and never read .env*. Run git bare from the main tree, or use git -C for worktrees. The shell cannot cd outside the project, so run bun inside a subshell "(cd <worktree> && ...)". One local Supabase database is shared by every checkout. Run bun run db:reset from the checkout you are testing, check that it succeeded before running tests, and run one database suite at a time. check:specs rejects a done task whose dependencies are not done. check:traceability ignores interpolated test titles, so parameterized cases need test.each with literal titles. Playwright sends raw string bodies without a JSON content type, which must give 415. Page assertions should be scoped to main, because the owner nav repeats link text. order_items.quantity must be between 1 and 20.
+
+Still in progress:
+The menu worktree is /private/tmp/claude-501/-Users-nasif-Documents-NUS-and-Academics--CS3227-Agentic-Software-Engineering-MP3-CS3227-2610-MP3/9e6cead9-eb46-425e-9821-f8d3fc72b41a/scratchpad/wt-112. It is on branch feat/112-owner-menu, cut from feat/109-owner-cafe-setup at 43ef598. Its testing report will be workflow/handoffs/112-owner-menu/01-testing.md, and its tests are uncommitted. T-63 is merged but its PLAN.md Status is still blocked, because it depends on T-57; issue #119 is already closed. The security P3 findings SR-01 (opening_hours update grant) and SR-02 (unbounded submission-key binding) need a spec decision from the human.
+
+Next steps:
+1. Check the T-56 testing report against stage 2: clean scope under tests/, no package.json changes beyond devDependencies, and only expected missing-implementation failures.
+2. Merge upstream/master into feat/112-owner-menu, then stop so the human can read and commit the tests as test(OWN-03).
+3. Run the implementation agent for T-57 with the testing report path.
+4. Run the reviewer and security-reviewer subagents, telling them not to touch the database while other suites run. Then run the docs agent.
+5. At close-out, set T-56, T-57 and T-63 to done, then run check:traceability, check:specs, verify and test:e2e.
+6. Commit in the skill's order: feat, review evidence, docs, then status. Push and open a PR that closes #112 and #113 and mentions the T-63 status flip.
