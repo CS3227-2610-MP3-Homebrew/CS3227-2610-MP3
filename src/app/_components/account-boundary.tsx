@@ -8,10 +8,11 @@ import { resolveAccountAccess, type AccountAccess } from "@/server/auth/account-
 import { AccountForm } from "./account-form";
 import { DemoKit } from "./demo-kit";
 import { SignOut } from "./sign-out";
+import theme from "./homey-theme.module.css";
 
-export const checkingAccount = <p role="status" className="p-6">Checking account…</p>;
+export const checkingAccount = <p role="status" className={`${theme.loading} p-6`}>Checking account…</p>;
 export function AccountFailure({ kind }: { kind: "unavailable" | "retry" }) {
-  return <section className="mx-auto max-w-lg space-y-4 p-6"><p role="alert">{accountMessages[kind]}</p>{kind === "unavailable" ? <SignOut /> : <a href="" className="underline">Try again</a>}</section>;
+  return <section className={`${theme.failure} mx-auto max-w-lg space-y-4 p-6`}><p role="alert">{accountMessages[kind]}</p>{kind === "unavailable" ? <SignOut /> : <a href="" className="underline">Try again</a>}</section>;
 }
 function failedAccess(access: Exclude<AccountAccess, { kind: "verified" }>) {
   if (access.kind === "unavailable" || access.kind === "retry") return <AccountFailure kind={access.kind} />;
@@ -34,7 +35,13 @@ async function AccountEntry({ mode, searchParams }: { mode: "sign-up" | "sign-in
   const notice = typeof query.notice === "string" && Object.hasOwn(notices, query.notice) ? notices[query.notice as keyof typeof notices] : undefined;
   return <main>{mode === "sign-in" && notice && <p className="mx-auto max-w-md px-6 pt-6" role="status">{notice}</p>}<AccountForm mode={mode} />{mode === "sign-in" && <DemoKit />}</main>;
 }
-export function AccountPage(props: { mode: "sign-up" | "sign-in"; searchParams: Promise<Record<string, string | string[] | undefined>> }) { return <Suspense fallback={checkingAccount}><AccountEntry {...props} /></Suspense>; }
+export function AccountPage(props: { mode: "sign-up" | "sign-in"; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const content = <Suspense fallback={checkingAccount}><AccountEntry {...props} /></Suspense>;
+  return <div className={`${theme.surface} ${theme.signIn}`}>
+    <header className={theme.brand}><p className={theme.brandName}>Homebrew</p><p>A little closer to your neighbourhood café.</p></header>
+    {content}
+  </div>;
+}
 
 const navigation = {
   customer: [["Browse cafés", "/customer/cafes"], ["My orders", "/customer/orders"]],
@@ -46,6 +53,6 @@ async function VerifiedRoleShell({ role, children }: { role: keyof typeof roleHo
   const access = await resolveAccountAccess();
   if (access.kind !== "verified") return failedAccess(access);
   if (access.actor.role !== role) redirect(roleHomes[access.actor.role]);
-  return <div className="mx-auto w-full max-w-5xl p-6"><nav aria-label="Main navigation" className="mb-8 flex flex-wrap items-center gap-5">{navigation[role].map(([text, path]) => <Link key={path} className="underline" href={path}>{text}</Link>)}<SignOut /></nav><main>{children}</main></div>;
+  return <div className="mx-auto w-full max-w-5xl p-6"><nav aria-label="Main navigation" className="mb-8 flex flex-wrap items-center gap-5">{navigation[role].map(([text, path]) => <Link key={path} className="underline" href={path}>{text}</Link>)}<SignOut /></nav><main className={theme.content}>{children}</main></div>;
 }
 export function AccountRoleShell(props: { role: keyof typeof roleHomes; children: ReactNode }) { return <Suspense fallback={checkingAccount}><VerifiedRoleShell {...props} /></Suspense>; }

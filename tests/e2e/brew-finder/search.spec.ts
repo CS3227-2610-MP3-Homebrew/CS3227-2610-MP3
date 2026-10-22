@@ -35,7 +35,9 @@ test("CUS-06.1: filter edit during pending search prevents old-filter response f
   let release!: () => void; let started = false; const gate = new Promise<void>(r => { release = r; });
   await page.route(`**${path}`, async route => { started = true; await gate; await route.fulfill({ json: advice([{ cafeId: f.cafe, itemId: item, reason: "STALE FILTER ADVICE" }]) }); });
   await page.goto("/customer/cafes"); await input(page).fill("coffee"); await search(page).click(); await expect.poll(() => started).toBe(true);
-  await page.getByRole("combobox", { name: /area/i }).selectOption("West"); await expect(page).toHaveURL(/area=West/); release();
+  await page.getByRole("combobox", { name: /area/i }).selectOption("West");
+  await expect(page).toHaveURL(/\/customer\/cafes$/); release();
+  await page.getByRole('button', { name: 'Apply', exact: true }).click(); await expect(page).toHaveURL(/area=West/);
   // A fresh form and settled loading state ensure the late response has been ignored.
   await expect(search(page)).toBeEnabled(); await expect(page.getByText("STALE FILTER ADVICE", { exact: true })).toHaveCount(0);
 });
@@ -75,4 +77,17 @@ for (const reason of ["disabled", "usage_limited", "unavailable", "no_source_dat
   await expect(page.getByRole("status").filter({ hasText: reason === "usage_limited" ? /usage limit|search limit|limit reached/i : reason === "disabled" ? /AI.*disabled|Brew Finder.*disabled/i : reason === "no_source_data" ? /no.*(recommend|available|match|source)/i : /AI.*unavailable|Brew Finder.*unavailable/i })).toBeVisible();
   await expect(page.getByRole("link").filter({ hasText: f.name })).toBeVisible();
   expect(await list(page.request)).toMatchObject({ items: [expect.objectContaining({ cafeId: f.cafe })] });
+});
+
+test('CUS-06.1: searches use applied filters until draft changes are applied', async ({ page }) => {
+  const f = fixture(); f.fields(); await login(page.request, f.customer);
+  const bodies: { filters: { area: string | null } }[] = [];
+  await page.route(`**${path}`, async route => { bodies.push(route.request().postDataJSON()); await route.fulfill({ json: { requestId: 'draft-filter-check', feature: 'brew_finder', mode: 'fallback', reason: 'disabled', fallback: 'rating_sorted_catalogue' } }); });
+  await page.goto('/customer/cafes');
+  await page.getByRole('combobox', { name: 'Area', exact: true }).selectOption('West');
+  await input(page).fill('coffee'); await search(page).click();
+  await expect.poll(() => bodies.length).toBe(1); expect(bodies[0].filters.area).toBeNull();
+  await page.getByRole('button', { name: 'Apply', exact: true }).click(); await expect(page).toHaveURL(/area=West/);
+  await input(page).fill('coffee'); await search(page).click();
+  await expect.poll(() => bodies.length).toBe(2); expect(bodies[1].filters.area).toBe('West');
 });

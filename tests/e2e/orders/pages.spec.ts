@@ -84,3 +84,46 @@ test("CUS-04.1: empty My orders provides an explicit empty state", async ({ page
   const f = fixture(); await login(page.request, f.customer); await page.goto("/customer/orders");
   await expect(page.getByText(/no orders|no.*orders yet|haven.t.*orders/i)).toBeVisible();
 });
+
+test('CUS-04.1 CUS-04.2: All Active and Past filter full history before pagination and cancellation refreshes Active', async ({ page }) => {
+  test.setTimeout(60_000);
+  const f = fixture();
+  const pending = history(f, 'pending'); const accepted = history(f, 'accepted'); const ready = history(f, 'ready');
+  localSql(`insert into public.orders(id,cafe_id,customer_id,state,placed_at,pickup_at,cafe_name,customer_name,total_cents,currency)
+    select gen_random_uuid(),${q(f.cafe)},${q(f.customer.id)},
+      (case when g%3=0 then 'cancelled' when g%3=1 then 'collected' else 'rejected' end)::public.order_state,
+      '2026-02-01T00:00:00Z'::timestamptz+g*interval '1 second',${q(f.pickupAt)},${q(f.name)},'Synthetic filter customer',0,'SGD'
+    from generate_series(1,21) g;
+    insert into public.orders(id,cafe_id,customer_id,state,cafe_name,customer_name)
+    values(gen_random_uuid(),${q(f.cafe)},${q(f.reader.id)},'pending','OTHER CUSTOMER ORDER','Other customer');`);
+  await login(page.request, f.customer); await page.goto('/customer/orders');
+  await expect(page.getByRole('article')).toHaveCount(20);
+  await expect(page.getByText(`Order ${pending}`, { exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Active orders', exact: true }).click();
+  await expect(page.getByRole('article')).toHaveCount(3);
+  for (const id of [pending, accepted, ready]) await expect(page.getByText(`Order ${id}`, { exact: true })).toBeVisible();
+  await expect(page.getByText('OTHER CUSTOMER ORDER', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cancel order', exact: true }).click();
+  await expect(page.getByText(`Order ${pending}`, { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('article')).toHaveCount(2);
+  await page.getByRole('link', { name: 'Past orders', exact: true }).click();
+  await expect(page.getByRole('article')).toHaveCount(20);
+  const states = await page.locator('article > header > p').allTextContents();
+  expect(states.every(state => ['collected','rejected','cancelled'].includes(state))).toBe(true);
+  await page.getByRole('link', { name: 'Next orders', exact: true }).click();
+  await expect(page).toHaveURL(/view=past&page=2/); await expect(page.getByRole('article')).toHaveCount(2);
+  await expect(page.getByText(`Order ${pending}`, { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Active orders', exact: true }).click();
+  await expect(page).toHaveURL(/view=active$/); await expect(page.getByRole('article')).toHaveCount(2);
+  await page.getByRole('link', { name: 'All', exact: true }).click();
+  await expect(page.getByRole('article')).toHaveCount(20);
+});
+
+test('CUS-04.1: empty Active and Past views and invalid browser filters are explicit', async ({ page }) => {
+  const f = fixture(); await login(page.request, f.customer); await page.goto('/customer/orders');
+  await page.getByRole('link', { name: 'Active orders', exact: true }).click(); await expect(page.getByText('No active orders.', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Past orders', exact: true }).click(); await expect(page.getByText('No past orders.', { exact: true })).toBeVisible();
+  for (const query of ['view=unknown', 'view=active&view=past', 'view=active&page=0']) {
+    await page.goto(`/customer/orders?${query}`); await expect(page.getByRole('main').getByRole('alert')).toHaveText('Invalid orders page.');
+  }
+});
