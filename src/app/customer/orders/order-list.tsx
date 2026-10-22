@@ -6,16 +6,22 @@ import { money, singaporeTime } from './presentation';
 
 const events = [['placedAt', 'Placed'], ['pickupAt', 'Pickup'], ['acceptedAt', 'Accepted at'], ['readyAt', 'Ready at'], ['collectedAt', 'Collected at'], ['rejectedAt', 'Rejected at'], ['cancelledAt', 'Cancelled at']] as const;
 export function OrderList({ initialOrders }: { initialOrders: Order[] }) {
-  const [orders, setOrders] = useState(initialOrders);
+  const [snapshot, setSnapshot] = useState({ source: initialOrders, orders: initialOrders });
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  // A route refresh preserves client state, but its new authorized collection
+  // supersedes the previous payload and any local cancellation confirmation.
+  if (snapshot.source !== initialOrders) {
+    setSnapshot({ source: initialOrders, orders: initialOrders });
+  }
+  const { orders } = snapshot;
   async function cancel(orderId: string) {
     if (busy) return;
     setBusy(orderId); setMessage('');
     try {
       const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       const body = await response.json();
-      if (response.ok) setOrders(current => current.map(order => order.orderId === orderId ? body.order : order));
+      if (response.ok) setSnapshot(current => ({ ...current, orders: current.orders.map(order => order.orderId === orderId ? body.order : order) }));
       else setMessage(typeof body.error?.message === 'string' ? body.error.message : 'Unable to cancel this order. Refresh to check its current state.');
     } catch { setMessage('Unable to confirm cancellation. Refresh to check the current order before trying again.'); }
     finally { setBusy(null); }

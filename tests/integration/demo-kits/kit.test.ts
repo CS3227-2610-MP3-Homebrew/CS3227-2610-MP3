@@ -65,14 +65,20 @@ test("SYS-12.4 SYS-12.5 SEC-10.2: three secure distinct random credentials share
 test("SYS-12.5 SEC-10.2: plaintext passwords occur in no persisted application row, Auth metadata, cache or audit", () => {
   // Search all ordinary application tables, including private bookkeeping and any new kit table.
   const tables = rows(`select n.nspname as schema,c.relname as name from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname in ('public','private')`);
+  const checks: { statement: string; expected: Record<string, unknown>[] }[] = [];
   for (const table of tables) {
     const name = `"${String(table.schema).replaceAll('"','""')}"."${String(table.name).replaceAll('"','""')}"`;
-    for (const account of kit.accounts) expect(rows(`select count(*)::int as count from ${name} t where position(${q(account.password)} in row_to_json(t)::text)>0`)).toEqual([{ count: 0 }]);
+    for (const account of kit.accounts) checks.push({ statement: `select count(*)::int as count from ${name} t where position(${q(account.password)} in row_to_json(t)::text)>0`, expected: [{ count: 0 }] });
   }
   for (const account of kit.accounts) {
-    expect(rows(`select id from auth.users where position(${q(account.password)} in coalesce(raw_user_meta_data::text,'')||coalesce(raw_app_meta_data::text,''))>0`)).toEqual([]);
-    expect(rows(`select encrypted_password=${q(account.password)} as plaintext from auth.users where email=${q(account.email)}`)).toEqual([{ plaintext: false }]);
+    checks.push({ statement: `select id from auth.users where position(${q(account.password)} in coalesce(raw_user_meta_data::text,'')||coalesce(raw_app_meta_data::text,''))>0`, expected: [] });
+    checks.push({ statement: `select encrypted_password=${q(account.password)} as plaintext from auth.users where email=${q(account.email)}`, expected: [{ plaintext: false }] });
   }
+  // Keep every query and expected row set, sharing one Docker/psql invocation.
+  const results = rows(checks.map((check, index) => `select ${index} as check_index,(select coalesce(json_agg(result),'[]'::json) from (${check.statement}) result) as matches`).join(" union all "));
+  const matches = new Map(results.map(result => [Number(result.check_index), result.matches]));
+  expect(results).toHaveLength(checks.length); expect(matches.size).toBe(checks.length);
+  checks.forEach((check, index) => expect(matches.get(index)).toEqual(check.expected));
 });
 test("SYS-12.9: approved owner café includes usable menu, sold-out item, opening hours and pickup rules", () => {
   const approved = cafes().filter(c => c.application_state === "approved"); expect(approved).toHaveLength(1);
@@ -97,8 +103,9 @@ test("SYS-12.9: review-eligible collected orders, other states and four weeks of
   expect(Math.min(...times)).toBeLessThanOrEqual(now.getTime() - 25 * 86400000);
   expect(Math.max(...times)).toBeLessThanOrEqual(now.getTime()); expect(Math.max(...times)).toBeGreaterThanOrEqual(now.getTime() - 2 * 86400000);
   const quantity = column("public", "order_items", ["quantity"]); const price = column("public", "order_items", ["unit_price_cents", "price_cents"]);
+  const historicalItems = rows(`select * from public.order_items where order_id in (${history.map(order => q(order.id)).join(",")})`);
   for (const order of history) {
-    const items = rows(`select * from public.order_items where order_id=${q(order.id)}`); expect(items.length).toBeGreaterThan(0);
+    const items = historicalItems.filter(item => item.order_id === order.id); expect(items.length).toBeGreaterThan(0);
     for (const item of items) { expect(Number.isInteger(item[quantity])).toBe(true); expect(Number(item[quantity])).toBeGreaterThan(0); expect(Number.isInteger(item[price])).toBe(true); expect(Number(item[price])).toBeGreaterThan(0); }
   }
 });

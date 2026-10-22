@@ -583,6 +583,11 @@ govern the implemented Pre-order and My orders surfaces.
   order, snapshot amounts, public cancellation/rejection reasons and lifecycle
   times. React text rendering keeps stored café/item/reason content inert. Only
   pending rows offer cancellation; every mutation rechecks current state.
+  The client list replaces its complete collection when a new authorized server
+  payload arrives on the same page. It retains locally confirmed cancellations
+  through ordinary client rerenders until that new payload arrives; late
+  confirmations do not restore records absent from the current collection.
+  This reconciliation adds no polling or realtime delivery.
 - `src/server/orders/http.ts` supplies creation/list/detail/cancel and pickup
   JSON boundaries. It uses verified Auth/Customer checks, Zod strict schemas,
   the shared bounded body reader, trusted deployment Origin, safe error codes
@@ -625,12 +630,16 @@ does not add a profile repair endpoint or change account contracts; successful
 order tests also provision valid synthetic protected names.
 Owner acceptance/collection and menu/settings writers remain separate work.
 
-The order suites contain 25 spec-derived Vitest cases in `tests/unit/orders/`
-and `tests/integration/orders/`, four supplementary internal cases in
-`tests/unit/orders-internals.test.ts`, and 88 browser/API cases in
+The order suites contain 37 spec-derived Vitest cases in `tests/unit/orders/`
+and `tests/integration/orders/`, six supplementary internal cases across
+`tests/unit/orders-internals.test.ts` and
+`tests/unit/orders/order-list-reconciliation.test.tsx`, and 88 browser/API cases in
 `tests/e2e/orders/`. They cover submission/concurrency/rollback, snapshot
 retention, source failures, strict HTTP bounds, own-history RLS, kit/main
 isolation, actual authorized suspension effects and rendered customer flows.
+Mounted component rerenders additionally cover new collection membership/order,
+MVP owner-state transitions, current lifecycle timestamps and feedback, retained
+snapshots and Cancel/Review controls after fresh same-page payload delivery.
 Two browser session setups explicitly sign out before switching customers to
 respect SYS-02's active-account conflict. Role-denial cases use literal titles
 so static traceability can recognize their criterion IDs; interpolated titles
