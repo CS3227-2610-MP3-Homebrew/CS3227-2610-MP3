@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import type { Order } from '@/server/orders/schema';
 import { money, singaporeTime } from './presentation';
 
@@ -28,6 +29,7 @@ export function OrderList({ initialOrders }: { initialOrders: Order[] }) {
       <dl className="grid gap-3 text-sm sm:grid-cols-2">{events.map(([key, label]) => order[key] && <div key={key}><dt className="font-semibold">{label}</dt><dd><time dateTime={order[key]!}>{singaporeTime(order[key]!)}</time></dd></div>)}</dl>
       <ul className="space-y-3">{order.items.map(item => <li key={item.itemId} className="flex flex-wrap justify-between gap-2 border-t border-black/10 pt-3"><div><p className="font-semibold">{item.name}</p><p>{item.quantity} × {money(item.unitPriceCents)} each</p></div><p>{money(item.lineTotalCents)}</p></li>)}</ul>
       <p className="text-lg font-semibold">Total: {money(order.totalCents)}</p><p className="text-sm">Payment at pickup.</p>
+      {order.state === 'collected' && <Link className="inline-block rounded border px-4 py-2 underline" href={`/customer/orders/${encodeURIComponent(order.orderId)}/review`}>Review order</Link>}
       {order.state === 'pending' && <button className="rounded border px-4 py-2 disabled:opacity-50" disabled={busy !== null} onClick={() => cancel(order.orderId)}>{busy === order.orderId ? 'Updating…' : 'Cancel order'}</button>}
     </article>)}
   </div>;
