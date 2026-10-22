@@ -73,7 +73,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run db:start
       - run: bun run db:reset
-      - run: bunx --no-install playwright install --with-deps chromium
+      - run: bunx --no-install playwright install chromium
       - run: bun run test:e2e --shard=${{ matrix.shard }}/3
 
   verify:
