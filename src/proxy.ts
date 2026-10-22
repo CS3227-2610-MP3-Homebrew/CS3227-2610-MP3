@@ -2,13 +2,15 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getConfiguration } from "@/server/config";
 import { markCatalogueQuery } from "@/server/catalogue/proxy-query";
+import { markOrderQuery } from "@/server/orders/query";
 
-/** Refresh transport and preserve strict catalogue query validation; never authorize. */
+/** Refresh transport and preserve strict customer query validation; never authorize. */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Account routes own admission and their isolated provisional-cookie buffer.
   // Transport denials and active-account conflicts must have no refresh effects.
   if (request.nextUrl.pathname.startsWith("/api/auth/")) return NextResponse.next();
   markCatalogueQuery(request);
+  markOrderQuery(request);
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
   const responseHeaders = new Headers();
@@ -55,6 +57,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Explicit coverage includes opaque café references ending in asset suffixes.
-  matcher: ["/api/customer/cafes/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Explicit coverage includes opaque customer references ending in asset suffixes.
+  matcher: ["/api/customer/cafes/:path*", "/api/customer/orders/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
