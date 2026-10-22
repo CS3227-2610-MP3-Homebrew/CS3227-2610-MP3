@@ -13,6 +13,7 @@
   - [4.4 View and cancel your orders](#44-view-and-cancel-your-orders)
   - [4.5 Review a collected order](#45-review-a-collected-order)
 - [5. Café owner guide](#5-café-owner-guide)
+  - [5.2 Run the order queue](#52-run-the-order-queue)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -351,7 +352,31 @@ local test fixtures.
    `/owner/application`.
 
 The entry page currently contains a heading; it does not submit an application.
-Sales, order queue, menu and café profile tools are not yet implemented here.
+Sales, menu and café profile tools are not yet implemented here.
+
+### 5.2 Run the order queue
+
+**Where:** owner navigation → **Order queue** (`/owner/orders`).
+
+Customers pay at the counter; the queue never takes payment. Each card shows
+the customer's name as it was when they ordered, the items, quantities and
+prices they bought, the total, and the pickup and event times in Singapore time.
+
+1. **Active** (the default) lists New, Accepted and Ready for pick up orders.
+   **History** lists Completed, Rejected and Cancelled orders. Use the filter
+   links under each view to show one state. Orders are sorted by pickup time,
+   then placement time, 10 per page.
+2. On a **New** order, select **Accept order**, or select **Reject…**, enter a
+   reason (up to 100 words, shown to the customer) and select **Confirm
+   reject**. **Keep order** closes the form without changes.
+3. On an **Accepted** order, select **Mark ready for pick up**.
+4. When the customer collects it, select **Mark collected**. The order moves
+   to History as Completed.
+
+If the customer cancelled, an Admin suspended the café, or someone else already
+acted, the queue shows “Order changed. Refresh to see its current state.” and
+reloads the page you were on. Completed, Rejected and Cancelled orders cannot be
+reopened. Without a café, the queue shows **Apply for a café** instead.
 
 ## 6. Admin guide
 
