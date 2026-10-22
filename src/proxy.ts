@@ -4,6 +4,7 @@ import { getConfiguration } from "@/server/config";
 import { markCatalogueQuery } from "@/server/catalogue/proxy-query";
 import { markReviewQuery } from "@/server/reviews/customer-query";
 import { markOrderQuery } from "@/server/orders/query";
+import { markQueueQuery } from "@/server/owner-orders/query";
 
 /** Refresh transport and preserve strict customer query validation; never authorize. */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
@@ -13,6 +14,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   markCatalogueQuery(request);
   markOrderQuery(request);
   markReviewQuery(request);
+  markQueueQuery(request);
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
   const responseHeaders = new Headers();
@@ -60,5 +62,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Explicit coverage includes opaque customer references ending in asset suffixes.
-  matcher: ["/api/customer/cafes/:path*", "/api/customer/orders/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/api/customer/cafes/:path*", "/api/customer/orders/:path*", "/api/owner/orders/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
