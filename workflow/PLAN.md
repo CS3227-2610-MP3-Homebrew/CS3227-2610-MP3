@@ -743,7 +743,7 @@ then consume its suspension effect without a dependency cycle.
   - [ ] Every listed criterion has named deterministic tests and recorded failing-first evidence; gaps are reported without guessing behaviour.
   - [ ] Concurrent submissions cannot produce a second review; testing uses approved domain bounds rather than LLM text limits.
   - [ ] Record `bun run verify` and relevant `bun run test:e2e` results using local Supabase and fake/disabled AI only; write the issue-scoped [handoff](templates/handoff.md) under the [handoff conventions](handoffs/README.md).
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#75](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/75)
 
 ### T-45: Implement collected-order review submission
@@ -758,7 +758,7 @@ then consume its suspension effect without a dependency cycle.
 - **Acceptance criteria:**
   - [ ] T-44's full suite passes for creation, concurrent uniqueness, session/workspace/ownership and immutable post-submission data.
   - [ ] The paired test task's criterion suite and relevant `bun run test:e2e` pass; `bun run verify` passes and the issue-scoped [handoff](templates/handoff.md) records actual checks and review gaps.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#76](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/76)
 
 ### T-46: Test Brew Finder search and fallbacks
