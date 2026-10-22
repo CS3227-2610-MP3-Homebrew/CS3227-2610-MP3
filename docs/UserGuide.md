@@ -17,6 +17,7 @@
   - [5.2 Apply for a café](#52-apply-for-a-café)
   - [5.3 Manage your café profile, hours and pickup rules](#53-manage-your-café-profile-hours-and-pickup-rules)
   - [5.4 Run the order queue](#54-run-the-order-queue)
+  - [5.5 View your sales](#55-view-your-sales)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -25,6 +26,7 @@
 - [7. AI features](#7-ai-features)
   - [7.1 Triage pending reviews](#71-triage-pending-reviews)
   - [7.2 Find a café with Brew Finder](#72-find-a-café-with-brew-finder)
+  - [7.3 Get preparation advice](#73-get-preparation-advice)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
 - [10. Troubleshooting](#10-troubleshooting)
@@ -105,9 +107,9 @@ again.” and does not confirm that sign-out succeeded.
 
 Browse cafés provides the Customer tools in section 4; Moderation queue and
 Audit log provide the Admin tools in section 6. My orders provides retained
-purchases and pending-order cancellation. Café application, Café profile and
-Order queue provide the owner tools in section 5; Menu opens a role page
-heading.
+purchases and pending-order cancellation. Café application, Café profile,
+Order queue and Dashboard provide the owner tools in section 5, and Dashboard
+also holds the Prep Advisor (section 7.3); Menu opens a role page heading.
 
 ### 1.5 Demo accounts for testers
 
@@ -131,8 +133,9 @@ accounts without signing in.
 
 Each kit also has about four weeks of sample collected purchases, unreviewed
 collected orders and a pending order. New kit Customers can use Pre-order for
-pickup and My orders, including pending-order cancellation. Review submission,
-the owner queue and sales/Prep Advisor screens remain unavailable in this build. The pending café's separate owner has no published
+pickup and My orders, including pending-order cancellation. Review submission
+remains unavailable in this build. Kit owners can use the order queue and the
+Dashboard's sales and Prep Advisor. The pending café's separate owner has no published
 credentials. Kits have no automatic expiry or deletion, and creating a kit
 makes no AI request. Kit accounts keep their own AI user allowances while the
 application's global AI limits remain shared.
@@ -361,9 +364,8 @@ queue (section 5.4).
 
 Café owners can apply to register one café, follow its review status, resubmit
 a rejected application, and manage an approved café's description, weekly
-opening hours and pickup cutoff, and run the order queue. Sales and menu tools
-are not yet implemented. Dashboard shows “You do not have a café yet.” when your
-account has no café.
+opening hours and pickup cutoff, run the order queue, and view sales with Prep
+Advisor suggestions on the Dashboard. Menu tools are not yet implemented.
 
 ### 5.2 Apply for a café
 
@@ -458,6 +460,24 @@ If the customer cancelled, an Admin suspended the café, or someone else already
 acted, the queue shows “Order changed. Refresh to see its current state.” and
 reloads the page you were on. Completed, Rejected and Cancelled orders cannot be
 reopened. Without a café, the queue shows **Apply for a café** instead.
+
+### 5.5 View your sales
+
+**Where:** owner navigation → **Dashboard** (`/owner/dashboard`).
+
+A sale is an order you marked collected. Each one counts on the Singapore date
+it was collected, using the prices the customer paid, not today's menu prices.
+The Dashboard covers the last 28 days, including today so far:
+
+- **Daily totals:** one row per day, newest first, with orders and revenue.
+  Days without sales show 0 and S$0.00.
+- **Top items:** up to 10 items ranked by quantity sold, then revenue. Renamed
+  or removed items keep their row under the name from their latest sale.
+- **Sales by day of week:** Monday to Sunday, with orders, items and revenue.
+
+With no completed sales in that period, the Dashboard shows “No completed sales
+in the last 28 days.” If sales cannot be loaded, it says so instead of showing
+zeros. Without a café, it links to **Café application**.
 
 ## 6. Admin guide
 
@@ -604,7 +624,7 @@ most one provider attempt. If AI cannot run, the manual queue remains usable:
 | “Unable to triage reviews. Reload and try again.” | The request could not obtain a successful response; reload explicitly. |
 
 AI suggestions can be wrong. Local checks use fake responses and do not measure
-classification accuracy. Prep Advisor remains unavailable.
+classification accuracy.
 
 ### 7.2 Find a café with Brew Finder
 
@@ -645,6 +665,33 @@ limits still apply to cached searches. If catalogue data itself is unavailable,
 the page or request reports that failure rather than inventing suggestions.
 Local checks use fake/disabled AI and do not measure live ranking quality.
 
+### 7.3 Get preparation advice
+
+Prep Advisor suggests which items to prepare more or less of on each weekday,
+using only your café's totals from the 28 completed days before today.
+
+**Where:** **Dashboard** → **Prep Advisor** panel.
+
+1. The panel loads when you open the Dashboard. Each suggestion names the item,
+   the weekday and “prepare more” or “prepare less”, then quotes the recorded
+   quantities behind it. It is labelled as AI-generated advice.
+2. Select **Refresh advice** to ask again. Refreshes are limited per café per
+   day; advice is otherwise reused until Singapore midnight or until your sales
+   change.
+3. Decide for yourself. Nothing changes your menu, orders or café automatically.
+
+The panel shows your top-items table instead of advice when:
+
+| Message | Meaning |
+| --- | --- |
+| “AI advice is disabled right now. Showing your top items instead.” | AI is disabled or live credentials are absent. |
+| “AI advice has reached its usage limit for now. Showing your top items instead.” | A usage cap or provider limit applied. |
+| “AI advice is unavailable right now. Showing your top items instead.” | The AI call failed or returned advice that did not match your sales. |
+| “Not enough completed sales yet for preparation advice. Showing your top items instead.” | Fewer than 7 different days had sales in the period, or no sold item is still on your menu. |
+
+A suggestion is only shown if it agrees with the numbers: “more” needs that
+weekday to be above the item's weekday average, “less” below it.
+
 ## 8. Reference
 
 Sign-in accepts an existing nonempty password up to 72 UTF-8 bytes, without
@@ -652,8 +699,7 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Favourites and the Café owner menu and sales tools remain entry shells or
-unavailable.
+Favourites and the Café owner menu tools remain entry shells or unavailable.
 Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
 kits supply it; current signup and older unnamed accounts do not. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device

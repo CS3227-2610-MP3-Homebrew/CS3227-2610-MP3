@@ -73,8 +73,13 @@ export function validateResult(feature: Feature, value: unknown, source: Input, 
     return { suggestions: result.suggestions.map((s) => ({ itemId: s.itemId, weekday: s.weekday, direction: s.direction, evidenceIds: s.evidence.map((e) => e.aggregateId) })) };
   })() : prepModelResult.parse(value);
   if (!unique(model.suggestions.map((s) => JSON.stringify([s.itemId, s.weekday])))) throw new Error("Invalid result.");
+  // OWN-07.16 direction consistency: more needs 7q > T, less needs 7q < T, in exact integers.
+  const sum = (itemId: string, weekday?: number) => input.aggregates
+    .filter((a) => a.itemId === itemId && (weekday === undefined || a.weekday === weekday)).reduce((total, a) => total + BigInt(a.quantity), BigInt(0));
   const result = prepResult.parse({ suggestions: model.suggestions.map((s) => {
     if (!unique(s.evidenceIds)) throw new Error("Invalid result.");
+    const day = BigInt(7) * sum(s.itemId, s.weekday), total = sum(s.itemId);
+    if (s.direction === "more" ? day <= total : day >= total) throw new Error("Invalid result.");
     const evidence = s.evidenceIds.map((id) => {
       const aggregate = input.aggregates.find((a) => a.aggregateId === id && a.itemId === s.itemId);
       if (!aggregate) throw new Error("Invalid result.");
