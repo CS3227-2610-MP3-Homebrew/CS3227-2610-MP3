@@ -15,6 +15,7 @@
   - [6.3 Decide a café application](#63-decide-a-café-application)
   - [6.4 Suspend or un-suspend a café](#64-suspend-or-un-suspend-a-café)
 - [7. AI features](#7-ai-features)
+  - [7.1 Triage pending reviews](#71-triage-pending-reviews)
 - [8. Reference](#8-reference)
 - [9. Known limitations](#9-known-limitations)
 - [10. Troubleshooting](#10-troubleshooting)
@@ -320,7 +321,41 @@ empty-list result. Failed actions do not leave a partial state change or audit.
 
 ## 7. AI features
 
-No AI feature screen is available in this build.
+### 7.1 Triage pending reviews
+
+Moderation Assistant gives Admins AI-generated classification advice for pending
+reviews in their own workspace, including existing demo-kit accounts.
+
+**Where:** Admin navigation → **Moderation queue** → **Pending**.
+
+1. Select **Triage pending reviews**. An empty page disables it; Kept and Hidden
+   have no triage button. One click submits only the current page, with no
+   automatic pagination or retries. The operator configures 1–20 reviews per page.
+2. While “Triaging reviews…” appears, the button is disabled. Successful advice
+   appears beside each review as **AI suggestion**, with a label and reason.
+   Labels are `ok`, `spam`, `abusive`, `off-topic` and `injection attempt`.
+   Keep is highlighted for `ok`; Hide is highlighted for the other labels.
+   Advice does not select or submit any action.
+3. Read the review and advice, then choose an ordinary per-review action using
+   section 6.1. Enter your own reason or edit a fixed quick pick, and explicitly
+   confirm. The AI reason is never copied into your reason or audit entry.
+4. Acting on one review leaves the remaining suggestions on that page. Reloading
+   or changing page discards advice. A conflicting action removes the affected
+   suggestion and shows the review's current state.
+
+Usage limits apply per Admin and across the environment; one click permits at
+most one provider attempt. If AI cannot run, the manual queue remains usable:
+
+| Message | Meaning |
+| --- | --- |
+| “AI triage is disabled. You can still review each item manually.” | AI is disabled or live credentials are absent. |
+| “The AI usage limit was reached. You can still review each item manually.” | An applicable usage cap or provider limit denied work. |
+| “AI triage is unavailable. You can still review each item manually.” | AI processing, validation or bookkeeping failed. |
+| “The queue changed. Reload before triaging.” | The submitted selection is no longer valid; select **Reload queue**. |
+| “Unable to triage reviews. Reload and try again.” | The request could not obtain a successful response; reload explicitly. |
+
+AI suggestions can be wrong. Local checks use fake responses and do not measure
+classification accuracy. Brew Finder and Prep Advisor screens remain unavailable.
 
 ## 8. Reference
 
