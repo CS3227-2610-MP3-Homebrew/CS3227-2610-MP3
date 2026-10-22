@@ -1,6 +1,6 @@
 # OWN-08: Request a café boost
 
-- **Related specs:** [Owner source stories](../PRODUCT-SPEC.md#café-owner), [stretch scope](../PRODUCT-SPEC.md#mvp-and-stretch-scope), [role boundaries](../PRODUCT-SPEC.md#roles-and-access), [navigation](../PRODUCT-SPEC.md#navigation-per-role), [data ownership/workspaces](../TECHNICAL-SPEC.md#data-model-and-ownership), [shared HTTP conventions](../INTEGRATION-SPEC.md#authorization-and-transport), [stretch contract ownership](../INTEGRATION-SPEC.md#contract-dependencies), [Admin source stories](../PRODUCT-SPEC.md#admin).
+- **Related specs:** [Owner source stories](../PRODUCT-SPEC.md#café-owner), [stretch scope](../PRODUCT-SPEC.md#mvp-and-stretch-scope), [role boundaries](../PRODUCT-SPEC.md#roles-and-access), [navigation](../PRODUCT-SPEC.md#navigation-per-role), [data ownership/workspaces](../TECHNICAL-SPEC.md#data-model-and-ownership), [shared HTTP conventions](../INTEGRATION-SPEC.md#authorization-and-transport), [stretch contract ownership](../INTEGRATION-SPEC.md#contract-dependencies), [owner boost boundary](../INTEGRATION-SPEC.md#owner-stretch-operations-boundary), [Admin source stories](../PRODUCT-SPEC.md#admin).
 - **Role:** Café owner
 - **Source:** [PRODUCT-SPEC.md, User stories → Café owner](../PRODUCT-SPEC.md#café-owner), OWN-08; Low priority, Stretch, outside MVP.
 - **Requirement ownership:** This file owns OWN-08's owner boost request. ADM-06 owns Admin boost approval/rejection. No existing MVP navigation or catalogue-ranking contract is amended by this story.
@@ -12,6 +12,28 @@ with a time-limited Featured badge and a recorded fee. This is an optional
 stretch capability. The fee is a record only: Homebrew has no payment system
 in MVP or stretch scope. Requesting a boost does not replace café approval or
 lift suspension.
+
+## Boost terms
+
+- **Who can request:** the owner of an `approved`, non-suspended café. A
+  pending, rejected or suspended café cannot request a boost.
+- **Fee:** a fixed S$10.00 (1,000 SGD cents) recorded on each request. The
+  owner cannot change it, and Homebrew collects no payment for it.
+- **Lifecycle:** a request starts as `requested`. ADM-06's Admin decision makes
+  it `approved` or `rejected`; the owner cannot decide, withdraw or edit it.
+- **Featured window:** an approved boost is active from the Admin approval
+  instant (`featuredFrom`) for exactly 7 days (`featuredUntil` = `featuredFrom`
+  plus 168 hours), then expires. The window is never extended, including
+  after suspension and un-suspension.
+- **One open boost:** while the café has a `requested` boost or an active
+  approved boost, another request is refused. After a rejection or expiry the
+  owner may request again.
+- **Customer effect:** while a boost is active and the café is
+  Customer-eligible, the catalogue card and café page show a "Featured" badge.
+  Catalogue ordering and filters do not change.
+- **Placement:** a Featured boost panel on `/owner/dashboard` shows the current
+  boost state, the recorded fee, the window and request history newest first,
+  with a Request boost action when allowed. No navigation entry is added.
 
 ## Access
 
@@ -34,6 +56,10 @@ lift suspension.
 - **`OWN-08.3`:** Given a café with a boost becomes Customer-ineligible through suspension or lack of approval, when Customer catalogue/detail/Brew Finder sources are evaluated, then ordinary eligibility still excludes it; a boost reference or badge does not bypass current role/workspace/café access checks.
 - **`OWN-08.4`:** Given a Featured badge's defined active time has ended, when Customer-facing badge state is evaluated, then that boost does not provide an indefinite Featured badge; the request does not create perpetual visibility.
 - **`OWN-08.5`:** Given no session, a wrong role, or a missing/foreign café, when an owner boost JSON operation is requested, then the shared `401 UNAUTHENTICATED`, `403 FORBIDDEN` or indistinguishable `404 NOT_FOUND` applies respectively without protected disclosure or change; main and kit owners remain confined to their verified workspace.
+- **`OWN-08.6`:** Given an owner of an approved, non-suspended café with no open boost, when it requests a boost, then a `requested` boost is stored with `feeCents` 1000, currency SGD and server `requestedAt`; given a pending, rejected or suspended café, the request returns `409 STATE_CONFLICT` and stores nothing.
+- **`OWN-08.7`:** Given the café already has a `requested` boost or an approved boost whose window has not ended, when the owner requests another, then `409 STATE_CONFLICT` is returned and nothing is stored; after rejection or expiry a new request succeeds.
+- **`OWN-08.8`:** Given an ADM-06 approval at instant A, when Customer badge state is evaluated, then the café shows "Featured" only from A until A plus 168 hours and only while Customer-eligible; catalogue ordering and filter results are unchanged by any boost.
+- **`OWN-08.9`:** Given the owner opens Dashboard, when its boost history loads, then the Featured boost panel shows each own boost newest first with state, recorded S$10.00 fee and window, offers Request boost only when OWN-08.6 and OWN-08.7 allow it, and shows another owner's boosts never.
 
 #### Edge cases and failure paths
 
@@ -51,10 +77,9 @@ refunds, owner self-approval and changes to MVP catalogue ranking.
 
 | Screen | What it shows | Actions | Requirement IDs |
 | --- | --- | --- | --- |
-| Owner boost-request interaction | Own café boost request, recorded-fee and time-limited Featured context; protected failure states | Request own café boost when stretch capability is provided | OWN-08 |
+| `/owner/dashboard`, Featured boost panel | Current boost state (`requested`, active, expired, `rejected`), recorded S$10.00 fee, Featured window, history newest first; protected failure states | Request boost when allowed | OWN-08 |
 
-The product specifies no separate owner boost screen. This story does not add
-an MVP navigation entry or choose a new screen placement.
+The panel sits inside the existing Dashboard. No navigation entry is added.
 
 ## Use cases
 

@@ -48,7 +48,7 @@ single responsibility principle (SRP) and don't repeat yourself (DRY).
 | --- | --- | --- |
 | Shared | Sign-in, including **Create demo kit**. | None. |
 | Customer | Browse cafés, including the Brew Finder search box; Café page; Pre-order; My orders; Review form. | No separate screen specified for favourite cafés. |
-| Café owner | Café application; Dashboard, including sales and the Prep Advisor panel; Order queue; Menu; Café profile, including opening hours and pickup rules. | No separate screen specified for requesting a boost. |
+| Café owner | Café application; Dashboard, including sales and the Prep Advisor panel; Order queue; Menu; Café profile, including opening hours and pickup rules. | No new navigation entries. The boost panel and CSV export sit on Dashboard; Prep sheet opens from Order queue, which also holds the pause control and no-show action; closure dates and the per-slot order limit sit on Café profile; archive and restore sit on Menu. |
 | Admin | Café applications; Cafés (suspend and un-suspend); Moderation queue, including the "Triage pending reviews" button; Audit log. | AI settings for on/off controls; Boost requests. |
 
 ## Product-level functional requirements
@@ -72,6 +72,7 @@ below; this document does not supply missing behavioral decisions.
 | ADM-03 | Provide a moderation queue to keep, hide or restore reviews with a reason, never to edit review text. Record every keep, hide or restore action in an audit log. |
 | ADM-04 | A "Triage pending reviews" button runs Moderation Assistant on pending reviews in batches. It classifies each review as ok, spam, abusive, off-topic or injection attempt, with a reason. The admin confirms every action. Its non-AI fallback is the manual queue. |
 | CUS-07, OWN-08, ADM-05–ADM-06 | Stretch only: save favourite cafés; request a boost with a time-limited Featured badge and a fee that is only recorded; switch AI features on or off at runtime from the Admin page; approve or reject boost requests. |
+| OWN-09–OWN-15 | Stretch only: a printable prep sheet for today's accepted orders; pausing and resuming new pre-orders; one-off closure dates; a per-slot order limit; archiving and restoring menu items; marking uncollected orders as no-shows; exporting completed sales as CSV. None adds AI, payment or a new role. |
 
 ## Non-functional requirements
 
@@ -121,6 +122,7 @@ unverifiable per-key limits are recorded in
 | Manage café eligibility | An admin reviews applications, suspends a café or un-suspends a café. | Approve or reject applications with a reason; suspended cafés are not visible to customers. An un-suspended approved café becomes visible to customers again; an unapproved café remains hidden. | ADM-01–ADM-02 |
 | Moderate reviews | An admin reviews the queue or requests AI triage. | Classify pending reviews with reasons or use the manual queue; the admin confirms each action. Keep, hide or restore with a reason, retain review text, and record moderation actions in the audit log. | ADM-03–ADM-04 |
 | Use optional features | A customer saves a favourite, a café owner requests a boost, or an admin manages boosts or runtime AI settings. | Provide only the stretch capabilities listed in the User stories section; a boost fee is recorded without adding a payment system. | CUS-07, OWN-08, ADM-05–ADM-06 |
+| Run the café day to day | A café owner prepares today's orders, pauses ordering, closes for a date, caps busy slots, archives a drink, records a no-show or exports sales. | Each control stays within the owner's own café and workspace, keeps retained order snapshots and never approves or un-suspends a café. Customer-facing effects are limited to fewer or no pickup choices and hidden archived items. | OWN-09–OWN-15 |
 
 ## MVP and stretch scope
 
@@ -129,8 +131,9 @@ OWN-01–OWN-07 and ADM-01–ADM-04. It includes exactly the three role-specific
 features, their non-AI fallbacks, security and usage control, and the environment
 kill switch.
 
-Four stories are stretch: favourite cafés (CUS-07), requesting a boost (OWN-08),
-runtime Admin AI controls (ADM-05) and boost decisions (ADM-06). There is no
+Eleven stories are stretch: favourite cafés (CUS-07), requesting a boost (OWN-08),
+the owner operations OWN-09–OWN-15, runtime Admin AI controls (ADM-05) and boost
+decisions (ADM-06). There is no
 in-app payment system in either scope.
 
 ## User stories
@@ -167,6 +170,13 @@ in-app payment system in either scope.
 | OWN-06 | As a café owner, I want a sales dashboard with daily totals, top items and sales by day of week, so that I can understand my café's sales. | Medium | MVP |
 | OWN-07 | As a café owner, I want a Prep Advisor dashboard panel that suggests which items to prepare more or less of by day of week using aggregated sales only, quotes each suggestion's numbers, applies nothing automatically and falls back to the top-items table, so that I can make preparation decisions. | High | MVP |
 | OWN-08 | As a café owner, I want to request a boost with a time-limited Featured badge and a fee that is only recorded, so that I can request additional visibility for my café. | Low | Stretch |
+| OWN-09 | As a café owner, I want a printable prep sheet totalling the items in today's accepted orders, so that I can prepare drinks for today's pickups. | Medium | Stretch |
+| OWN-10 | As a café owner, I want to pause and resume new pre-orders without changing my opening hours, so that I can stop taking orders when I am too busy or unavailable. | Medium | Stretch |
+| OWN-11 | As a café owner, I want to mark specific dates as closed, so that customers cannot book pickups on days I am away. | Low | Stretch |
+| OWN-12 | As a café owner, I want to limit how many orders can share one pickup slot, so that I am not overwhelmed at busy times. | Low | Stretch |
+| OWN-13 | As a café owner, I want to archive and restore menu items, so that I can hide seasonal drinks without deleting them. | Low | Stretch |
+| OWN-14 | As a café owner, I want to mark an uncollected order as a no-show after its pickup time, so that my queue and records show orders that were never collected. | Low | Stretch |
+| OWN-15 | As a café owner, I want to export my café's completed sales for a chosen period as a CSV file, so that I can keep my own records. | Low | Stretch |
 
 ### Admin
 
