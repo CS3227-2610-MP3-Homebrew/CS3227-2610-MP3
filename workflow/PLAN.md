@@ -987,13 +987,13 @@ implementation also requires the paired failing-first evidence.
 
 - **Depends on:** T-55, T-08, T-10
 - **Owner role:** testing
-- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
+- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8, OWN-03.9 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
 - **Description:** Derive failing-first tests for all OWN-03 criteria and the finalized menu boundary, independently of Customer order screens.
 - **Work:** Cover own menu reads/persistence, shared drink enums, integer price bounds and exact SGD formatting, sold-out on/off and Customer-visible sold-out items, new-order refusal and unchanged historical snapshots. Exercise missing/foreign item and café targets, forged parents, main/kit isolation, suspended-owner access, empty/all-sold-out menus and safe source/JSON failures. Add menu lifecycle/removal/concurrency cases only from T-55-approved contracts. Use local authorized café/order fixtures; reuse Customer/shared assertions without taking their criterion ownership.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/owner-menu/`, testing-owned local menu/history/fault fixtures and browser cases under `tests/e2e/owner-menu/`; database/route tests declare node environment.
 - **Prerequisite:** T-55 and governing specs on master, T-08/T-10 infrastructure; T-54 supplies owner-domain layout for final browser integration. Test authoring may use local café fixtures before setup UI is implemented.
 - **Acceptance criteria:**
-  - [ ] All eight listed OWN-03 criteria have named failing-first cases; no unspecified deletion/history behavior is inferred.
+  - [ ] All nine listed OWN-03 criteria have named failing-first cases; no unspecified deletion/history behavior is inferred.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes are recorded in an issue-scoped handoff with local-only fixtures.
 - **Status:** todo
 - **Issue:** [#112](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/112)
@@ -1002,13 +1002,13 @@ implementation also requires the paired failing-first evidence.
 
 - **Depends on:** T-56, T-55, T-54, T-08, T-10
 - **Owner role:** implementation
-- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
+- **Requirements:** OWN-03.1, OWN-03.2, OWN-03.3, OWN-03.4, OWN-03.5, OWN-03.6, OWN-03.7, OWN-03.8, OWN-03.9 — [OWN-03](specs/stories/OWN-03-menu-management.md#acceptance-criteria).
 - **Description:** Implement the owner Menu surface and approved menu operations, reusing T-54 owner layout and the [purchase snapshot boundary](specs/INTEGRATION-SPEC.md#customer-pickup-and-order-boundary).
 - **Work:** Add own-menu reads and approved add/edit/remove/price/sold-out controls with server validation, current parent ownership/workspace checks, RLS and shared HTTP errors. Preserve cents/type vocabulary, visible sold-out items, stale-price/new-order validation and immutable purchase snapshots. Apply only T-55-approved removal/history/concurrency semantics. Keep suspension/approval independent and reuse the existing role/session clients; no inventory, Customer order UI or AI menu-write authority.
 - **File scope:** Proposed owner Menu surface under `src/app/owner/`, T-55-approved owner menu Route Handlers, menu domain modules under `src/server/owner/` and additive menu/policy migrations. Serialize shared owner layout and migrations; no tests/fixtures/mocks.
 - **Prerequisite:** T-56 failing-first evidence, T-55 contracts on master, T-54 owner setup/layout and T-08/T-10 authorization/session controls.
 - **Acceptance criteria:**
-  - [ ] T-56 suite passes, including all eight OWN-03 criteria, cross-parent denial, availability changes and retained purchase snapshots.
+  - [ ] T-56 suite passes, including all nine OWN-03 criteria, cross-parent denial, availability changes and retained purchase snapshots.
   - [ ] Exact `bun run verify` and relevant browser checks pass; an issue-scoped handoff records results without hosted services or acceptance-test edits.
 - **Status:** blocked
 - **Issue:** [#113](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/113)
