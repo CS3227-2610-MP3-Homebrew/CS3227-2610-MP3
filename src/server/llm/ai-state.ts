@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createAiAudit, auditMetadataSchema, type AiAuditMetadata, type AiAuditEvent } from "./ai-audit";
 import { z } from "zod";
 import { brewSourceRevision, prepSourceRevision, cacheKey, canonicalJson, digest } from "./cache-identity";
-import { contextSchema, envelopeSchema, instant, validateResult, type CacheContext, type CacheResult } from "./cache-schema";
+import { brewSourceSchema, contextSchema, envelopeSchema, instant, validateResult, type CacheContext, type CacheResult } from "./cache-schema";
 import { runOperationWithLifecycle, operationFallback, type Options as LlmOptions, type Result as LlmResult } from "./operations";
 import type { TokenUsage } from "./schemas";
 import type { UsageAdmission, UsageEnvironment, UsageRequest, UsageRpc } from "./usage";
@@ -21,7 +21,11 @@ export type AiOperationContext = Omit<AiCacheContext, "model" | "contract"> | {
 };
 type ModerationContext = { operationId: string; actorId: string; feature: "moderation_assistant"; scope: { actorId: string }; cafeId?: undefined };
 type AuditContext = AiAuditMetadata;
-export type AiOperationOptions = Pick<LlmOptions, "requestId" | "getConfig" | "transport" | "signal"> & { refresh?: boolean };
+export type AiOperationOptions = Pick<LlmOptions, "requestId" | "getConfig" | "transport" | "signal"> & {
+  refresh?: boolean;
+  /** Trusted feature-owned current domain checks, before publication/delivery. */
+  revalidate?: (result: Extract<LlmResult, { mode: "ai" }>) => Promise<void>;
+};
 type Envelope = Omit<z.infer<typeof envelopeSchema>, "data"> & { data: CacheResult };
 type Outcome = { outcome: "cache" | "success" | "fallback"; data?: CacheResult };
 const unavailable = () => new Error("AI state unavailable.");
@@ -78,6 +82,9 @@ export function createAiState(options: {
     const ids = z.array(z.uuid()).parse(await eligibleCafeIds(c.actorId));
     if (c.feature === "moderation_assistant") return true;
     if (c.feature === "prep_advisor") return ids.includes(c.cafeId!);
+    // A source was authorized when read, but may have lost eligibility while
+    // awaiting cache/admission work. Never send that stale candidate to a model.
+    if (!data && 'source' in c && !brewSourceSchema.parse(c.source).candidates.every(candidate => ids.includes(candidate.cafeId))) return false;
     return !data || data.suggestions.every(s => "cafeId" in s && ids.includes(s.cafeId));
   }
   async function read(c: CacheContext, checkEnabled = true): Promise<Envelope | null> {
@@ -207,8 +214,10 @@ export function createAiState(options: {
           providerUsage: tokens => { usage = { ...tokens }; },
           beforeReturn: async result => {
             if (!c || !(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
+            await invocation.revalidate?.(result);
             await audit(c, result.source === "cache" ? "cache" : "ready", usage);
             if (!(await authorized(c, c.feature === "moderation_assistant" ? undefined : result.data as CacheResult, false))) throw unavailable();
+            await invocation.revalidate?.(result);
           },
           publish: snapshot.feature === "moderation" ? undefined : async () => {
             if (!c || c.feature === "moderation_assistant" || !candidate) throw unavailable();

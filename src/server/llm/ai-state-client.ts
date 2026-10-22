@@ -15,7 +15,7 @@ export function createConfiguredAiState() {
   const rpc = createUsageRpc();
   return createAiState({
     environment: configuration.environment, rpc,
-    admission: createUsageAdmission({ environment: configuration.environment, rpc, limits: parseUsageLimits(process.env) }),
+    admission: createUsageAdmission({ environment: configuration.environment, rpc, limits: parseUsageLimits(process.env), throwOnUnavailable: true }),
     enabled: () => getConfiguration().ai.enabled,
     eligibleCafeIds: async actorId => {
       const actor = await getVerifiedActor();
