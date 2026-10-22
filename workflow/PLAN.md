@@ -1014,7 +1014,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] Every one of the 27 listed story criteria has named failing-first coverage; all Prep adversarial cases map to guardrails and normal direction examples follow the approved comparison contract.
   - [ ] Exact `bun run verify` and relevant browser results plus fake-provider/evaluation limits are recorded in an issue-scoped handoff without live calls or hosted data.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#118](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/118)
 
 ### T-63: Implement owner sales Dashboard and Prep Advisor
