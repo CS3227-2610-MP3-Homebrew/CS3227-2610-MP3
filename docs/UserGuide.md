@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [1. Getting started](#1-getting-started)
+  - [1.5 Demo accounts for testers](#15-demo-accounts-for-testers)
 - [2. Navigating Homebrew](#2-navigating-homebrew)
 - [3. Your account (all roles)](#3-your-account-all-roles)
 - [4. Customer guide](#4-customer-guide)
@@ -98,9 +99,37 @@ open role page headings.
 
 ### 1.5 Demo accounts for testers
 
-Existing demo-kit credentials can sign in, but this build has no Create demo kit
-control or credential display. Obtain approved test credentials through your
-team; this guide publishes no credentials.
+Anyone can create a separate demo workspace with Customer, Café owner and Admin
+accounts without signing in.
+
+**Where:** Sign in → **Try Homebrew** → **Create demo kit**.
+
+1. Select **Create demo kit**. While the button is disabled, the page says
+   “Creating your demo kit…”.
+2. Save all three sets of **Email** and **Password** details before leaving the
+   page. The page says “Save these credentials now. They are shown only here,
+   once. Use the sign-in form above for each account.” Reloading or leaving
+   clears the display; credentials cannot be retrieved later.
+3. Enter one account's details in the ordinary sign-in form. To try another
+   role, select **Sign out**, then sign in with that account's saved details.
+4. As Customer, browse the approved café and its menu, including a sold-out item.
+   As Admin, inspect the pending second café application and the clearly
+   synthetic pending reviews. Approval, suspension and moderation controls use
+   the ordinary reasons, confirmations and audit log within your kit.
+
+Each kit also has about four weeks of sample collected purchases, unreviewed
+collected orders and a pending order. These are seeded data; Customer ordering,
+review submission, the owner queue and sales/Prep Advisor screens remain
+unavailable in this build. The pending café's separate owner has no published
+credentials. Kits have no automatic expiry or deletion, and creating a kit
+makes no AI request. Kit accounts keep their own AI user allowances while the
+application's global AI limits remain shared.
+
+Creation is limited across users to at most five kits per fixed ten-minute
+window and thirty per Singapore calendar day. A refusal says “Demo kit limit
+reached. Try again in N seconds.”, with the actual wait replacing N. Wait before
+trying again. A temporary failure says “Demo kit service is temporarily
+unavailable. Try again.” No account credentials are shown on failure.
 
 ## 2. Navigating Homebrew
 
@@ -365,8 +394,8 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 ## 9. Known limitations
 
 Customer ordering, order tracking, review writing and favourites, Café owner
-domain tools and Admin café actions remain entry shells or unavailable.
-Demo-kit creation, account password/email changes,
+domain tools remain entry shells or unavailable.
+Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
 sign-out are not available in the current account UI.
 
@@ -378,6 +407,8 @@ sign-out are not available in the current account UI.
 | “Unable to complete account setup. Try again.” | Retry sign-up explicitly when ready. |
 | “Account setup could not be completed. Try signing in; account access is unavailable until setup is resolved.” | Try Sign in; access may remain unavailable until setup is resolved. |
 | “Too many attempts. Try again later.” | Wait before trying again. |
+| “Demo kit limit reached. Try again in N seconds.” | Wait for the displayed duration before creating another kit. |
+| “Demo kit service is temporarily unavailable. Try again.” | Retry creation later; only a successful response supplies credentials. |
 | “An account is already signed in.” | Use that account or sign out before signing in to another. |
 | “Check the account fields and try again.” | Review the email, password and sign-up role, then submit again. |
 | “Unable to complete the request. Try again.” | Check connectivity and retry explicitly; the message does not confirm success. |
