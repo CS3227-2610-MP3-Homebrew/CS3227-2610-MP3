@@ -54,6 +54,22 @@ test("CUS-04.1 CUS-04.3 CUS-04.5: suspended history and owner rejection render i
     const response = await page.request.get(base); const body = await response.json();
     expect(body.items.map((o: { orderId: string }) => o.orderId).sort()).toEqual([pending, accepted, collected, rejected].sort());
     expect(body.items.find((o: { orderId: string }) => o.orderId === collected).collectedAt).not.toBeNull();
+    // Check the rendered lifecycle against the authorized projection, including
+    // retained acceptance timestamps after suspension. Same-page delivery is
+    // exercised separately by the OrderList rerender regressions.
+    for (const order of body.items) {
+      const article = page.getByRole("article").filter({ has: page.getByText(`Order ${order.orderId}`, { exact: true }) });
+      await expect(article.getByRole("heading", { name: f.name, exact: true })).toBeVisible();
+      await expect(article.getByText(unsafe, { exact: true })).toBeVisible();
+      await expect(article.getByText("2 × S$4.50 each", { exact: true })).toBeVisible();
+      await expect(article.getByText("Total: S$9.00", { exact: true })).toBeVisible();
+      await expect(article.getByText(order.state, { exact: true })).toBeVisible();
+      const instants = [order.placedAt, order.pickupAt, order.acceptedAt, order.readyAt, order.collectedAt, order.rejectedAt, order.cancelledAt].filter(Boolean);
+      expect(await article.locator("time").evaluateAll(nodes => nodes.map(node => node.getAttribute("datetime")))).toEqual(instants);
+      await expect(article.getByRole("link", { name: "Review order" })).toHaveCount(order.orderId === collected ? 1 : 0);
+      await expect(article.getByText(publicReason, { exact: true })).toHaveCount([pending, accepted].includes(order.orderId) ? 1 : 0);
+      await expect(article.getByText(`Rejection reason: ${unsafe}`, { exact: true })).toHaveCount(order.orderId === rejected ? 1 : 0);
+    }
   } finally { await admin.dispose(); }
 });
 test("CUS-03.2: no valid pickup slots prevents a purchase and explains unavailable choices", async ({ page }) => {
