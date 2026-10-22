@@ -480,7 +480,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] Every owned criterion has deterministic local/fake failing-first evidence, including rollback, concurrent limits, one-time credentials and seeded-content cases.
   - [ ] `bun run verify` and relevant `bun run test:e2e` results are recorded without hosted or live-provider access.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#54](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/54)
 
 ### T-25: Implement demo kits
@@ -495,7 +495,7 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Acceptance criteria:**
   - [ ] T-24's owned credential, creation, rollback, limit, seed and authority cases pass.
   - [ ] `bun run verify` and relevant `bun run test:e2e` pass with local Supabase/fake AI.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#55](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/55)
 
 ### T-26: Test daily maintenance

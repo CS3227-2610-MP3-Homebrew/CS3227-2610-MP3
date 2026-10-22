@@ -13,6 +13,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
 - [Authentication and authorization](#authentication-and-authorization)
+  - [Demo-kit creation](#demo-kit-creation)
 - [Shared accounts and role navigation](#shared-accounts-and-role-navigation)
 - [AI features and the shared LLM module](#ai-features-and-the-shared-llm-module)
   - [Moderation Assistant](#moderation-assistant)
@@ -78,6 +79,14 @@ Café eligibility reuses those same session/RLS, transport, audit and Suspense
 patterns (internal code/idea reuse), including the existing moderation Admin
 lookup and audit ledger. No external snippet, dependency or workflow was added;
 the MP2 reuse totals are unchanged.
+
+Demo kits reuse the existing private usage-counter store/locking pattern,
+workspace RLS, ordinary Admin RPCs and shared HTTP primitives (internal code
+reuse). Installed Next.js “Preserving UI state” guidance informed the
+layout-effect cleanup for Activity boundaries (idea reuse); the implementation
+adds request cancellation and synchronous pagehide clearing for credentials.
+No external application snippet or workflow file was copied; MP2 reuse totals
+remain five files (two Adapted, two Rewritten, one As is).
 
 ## Setting up, getting started
 
@@ -261,9 +270,9 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Test layout: use `tests/{unit,integration,e2e}/<area>/`, browser specs only under `tests/e2e/`, and `// @vitest-environment node` for database and route tests because Vitest defaults to jsdom. | Playwright reads only `tests/e2e/` and Vitest collects everything else, so one convention lives in the skills that generate plans and tests. |
 | Local Supabase: agents use the fixed-target `bun run db:start`, `bun run db:reset` and `bun run db:check` wrappers; reset and delete bans apply to hosted databases; fixtures are testing-owned. | Migration replay needs a local reset. The wrapper rejects extra arguments and fixes reset to `--local --no-seed`. Prefix allow rules still match command prefixes, so humans review package scripts and configuration before approving them. |
 | `verify` includes unit/integration tests and traceability; e2e runs separately in CI. CI splits `verify`'s steps into parallel jobs and shards Vitest across three runners with their own local Supabase, gathered by one required `verify` job. The testing agent's read boundary is instruction-level, not enforced. | Fast checks gate every change; Chromium exercises a production build separately. Parallel jobs cut a 5–9 minute serial run, mostly database tests, and keep CI time near-flat as tests grow; the gathering job stops a skipped or cancelled job from counting as a pass. Agent instructions restrict context, while the inherited sandbox still permits broader reads. |
-| Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` pointing to them; no Claude Code wrappers for now. | One place to change an agent; workflow files consolidated in `workflow/`. |
+| Agent instructions live in `workflow/agents/<name>.md`, with short Codex wrappers in `.codex/agents/` and Claude Code subagent wrappers in `.claude/agents/` pointing to them. Shared skills stay in `.agents/skills/`; `.claude/skills/<name>/SKILL.md` wrappers only point Claude Code at them. | One place to change an agent or skill whichever assistant a team member uses; workflow files consolidated in `workflow/`. Each Claude wrapper lists only the tools its role needs (no Agent or MCP tools; reviewer has no write tools; security reviewer can write only through Write, for its report), mirroring the Codex wrappers' disabled apps and plugins. Write limits remain behavioral instructions under both tools. |
 | Every agent writes its own numbered handoff, including each review round. | Preserves independent evidence without changing another agent’s report. |
-| The reviewer uses a separate `codex exec --sandbox read-only` CLI process. Each launcher run from Codex needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
+| The reviewer uses a separate `codex exec --sandbox read-only` CLI process, or with `REVIEW_RUNNER=claude` a `claude -p` process with only Read and Bash, Bash limited to read-only git commands and `ls`, `.env*` reads denied, no prompts, MCP servers or skills. Each launcher run from either tool needs human approval outside the sandbox, without an allow rule. | Codex ignores `sandbox_mode` in custom agent files, so the CLI process supplies the review sandbox; the wrapper inherits caller permissions. The launcher runs checks and saves a handoff. |
 | The full loop applies to every issue except minor changes and pairs the human runs in single-agent mode. | Consistent evidence across features without six agent runs for small fixes. |
 | Before each pair, the human chooses the multi-agent loop or single-agent mode, where the coordinating session writes tests, implementation, a self-review and docs itself (see the `sdd-orchestrate` skill). Tests are still committed before implementation, and specs, PLAN content and human gates are unchanged. The human may add one `review.sh` round or security review. | The T-15/T-16 pair took too long and used much of the Codex budget, and most Customer, Owner and Admin features were still unbuilt days before the deadline; a complete product mattered more than running every agent everywhere. Trade-off: no independent reviewer by default, so the session grades its own work; the report and PR say so, and earlier pairs keep their independent evidence. |
 | Per-pair cost limits: full `verify` runs only for testing's failing-first evidence, implementation's final code, each `review.sh` round and CI; the security review runs once, on the first review round's code, and its findings share one fix round; the coordinating session stops only to commit tests, for the final commits, or on a failed gate or decision. | In the T-15/T-16 pair, seven local `verify` runs each took up to 7 minutes as database tests grew, and the loop stopped for a human commit after every round. Trade-offs: implementation rounds are no longer separate commits, so a review report's `Reviewed HEAD` names the test commit rather than the reviewed code; security fixes are checked by the reviewer, not a second security review; docs and close-out rely on the latest verify plus CI. |
@@ -272,17 +281,17 @@ happened before committing. Logs never contain secrets, keys or personal data.
 | Issues are generated from PLAN.md by `workflow/scripts/create-issues.ts`. Agents never create them; `--apply` needs a passing spec check, the merged plan and a human typing the repository name. The script calls `gh`, so the coordinating session requests approval to run it outside the sandbox at stage 1. | Issues copy, rather than redefine, the plan. Tying creation to the merged plan and a terminal confirmation keeps creation a human step that an agent cannot trigger by accident. |
 | A testing/implementation pair is two issues on one branch and one PR named after the testing issue, covering up to three related stories of one role, or one story at the owner's request. | One pair keeps related tests, implementation and review evidence together; the PR closes both issues. The spec agent reports the pair count on every PLAN update. |
 | The pair session sets both tasks to `done` after the latest completed/pass reviewer report, then runs `bun run check:traceability` and `bun run check:specs`; the spec agent reconciles statuses from handoffs on every PLAN update. | Completion follows reviewed evidence. A Status-line edit changes only what those two checks read, and the PR's required `verify` reruns everything. CI does not enforce reviewer evidence; structural PLAN checks remain. |
-| Agents default to `gpt-6.1-sol` at medium effort; the docs agent runs at low effort; the security-reviewer agent and the `review.sh` review worker stay at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. Medium effort shortens authoring runs, and the docs agent's evidence-to-prose task needs less reasoning; Artificial Analysis rates `gpt-6-luna` far weaker at agentic terminal work (Terminal-Bench 4.0: 5% at high, 13% at max, against 31% for `gpt-6.1-sol` at low), so no agent uses it; the two independent reviews keep high effort, where depth has caught real defects. `review.sh` requires the Codex CLI even for teammates using another assistant. |
+| Agents default to `gpt-6.1-sol` at medium effort; the docs agent runs at low effort; the security-reviewer agent and the `review.sh` review worker stay at high effort. Change agent settings in `.codex/agents/*.toml` and launcher defaults in `.agents/skills/sdd-review/scripts/review.sh`; `REVIEW_MODEL` and `REVIEW_EFFORT` override the launcher defaults. | Keeps configuration in the wrappers and launcher. Medium effort shortens authoring runs, and the docs agent's evidence-to-prose task needs less reasoning; Artificial Analysis rates `gpt-6-luna` far weaker at agentic terminal work (Terminal-Bench 4.0: 5% at high, 13% at max, against 31% for `gpt-6.1-sol` at low), so no agent uses it; the two independent reviews keep high effort, where depth has caught real defects. Claude Code wrappers in `.claude/agents/*.md` use `opus` with the same per-agent efforts, and `REVIEW_RUNNER=claude` defaults the review worker to `opus` at high effort, so teammates using Claude Code no longer need the Codex CLI. |
 | Implementation may add supplementary unit tests for introduced internal code under `tests/unit/`, without criterion IDs in titles, and never edits, skips or weakens testing-owned tests, fixtures or config. Files under `.github/workflows/` and other configuration are in scope when named in the task's File scope. Implementation may add one row per workflow file it creates to this guide's Workflow files table, with no other `docs/` edits; stage 3 checks this exception. | Acceptance coverage remains independent while internal code receives focused checks. |
 | Merge gates are the branch ruleset's required `verify` check and the human's diff review; a listed reviewer approves the production job. | Keeps merge ownership with the human and production approval separate. |
-| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. `bun run db:start`, `bun run db:reset`, `bun run db:check`, `bun run test` and `bun install --frozen-lockfile` are also allowed for local Docker and lockfile installs, plus `bun run lint`, `typecheck`, `check:specs`, `check:traceability` and `git status` so read-only checks never prompt. `git diff`, `git log` and `git show` run inside the sandbox and are not allow-listed, because their `--output` option writes a file anywhere. Additional forbidden commands are `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
+| Codex allow rules let `bun run verify` and `bun run test:e2e` run outside the sandbox for a local port, and a browser for e2e; `guardrails.rules` forbids the commands `AGENTS.md` prohibits. `bun run db:start`, `bun run db:reset`, `bun run db:check`, `bun run test` and `bun install --frozen-lockfile` are also allowed for local Docker and lockfile installs, plus `bun run lint`, `typecheck`, `check:specs`, `check:traceability` and `git status` so read-only checks never prompt. `git diff`, `git log` and `git show` run inside the sandbox and are not allow-listed, because their `--output` option writes a file anywhere. Additional forbidden commands are `supabase link`, `supabase db reset --linked`, `supabase db reset --db-url` and `supabase db dump`, including bunx and npx forms. `.claude/settings.json` mirrors both files as Claude Code `allow` and `deny` permission rules and also denies reading or editing `.env*`. | Verification must run for every agent, and forbidden rules back `AGENTS.md` instructions by matching command text only. Prefix rules match a command prefix, so extra arguments also match; the branch ruleset and human review are the real backstops. |
 
 ### Workflow files
 
 Paths are relative to the repository root. This table lists the workflow files
 currently in the repository; `bun run check:specs` fails when one is missing.
-Planned specs are catalogued in `workflow/specs/README.md`. Each Codex wrapper
-loads its workflow instructions.
+Planned specs are catalogued in `workflow/specs/README.md`. Each Codex and
+Claude Code wrapper loads its workflow instructions.
 
 | File | Purpose |
 | --- | --- |
@@ -309,7 +318,7 @@ loads its workflow instructions.
 | `workflow/agents/reviewer.md` | Review scope, launcher/worker boundary, report-only writes, caller-owned repair coordination and independent review status. |
 | `.agents/skills/sdd-review/SKILL.md` | Spec-derived criterion review, meaningful test and technical-contract checks, wrapper/worker procedures and evidence-based verdict format. |
 | `.agents/skills/sdd-review/agents/openai.yaml` | UI metadata and default prompt for the review skill. |
-| `.agents/skills/sdd-review/scripts/review.sh` | Selects and prints upstream/master or origin/master (or validates an explicit ref), runs verify, invokes the configured model in a read-only CLI and saves a new NN-reviewer.md; Codex requires approval outside the sandbox per run. |
+| `.agents/skills/sdd-review/scripts/review.sh` | Selects and prints upstream/master or origin/master (or validates an explicit ref), runs verify, invokes the configured model in a read-only Codex CLI (default) or Claude Code CLI (`REVIEW_RUNNER=claude`, `CLAUDE_BIN` overrides the binary) and saves a new NN-reviewer.md; either tool requires approval outside the sandbox per run. |
 | `.agents/skills/sdd-test/SKILL.md` | Maps criteria to Given/When/Then cases, selects Vitest or Playwright using the installed Next.js guides, and uses minimal local/fake fixtures. Requires `tests/{unit,integration,e2e}/<area>/`, browser specs only in `tests/e2e/`, and `// @vitest-environment node` for database/route tests. |
 | `workflow/scripts/check-traceability.ts` | Checks that every criterion in each done task's Requirements field appears in a test title under tests/; exits 1 with uncovered IDs and owning tasks. |
 | `.agents/skills/sdd-implement/references/supabase.md` | Guidance for server identity checks, permissions, ownership, RLS, safe database access, versioned migrations and local-only verification. Uses the local Supabase scripts, bans hosted resets/deletions and linking, and keeps fixtures testing-owned. |
@@ -334,24 +343,46 @@ loads its workflow instructions.
 | `.github/workflows/deploy-dev.yml` | Migrates and builds a Vercel Preview deployment from master in the development environment, then sets the development alias. |
 | `.github/workflows/deploy-prod.yml` | On v* tag pushes, checks master ancestry, migrates, builds and deploys to Vercel Production in the production environment. |
 | `.github/pull_request_template.md` | PR checklist: requirement IDs, linked issues, links to each agent report, verify, spec-check and test-before-implementation checks, and agent trailers. |
+| `.claude/agents/spec.md` | Claude Code subagent wrapper loading the spec-agent instructions with `opus` at medium effort and only Read, Bash, Edit and Write. |
+| `.claude/agents/testing.md` | Claude Code subagent wrapper loading testing.md with `opus` at medium effort and only Read, Bash, Edit and Write. |
+| `.claude/agents/implementation.md` | Claude Code subagent wrapper loading implementation.md with `opus` at medium effort and only Read, Bash, Edit and Write. |
+| `.claude/agents/reviewer.md` | Claude Code subagent wrapper loading reviewer.md with `opus` at medium effort and only Read and Bash; the review itself runs in the `review.sh` worker. |
+| `.claude/agents/security-reviewer.md` | Claude Code subagent wrapper loading the security-reviewer instructions with `opus` at high effort and only Read, Bash and Write, for its own report. |
+| `.claude/agents/docs.md` | Claude Code subagent wrapper loading docs.md with `opus` at low effort and only Read, Bash, Edit and Write. |
+| `.claude/skills/spec-create/SKILL.md` | Claude Code wrapper exposing the shared story-spec skill; it loads `.agents/skills/spec-create/SKILL.md`. |
+| `.claude/skills/plan-create/SKILL.md` | Claude Code wrapper exposing the shared product-plan skill. |
+| `.claude/skills/sdd-test/SKILL.md` | Claude Code wrapper exposing the shared testing skill. |
+| `.claude/skills/sdd-implement/SKILL.md` | Claude Code wrapper exposing the shared implementation skill; its references stay under `.agents/skills/sdd-implement/`. |
+| `.claude/skills/sdd-review/SKILL.md` | Claude Code wrapper exposing the shared review skill; its launcher stays under `.agents/skills/sdd-review/scripts/`. |
+| `.claude/skills/sdd-docs/SKILL.md` | Claude Code wrapper exposing the shared docs skill. |
+| `.claude/skills/sdd-orchestrate/SKILL.md` | Claude Code wrapper exposing the shared coordination skill as `/sdd-orchestrate`. |
+| `.claude/skills/session-log/SKILL.md` | Claude Code wrapper exposing the shared session-log skill. |
+| `.claude/settings.json` | Project Claude Code permissions: `allow` mirrors `.codex/rules/allow.rules`, `deny` mirrors `.codex/rules/guardrails.rules` and adds `.env*` read/edit denial. Per-user `.claude/settings.local.json` is git-ignored. Rules match command text and prefixes, so the branch ruleset and human review remain the backstops. |
 
 <!-- Add every new workflow file to this table. -->
 
 ### Running independent review
 
 Assign the `reviewer` agent an issue/task and implementation handoff. It uses
-`sdd-review` with the configured model and the installed Bun and Codex CLI:
+`sdd-review` with the configured model, the installed Bun and either the Codex
+CLI (default) or the Claude Code CLI:
 
 ```bash
 bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
+REVIEW_RUNNER=claude bash .agents/skills/sdd-review/scripts/review.sh workflow/handoffs/<issue>-<slug>/NN-implementation.md [base-ref]
 ```
 
 The base defaults to `upstream/master` when it resolves, otherwise `origin/master`.
 The launcher prints the chosen ref and refuses a base that does not resolve to a
-commit, including an explicit base. From a Codex session, run the launcher outside
-the sandbox with the human's approval for each run; never add an allow rule or
-reusable approval prefix. Codex ignores `sandbox_mode` in custom agent files,
-which is why review runs as a separate `codex exec --sandbox read-only` worker.
+commit, including an explicit base. From a Codex or Claude Code session, run the
+launcher outside the sandbox with the human's approval for each run; never add
+an allow rule or reusable approval prefix. Codex ignores `sandbox_mode` in custom
+agent files, which is why review runs as a separate `codex exec --sandbox read-only`
+worker. Claude Code has no equivalent read-only flag, so its `claude -p` worker
+gets no edit or write tools, may run only read-only git commands and `ls`, never
+prompts, and loads no MCP servers or skills; the launcher's before-and-after
+snapshot rejects the report if anything changed. Set `CLAUDE_BIN` when `claude`
+is not on `PATH`, for example to the binary bundled with the VS Code extension.
 Each run saves the next `NN-reviewer.md`;
 existing handoffs stay unchanged. Read its status and verdict: command success
 only means the report was saved. See [reviewer instructions](../workflow/agents/reviewer.md)
@@ -420,8 +451,8 @@ count. `private.ai_usage_admissions` retains successful single-use admission
 identities and timestamps, referencing their operation. All three tables enable
 RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
 
-Demo-kit creation and remaining story fields/lifecycle transitions remain later
-work. Internal AI caches/audit and callable retention cleanup are implemented as
+Demo-kit creation is described [below](#demo-kit-creation). Remaining story
+fields/lifecycle transitions remain later work. Internal AI caches/audit and callable retention cleanup are implemented as
 [described below](#ai-caches-eligibility-and-audit); cleanup is not scheduled.
 
 ### Manual moderation and Admin audit
@@ -570,9 +601,10 @@ govern the implemented Pre-order and My orders surfaces.
 The added nullable `profiles.name` stores the protected Customer name consumed
 by creation; `orders.customer_name` retains its snapshot. Missing, untrimmed or
 invalid names produce the specified safe account-setup conflict without an
-order/key. Current SYS-01 signup and demo provisioning do not capture/populate
-this field. This pair does not add a profile repair endpoint or change account
-contracts; successful order tests provision valid synthetic protected names.
+order/key. Current SYS-01 signup and older unnamed accounts do not populate
+this field; new demo kits seed a valid protected Customer name. The CUS-03 pair
+does not add a profile repair endpoint or change account contracts; successful
+order tests also provision valid synthetic protected names.
 Owner acceptance/collection and menu/settings writers remain separate work.
 
 The order suites contain 25 spec-derived Vitest cases in `tests/unit/orders/`
@@ -784,7 +816,7 @@ The reviewed account integration implements [SYS-01](../workflow/specs/stories/S
 [SYS-02](../workflow/specs/stories/SYS-02-sign-in-out.md),
 [SYS-03](../workflow/specs/stories/SYS-03-role-navigation.md) and the
 [Shared HTTP/browser contracts](../workflow/specs/INTEGRATION-SPEC.md#shared-account-contracts).
-The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
+The sign-in screen also mounts the [Create demo kit flow](#demo-kit-creation).
 
 - `src/lib/accounts/fields.ts` supplies shared strict field schemas, safe text,
   fixed notices and role homes. Client forms disable repeat submissions, clear
@@ -792,8 +824,11 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
 - `src/server/http/json.ts` supplies private/no-store JSON/error responses with
   opaque request IDs, exact Origin and JSON media checks, and the streamed
   65,536-byte UTF-8 body reader shared by accounts, moderation, café actions
-  and LLM operations. The reader preserves account overflow-only awaited
+  and LLM operations, plus anonymous demo creation. The reader preserves account overflow-only awaited
   cancellation and the Admin/LLM abortable cancellation and lock cleanup.
+- `src/server/http/origin.ts` owns exact configured-origin resolution; the Auth
+  adapter re-exports it for existing consumers. Caller host/forwarding headers
+  never establish origin trust.
 - `src/server/auth/accounts.ts` retains POST/method admission, strict account
   fields, account-specific errors and session orchestration. Handlers retain
   their existing method → Origin → media → body → fields → identity order.
@@ -831,6 +866,72 @@ The Create demo kit control belongs to SYS-12.4/T-24/T-25 and is absent here.
   remote `scope: "local"`, clears browser cookies even when remote revocation
   fails, and exposes the fixed uncertainty notice without claiming all-device
   sign-out or immediate revocation of issued access tokens.
+
+### Demo-kit creation
+
+[`SYS-12.4–12.12`](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits)
+and [`SEC-10.1–10.3`](../workflow/specs/AI-SECURITY-SPEC.md#sec-10--demo-access-and-maintenance-safeguards)
+own the demo flow; its public contract is
+[POST /api/demo-kits](../workflow/specs/INTEGRATION-SPEC.md#demo-access-and-maintenance-routes).
+
+- `src/app/_components/demo-kit.tsx` is mounted only on Sign in. It keeps the
+  three published credentials in transient client state, with no browser storage.
+  Activity cleanup clears hidden-page state and aborts pending requests;
+  synchronous pagehide cleanup clears it before browser-history capture.
+- `src/app/api/demo-kits/route.ts` lazily constructs a server-only privileged
+  client after admission. The proxy skips session refresh on this anonymous
+  endpoint; the feature still independently checks method, exact Origin,
+  JSON media, the shared 65,536-byte body bound and strict `{}` before reserving
+  capacity. All responses are private/no-store JSON with opaque request IDs.
+- `src/server/demo-kits/index.ts` owns transport, admission and provisioning.
+  Node crypto generates a 128-bit shared email code and an independent 192-bit
+  random password per identity. The published roles are Customer, owner and
+  Admin; a separate owner is created for the pending café. Passwords go only to
+  Auth and the once-shown creation response, never to seed RPC arguments,
+  application tables, caches or telemetry. No model call is made.
+- `20261022000003_demo_kits.sql` follows CUS-03’s
+  `20261022000002_customer_orders.sql`, reuses its canonical snapshots and
+  bigint money fields. It adds three service-role-only, empty-search-path RPCs
+  without adding duplicate snapshot columns. `reserve_demo_kit`
+  reuses `private.ai_usage_counters` and the existing per-environment transaction
+  lock, checking both fixed ten-minute and Singapore-day bounds before either
+  increment. Database time controls production membership; explicit clock
+  fixtures are accepted only in local/CI. Unavailable counters fail closed;
+  exhaustion returns 429 `RATE_LIMITED` and `Retry-After` seconds.
+- `publish_demo_kit` validates four distinct confirmed Auth identities against
+  the generated email namespace, refuses reassignment and publishes their
+  protected profiles, workspace and all domain data in one transaction. A
+  repeated server call with the same workspace/identity tuple reconciles a lost
+  acknowledgement. Auth/seed failures trigger bounded identity compensation;
+  `discard_demo_identities` additionally handles a lost Auth acknowledgement
+  without deleting any identity that has a profile. Neither RPC is available
+  to anonymous or authenticated application clients.
+- The kit contains one approved café, one separate-owner pending café, three
+  menu items, weekly hours, a cutoff, fifty-six collected purchases across about
+  four weeks, a pending purchase and three synthetic pending moderation reviews.
+  Historical item names/quantities/prices and SGD-cent totals are stored as
+  snapshots. Seed items populate CUS-03’s canonical `name` and `item_ref`;
+  orders carry `SGD` currency and the Customer profile
+  has the protected name `Demo Customer`. The merged CUS-03 screens support
+  kit ordering/history/cancellation; owner writers remain separate work. Dashboard/Prep result quality is
+  verified by T-62, rather than inferred from this dataset's date span.
+- Existing workspace RLS, role restrictions, reason/audit/text-preservation and
+  reversible Admin actions are unchanged. Kit user AI counters remain separate
+  while global AI provider caps are shared with main. No expiry field,
+  automatic kit deletion or new domain write grant is added.
+
+`DEMO_KITS_PER_10_MINUTES` and `DEMO_KITS_PER_DAY` are server-only nonnegative
+integer settings, capped at 5 and 30. Local/CI default to 5/30 only when absent;
+dev/prod must configure both. Missing/invalid hosted values fail closed. Zero
+refuses creation. Use the exact trusted `APP_ORIGIN`/`VERCEL_URL` origin and
+server-only `SUPABASE_SECRET_KEY` as for account provisioning.
+
+Verification lives in `tests/integration/demo-kits/` and
+`tests/e2e/demo-kits/`; internal lifetime regressions are covered by
+`tests/unit/demo-kit-lifetime.test.tsx`. Local Auth/SQL fault fixtures cover
+four identity failures and a seed failure after all identities exist; durable
+admission fixtures cover concurrency, rollover, reconstruction and outages.
+Run the integration/database suites without concurrent external fixture writers.
 
 ## AI features and the shared LLM module
 
@@ -1189,6 +1290,9 @@ loopback and `PORT`. Registration requires server-only `SUPABASE_SECRET_KEY`;
 never expose it through a `NEXT_PUBLIC_` variable. See
 [Shared accounts](#shared-accounts-and-role-navigation) for the transport boundary.
 
+Demo creation also requires server-only `DEMO_KITS_PER_10_MINUTES` and
+`DEMO_KITS_PER_DAY` in dev/prod; see [Demo-kit creation](#demo-kit-creation).
+
 The repository contains static delivery configuration for
 [SYS-07.1](../workflow/specs/TECHNICAL-SPEC.md#sys-07--environment-and-configuration-isolation).
 The [environment and delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery)
@@ -1312,13 +1416,13 @@ The database supplies structural relationships, the current domain role matrix,
 protected Customer/owner Auth provisioning in main, and explicit local
 demonstration data, session refresh/resolution and reusable streaming role gates.
 Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, the read-only audit screen and Customer catalogue/detail
-reads and Customer pickup/history/cancellation and collected-order review surfaces
-are available. Ordering
-requires a valid protected Customer name; current signup/demo provisioning does
-not yet populate it. Other role domain pages remain unavailable or entry
-headings, with the owner no-café state. Owner fulfilment
-race integration remains unverified; AI screens, demo-kit creation, maintenance provisioning, scheduled
+Manual Admin moderation, advisory Admin triage, the read-only audit screen,
+Customer catalogue/detail reads and Customer pickup/history/cancellation and collected-order review surfaces
+are available. Ordering requires a valid protected Customer name: new demo kits
+supply it, while current signup and older unnamed accounts do not. Customer
+review writing and other role domain pages remain unavailable or entry headings,
+with the owner no-café state. Owner fulfilment race integration remains unverified;
+owner café mutations, the remaining AI screens, maintenance provisioning, scheduled
 retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
 transport and AI caches/audit are implemented internally and consumed by Admin
 triage. Live provider compatibility and model quality remain unverified;
@@ -1327,6 +1431,17 @@ rendering, plus scheduled cleanup, require their owning integrations. The admiss
 per-environment transaction lock serializes admissions; no production load test
 has been run. Cleanup exists but nothing schedules it yet, and no monetary
 quota guarantee is supplied.
+Demo creation's Auth staging and domain publication are separate service operations.
+Publication is atomic and ordinary failure compensation is tested, but retries
+are bounded and no durable recovery worker is implemented. Process termination
+or simultaneous Auth/Postgres unavailability can leave unprofiled staged
+identities; a complete kit may remain if publication committed but its
+acknowledgement stays unavailable. The
+[security review](../workflow/handoffs/54-demo-kits/03-security-reviewer.md#open-issues-and-coverage-limits)
+records this SYS-12.6 fault-tolerance/coverage limitation without asserting a
+credential-disclosure or authority bypass. Such unprofiled identities have no
+protected domain role; no hosted crash-recovery claim is made.
+
 The workspace helper requires trusted actor context and supplies only a scope
 prerequisite; Admin triage now supplies its own RLS source/route consumer and
 uses no result cache.
