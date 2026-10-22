@@ -1,0 +1,19 @@
+Who this is for:
+This is for the agent taking over as orchestrator for naa-siuuuu-ff, who owns the Café owner role (OWN stories) on Homebrew, a CS3227 project. The remaining work is the owner menu pair T-56/T-57 (OWN-03, issues #112/#113). Follow .agents/skills/sdd-orchestrate/SKILL.md in the multi-agent loop.
+
+What we covered:
+OWN-01, OWN-02, OWN-04, OWN-05, OWN-06 and OWN-07 are merged into upstream master through PRs #158, #165 and #167. The owner logs and handoffs are merged through PR #168. A testing agent wrote the T-56 menu tests in a scratchpad worktree, and the orchestrator re-checked the stage 2 gate and found it passed. The human chose to read and commit those tests themselves. The session then restarted, and the scratchpad worktree was deleted before the tests were committed, so they are lost.
+
+What was confirmed:
+Menu changes are allowed only for an approved café, including a suspended one; a pending or rejected café gets 409 with no write. The human decided this, but no spec says it yet. The human allows commits, pushes to origin (naa-siuuuu-ff/CS3227-2610-MP3) and PRs to upstream master. Never force-push, rebase or reset, and never read .env*. Run git bare from the main tree, or use git -C for worktrees, and run bun inside "(cd <worktree> && ...)". Put worktrees outside the scratchpad, for example next to the repository, because scratchpad folders are deleted when a session ends. One local Supabase database is shared by every checkout. Run bun run db:reset from the checkout being tested, check that it succeeded, and run one database suite at a time. Never pipe a command into tail inside an && chain, because the pipe hides failures.
+
+Still in progress:
+Branch feat/112-owner-menu exists locally at upstream master 6e905c9 with no test commit. Its old worktree entry is prunable. T-63 is merged but still blocked in PLAN.md, and it must be set to done at the menu close-out. The security P3s SR-01 (the opening_hours update grant) and SR-02 (unbounded submission-key binding) still need a spec decision.
+
+Next steps:
+1. Run git worktree prune, then add a worktree for feat/112-owner-menu outside the scratchpad.
+2. Use the spec agent to amend OWN-03 and the INTEGRATION-SPEC Owner menu boundary with the approved-only rule, in its own docs(OWN-03) PR for the human to approve.
+3. After that PR merges, rerun the testing agent for T-56 so the tests cover the amendment. Remind it to scope page assertions to main, keep fixtures within schema CHECK constraints, use literal test.each titles and give database-heavy tests explicit timeouts.
+4. Stop for the human to commit the tests, then run the implementation agent for T-57.
+5. Run the reviewer and security-reviewer subagents, then the docs agent.
+6. At close-out, set T-56, T-57 and T-63 to done and run check:traceability, check:specs, verify and test:e2e. Push and open a PR that closes #112 and #113.
