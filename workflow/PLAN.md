@@ -1160,7 +1160,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] All seven OWN-09 criteria have named failing-first cases, including the Singapore midnight boundary and no-disclosure checks.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` results are recorded in an issue-scoped handoff; tests use only local Supabase and fake or disabled AI.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#140](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/140)
 
 ### T-68: Implement stretch owner prep sheet
@@ -1175,7 +1175,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-67 suite passes for all seven OWN-09 criteria without changing any order or menu record.
   - [ ] Exact `bun run verify` and relevant browser checks pass; the issue-scoped handoff confirms testing-owned files are unchanged.
-- **Status:** blocked
+- **Status:** done
 - **Issue:** [#141](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/141)
 
 ### T-69: Test stretch owner ordering pause
