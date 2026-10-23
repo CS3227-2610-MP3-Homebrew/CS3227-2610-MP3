@@ -497,7 +497,7 @@ sequenceDiagram
     Hide->>DB: moderate_review: lock and recheck workspace/state
     Note over DB: Hide review and append Admin audit atomically
     DB-->>Hide: Confirmed hidden state
-    Hide-->>UI: Success; refresh queue
+    Hide-->>UI: Success, then refresh queue
 ```
 
 The pickup flow uses server-priced snapshots and a Customer-scoped submission
@@ -519,14 +519,14 @@ sequenceDiagram
     Note over Form,DB: Server pages use session-bound source modules
     Form->>DB: Authorized menu and pickup source reads
     DB-->>Form: Current items, database clock and pickup rules
-    Customer->>Form: Select quantities and pickup time; submit
+    Customer->>Form: Select quantities and pickup time, then submit
     Form->>Orders: POST items, pickup time, expected total, submission key
     Orders->>Orders: Validate transport, Customer and strict input
     Orders->>DB: create_customer_order
-    Note over DB: Serialize key; lock café/sources; validate eligibility and slot
-    Note over DB: Snapshot names/prices; commit pending order, items and key
+    Note over DB: Serialize key, lock café and sources, validate eligibility and slot
+    Note over DB: Snapshot names and prices, commit pending order, items and key
     DB-->>Orders: Pending order (or identical replay)
-    Orders-->>Form: Success; navigate to My orders
+    Orders-->>Form: Success, then open My orders
     Owner->>Queue: Open Order queue
     Queue->>DB: owner_order_queue under owner/workspace RLS
     DB-->>Queue: Own café orders with retained Customer name
@@ -536,7 +536,7 @@ sequenceDiagram
     Owner->>Queue: Mark ready for pick up
     Queue->>Actions: POST /ready with empty body
     Actions->>DB: owner_order_action: accepted to ready
-    Customer->>Owner: Collect pickup; pay at counter
+    Customer->>Owner: Collect pickup and pay at counter
     Owner->>Queue: Mark collected
     Queue->>Actions: POST /collect with empty body
     Actions->>DB: owner_order_action: ready to collected
@@ -2132,8 +2132,7 @@ The linked specifications own the requirements and acceptance criteria:
   protections, secret storage, Vercel/Supabase settings, runner PATH behaviour,
   cron execution, domain reachability or migration/deployment results. Exact
   pinned delivery CLIs and token-free build from pulled settings were not executed
-  by agents. If human execution establishes build authentication is required,
-  the token mapping needs a reviewed build-step change. See the
+  by agents; human-run hosted deployments are the evidence for those. See the
   [delivery security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
   and [Deployment and environments](#deployment-and-environments).
 - `VERCEL_TOKEN` is project-scoped. Account-lookup CLI commands such as
