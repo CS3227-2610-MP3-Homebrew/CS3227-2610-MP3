@@ -16,11 +16,12 @@ when you collect your drinks.
 | Role | Available today | AI feature |
 | --- | --- | --- |
 | Customer | Browse and filter cafés; read menus, Singapore opening hours and public reviews; place pickup orders with a named account; view order history and cancel pending orders. | **Brew Finder** suggests cafés and drinks from an explicit natural-language search. The ordinary catalogue stays available when AI cannot help. |
-| Café owner | Sign up, sign in and access owner navigation. Café application and management pages currently show entry headings. | **Prep Advisor** remains unavailable. |
+| Café owner | Apply to register a café; manage its profile, Singapore opening hours, pickup cutoff and menu; run the order queue and print today's prep sheet; view 28 days of sales. | **Prep Advisor** suggests which items to prepare more or less of on each weekday, from the café's own recent sales, and quotes the numbers behind each suggestion. |
 | Admin | Approve or reject café applications, suspend or un-suspend approved cafés, moderate reviews and inspect the workspace audit log. | **Moderation Assistant** suggests classifications for pending reviews. Admins choose a reason and confirm each moderation action themselves. |
 
-AI suggestions are advice and may be wrong. Searches never place orders, and
-triage never moderates reviews automatically. Local AI checks use fake or
+AI suggestions are advice and may be wrong. Searches never place orders, Prep
+Advisor never changes the menu, and triage never moderates reviews
+automatically. Local AI checks use fake or
 disabled responses; they do not measure live recommendation or classification quality.
 
 ## Try Homebrew with a demo kit
@@ -29,15 +30,16 @@ disabled responses; they do not measure live recommendation or classification qu
 2. Save the Customer, Café owner and Admin credentials before leaving: they are
    displayed only once and cannot be retrieved later.
 3. Sign in with one account. Sign out before trying another role.
-4. As Customer, explore the sample café and menu, place a pickup order or cancel
-   a pending order. As Admin, inspect the sample café application and synthetic
-   reviews in your kit's separate workspace.
+4. As Customer, explore the sample café and menu, place a pickup order, cancel
+   a pending order or review a collected one. As Café owner, accept and fulfil
+   orders, edit the menu and view sales with Prep Advisor. As Admin, inspect the
+   sample café application and synthetic reviews in your kit's separate
+   workspace.
 
 New demo-kit Customers have the protected account name needed to order.
 Current sign-up and older unnamed accounts do not supply that name, and there
-is no account-name repair control. Owner fulfilment tools remain unavailable;
-collected-order examples come from sample purchases. Kit creation is rate limited
-and makes no AI request.
+is no account-name repair control. Kit creation is rate limited and makes no AI
+request.
 
 See the [demo account instructions](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/blob/master/docs/UserGuide.md#15-demo-accounts-for-testers)
 for details.
