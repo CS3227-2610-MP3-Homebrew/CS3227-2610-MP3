@@ -1,0 +1,24 @@
+Who this is for:
+This is for the agent taking over as orchestrator for naa-siuuuu-ff, who owns the Café owner role (OWN stories) on Homebrew, a CS3227 project. The deadline is 23 Oct 2026 at 2pm. Every owner MVP story is now implemented. The remaining work is getting PR #180 merged, plus any stretch work the human chooses. Follow .agents/skills/sdd-orchestrate/SKILL.md.
+
+What we covered:
+- Spec PR #177 (merged) added OWN-03.9: menu create, save and remove need an approved café, including a suspended one. A pending or rejected café gets 409 STATE_CONFLICT with "Menu changes are available once your café is approved." and nothing is written. INTEGRATION-SPEC's Owner menu boundary now fixes the check order: 401/403, 400, no café 404, not approved 409, missing or foreign item 404, suspension-version 409, duplicate name 409.
+- The testing agent wrote the T-56 tests (commit fee8f6c). In single-agent mode, the orchestrator wrote T-57, the self-review and the docs.
+- PR #180 (feat/112-owner-menu) is open. It closes #112 and #113, sets T-56, T-57 and T-63 to done, and contains session log 006. Locally, bun run verify passed (1406 tests) and bun run test:e2e passed (785 tests).
+
+What was confirmed:
+- The human approved changing two older SYS-06.3 tests. In tests/integration/roles-seeds/mutable-writes.test.ts and rls.test.ts, the café is now approved before the owner's direct menu-name update. The human also approved one owner-menu e2e helper fix, so it now always posts JSON. All three are in commit 0ea5627.
+- The human allows commits, pushes to origin (naa-siuuuu-ff/CS3227-2610-MP3) and PRs to upstream master. Never force-push, rebase or reset, and never read .env*.
+- Run git bare from the main tree, or use git -C for worktrees, and run bun as "(cd <worktree> && ...)". Put worktrees next to the repository, never in the scratchpad.
+- Write a session log (session-log skill) at the end of each PR.
+
+Still in progress:
+- PR #180 waits for CI verify and a human review and merge. CI builds the database from scratch. Local checks ran against the shared local database, where 20261023000450_owner_menu.sql was applied with psql instead of bun run db:reset, because another session uses that database.
+- That other session is running OWN-09 (PR #179, feat/140-owner-prep-sheet). If it runs bun run db:reset from its own checkout, the menu functions disappear from the local database until someone resets from a checkout that has the menu migration. Check that its migration timestamp differs from 20261023000450.
+- Open security items needing a spec decision: P3 (direct Data API duplicate menu names by an approved owner; the route path is serialized); SR-01 (opening_hours update grant); SR-02 (unbounded submission-key binding).
+- OWN-08 (boost, T-65/T-66) stays blocked until an ADM-06 story exists, or until the human decides to use local Admin-decision fixtures.
+
+Next steps:
+1. Watch PR #180's verify check. If it fails, read the log and fix it on feat/112-owner-menu (worktree ../wt-112) with a new commit, never by amending or force-pushing.
+2. After #180 merges, run git worktree remove ../wt-112 and ../wt-own03-spec, and update the user-role memory to say all MVP owner stories are merged.
+3. Only on the human's request, start a stretch pair (for example OWN-10 to OWN-15, whose testing tasks are todo). Coordinate use of the shared database with the OWN-09 session.
