@@ -30,11 +30,19 @@ test("quick fill marks hours past midnight as closing next day", () => {
   expect(latest).toEqual([at(5, "20:00", "02:00", true)]);
 });
 
-test("quick fill stays disabled until days are chosen or when it would exceed fourteen intervals", () => {
+test("quick fill stays disabled until days are chosen", () => {
   render(<Harness initial={[1, 2, 3, 4, 5, 6, 7].flatMap(d => [at(d, "06:00", "07:00"), at(d, "08:00", "09:00")])} />);
   expect((screen.getByRole("button", { name: "Choose days to fill" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Every day" }));
   expect((screen.getByRole("button", { name: "Set hours for 7 days" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+test("quick fill stays disabled when it would exceed fourteen intervals", () => {
+  const busy = [2, 3, 4, 5, 6, 7].flatMap(d => [at(d, "06:00", "07:00"), at(d, "08:00", "09:00")]);
+  render(<Harness initial={[...busy, at(2, "10:00", "11:00"), at(3, "10:00", "11:00")]} />);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Quick fill Monday" }));
+  expect((screen.getByRole("button", { name: "Set hours for 1 day" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText("That would make more than fourteen intervals. Remove some first.")).toBeDefined();
 });
 
 test("editing interval times keeps the next-day box consistent", () => {
@@ -55,5 +63,5 @@ test("adding an interval continues from the last interval's day and hours", () =
 test("week at a glance lists each day's hours and closed days", () => {
   render(<Harness initial={[at(2, "09:00", "18:00"), at(5, "22:00", "02:00", true)]} />);
   const week = within(screen.getByRole("list", { name: "Week at a glance" })).getAllByRole("listitem").map(li => li.textContent);
-  expect(week).toEqual(["MonClosed", "Tue9:00 AM – 6:00 PM", "WedClosed", "ThuClosed", "Fri10:00 PM – 2:00 AM (next day)", "SatClosed", "SunClosed"]);
+  expect(week).toEqual(["MonClosed", "Tue09:00 – 18:00", "WedClosed", "ThuClosed", "Fri22:00 – 02:00 (next day)", "SatClosed", "SunClosed"]);
 });
