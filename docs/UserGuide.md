@@ -50,6 +50,7 @@ Admins (section 7).
 Open the app address supplied by your team. Opening `/` sends an anonymous
 visitor to Sign in and a verified signed-in user to their role's home.
 
+![Opening page.png](assets/user-guide-photos/Opening%20page.png)
 ### 1.2 Create an account
 
 **Where:** Sign in → **Sign up**, or `/sign-up`.
@@ -61,6 +62,8 @@ visitor to Sign in and a verified signed-in user to their role's home.
    “Please wait…”.
 4. Successful registration signs you in and opens Browse cafés for a Customer,
    or Dashboard for a Café owner.
+
+![create an account.png](assets/user-guide-photos/create%20an%20account.png)
 
 Use a valid email address, at most 254 characters after surrounding spaces are
 removed and letters converted to lowercase. A new password needs at least eight
@@ -135,6 +138,8 @@ accounts without signing in.
    moderation controls use the ordinary reasons, confirmations and audit log
    within your kit.
 
+![demo kit.png](assets/user-guide-photos/demo%20kit.png)
+
 Each kit also has about four weeks of sample collected purchases, unreviewed
 collected orders and a pending order. New kit Customers can use Pre-order for
 pickup and My orders, including pending-order cancellation, and can review the
@@ -201,6 +206,8 @@ workspace, including closed cafés.
    Select **All opening times** to remove the time filter, or **Reset** to clear
    every filter and return to the first page.
 
+![browse cafes.png](assets/user-guide-photos/browse%20cafes.png)
+
 Ratings use the original ratings of pending and kept reviews, excluding hidden
 reviews. The average displays one decimal place, rounding halves upward. Cafés
 sort by the unrounded average, then more visible reviews, then café reference;
@@ -238,6 +245,10 @@ Customers can read the café's public information without placing an order.
    reviews** for 20-review pages.
 5. Select **Browse cafés** to return to the catalogue.
 
+![inspect cafe.png](assets/user-guide-photos/inspect%20cafe.png)
+
+![menu.png](assets/user-guide-photos/menu.png)
+
 An empty menu shows “No menu items available.”; absent hours show “No opening
 hours scheduled”; no visible reviews shows “No reviews yet”. Café, menu and
 review content displays as text, including any HTML-like wording.
@@ -271,6 +282,8 @@ or `/customer/cafes/{cafeId}/pre-order`.
    opens **My orders** with a pending order and retained drink/price details.
 4. Pay at the counter when collecting your drinks. The form states “Payment at
    pickup. Pay at the counter when you collect your drinks.”
+
+![pre-order.png](assets/user-guide-photos/pre-order.png)
 
 No available choices shows “No valid pickup slots are available within the next
 seven dates.” and disables submission. Invalid selections show “Choose 1–20
@@ -320,6 +333,8 @@ Customers can read their own order history and cancel pending orders.
    purchases and prior terminal orders remain unchanged; un-suspension does not
    revive orders. Owner-rejected history displays its rejection reason as text.
 
+![my orders.png](assets/user-guide-photos/my%20orders.png)
+
 An empty history shows “No orders yet.” A read failure shows “Order information
 is temporarily unavailable. Try again.” rather than an empty collection. Invalid
 pagination shows “Invalid orders page.” If a cancellation cannot be confirmed,
@@ -347,6 +362,12 @@ purchase, or `/customer/orders/{orderId}/review` for that purchase.
    pending. Reopening the page shows the existing review, including a hidden
    review. Submitted reviews cannot be edited or deleted, and hiding/restoring
    does not allow another review for the order.
+
+![review order.png](assets/user-guide-photos/review%20order.png)
+
+**Successful submission:** 
+
+![submitted review.png](assets/user-guide-photos/submitted%20review.png)
 
 Invalid fields retain your entered values and show “Choose an integer rating
 from 1 to 5 and enter nonblank review text of 1–1,000 Unicode code points.”
@@ -445,6 +466,10 @@ café is un-suspended.
 3. Select **Confirm resubmission**. The application returns to “Pending
    review”; resubmitting does not approve the café.
 
+**Successful application:**
+
+![cafe application - approve.png](assets/user-guide-photos/cafe%20application%20-%20approve.png)
+
 ### 5.3 Manage your café profile, hours and pickup rules
 
 **Where:** **Café profile** (`/owner/cafe`).
@@ -461,6 +486,8 @@ café is un-suspended.
    at a glance and quick fill, is described under “Set the weekly opening
    hours” in section 5.2.
 5. Select **Save changes**. The page says “Café settings saved.”
+
+![cafe profile.png](assets/user-guide-photos/cafe%20profile.png)
 
 All three settings save together; if one is invalid, nothing is saved and the
 invalid field is marked. Opening hours and times are always Singapore time,
@@ -492,6 +519,8 @@ prices they bought, the total, and the pickup and event times in Singapore time.
 4. When the customer collects it, select **Mark collected**. The order moves
    to History as Completed.
 
+![order queue.png](assets/user-guide-photos/order%20queue.png)
+
 If the customer cancelled, an Admin suspended the café, or someone else already
 acted, the queue shows “Order changed. Refresh to see its current state.” and
 reloads the page you were on. Completed, Rejected and Cancelled orders cannot be
@@ -522,6 +551,14 @@ when you reload the page. With no accepted orders, the sheet shows “No accepte
 orders for today.” If the sheet cannot be loaded, it shows “The prep sheet is
 temporarily unavailable. Try again.” Without a café, it shows **Apply for a
 café**.
+
+**Before accepting order:** 
+
+![prep sheet - before accept.png](assets/user-guide-photos/prep%20sheet%20-%20before%20accept.png)
+
+**After accepting order:** 
+
+![prep sheet - after accept.png](assets/user-guide-photos/prep%20sheet%20-%20after%20accept.png)
 
 ### 5.5 View your sales
 
@@ -557,6 +594,8 @@ including sold-out ones, but cannot order a sold-out item.
 3. To remove an item, select **Remove**, then **Confirm removal**. **Keep
    item** cancels. Removal cannot be undone; adding the same name again creates
    a new item.
+
+![manage menu.png](assets/user-guide-photos/manage%20menu.png)
 
 Names are 2–100 characters and must be unique on your menu, ignoring spaces and
 letter case; a duplicate shows “Another item on your menu already has this
@@ -602,6 +641,12 @@ suspended cafés. Existing main and demo-kit Admin accounts use the same control
    stay unchanged; each successful action records one audit entry. A failed
    action changes neither the review nor its audit history.
 
+![moderation queue.png](assets/user-guide-photos/moderation%20queue.png)
+
+**To review a review:**
+
+![review reviews.png](assets/user-guide-photos/review%20reviews.png)
+
 An empty tab says “No reviews in this tab.” If another action changed the review,
 “Review record changed. Current state: pending.” (or `kept` / `hidden`) appears;
 review the refreshed row before choosing another action. Save failures show
@@ -624,6 +669,8 @@ The read-only audit log shows Admin actions in your workspace.
    not appear here. Reasons display as plain text.
 3. Use **Previous** and **Next** for 50-entry pages, newest first with entry
    reference breaking ties. Filter and page remain in the URL.
+
+![audit log.png](assets/user-guide-photos/audit%20log.png)
 
 No matches shows “No audit entries.” with filter navigation retained. Loading
 shows “Loading audit…”. A failure shows “Unable to load audit entries.” with
