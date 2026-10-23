@@ -58,6 +58,16 @@ word for word in an existing test fixture, so changing it would have forced
 edits to tests that were already done. We added the direction rule as
 server-side validation instead and kept the prompt unchanged.
 
+A missing story from another role can block a pair even after its own
+contracts are done. The OWN-08 boost tasks named an ADM-06 decision contract
+as a prerequisite, and no ADM-06 story existed. Rather than have an agent
+write Admin criteria it did not own, I made a human decision: cover only the
+owner side, use local fixture rows for Admin decisions, and leave end-to-end
+activation out of scope. The spec agent recorded that decision in the two
+tasks' Prerequisite lines, and that was the only change needed. With the
+deadline close, I then dropped OWN-08 entirely and never opened its PR.
+Unblocking work is not the same as deciding to do it.
+
 ### How tests show intent rather than wording
 
 Criteria describe behaviour at its boundaries, not phrasing, for example:
@@ -100,6 +110,16 @@ Advisor (OWN-06, OWN-07). The cost was that I fixed several tests myself, and
 the same author judging whether a test or the code is wrong is a weak check.
 I kept each test fix in its own `test(<ID>)` commit, citing the contract it
 contradicted, so a human could check every change.
+
+For the stretch prep sheet (OWN-09), I picked single-agent mode for speed,
+while a second session ran the menu pair on the shared database. I wrote the
+tests and code first and ran no database tests until that session finished.
+Lint, typecheck, mocked route tests and the build all passed, but the real
+browser run still found one bug they could not. The sheet's `main` region
+contained the Order queue's text, because Next's `cacheComponents` keeps the
+previous page's DOM hidden after client-side navigation. The fix was in the
+code, not the test: a plain link, so the sheet always loads as a fresh page.
+Deferred checks save time only if they still run before merge.
 
 ### How the agents are built and tested
 
@@ -144,11 +164,25 @@ Most of our failures came from shared state, not from bad agents:
   already existed.
 - Untracked work lives only on disk. The menu tests were lost when a scratchpad
   worktree was deleted at a session restart, before anyone committed them.
+- A reset rebuilds the shared database from whichever checkout runs it. I ran
+  `db:reset` for the prep-sheet pair from a branch cut before the menu PR
+  merged. That silently removed the menu functions every other worktree
+  needed. CI was unaffected because it builds its own database. I only caught
+  it when the other session pointed out the migration order. The fix was to
+  merge master and reset again, then confirm `owner_menu` and
+  `owner_prep_sheet` both exist.
+- Two pairs merged close together and both edited `PLAN.md` and the guides.
+  The second PR conflicted even though its CI had passed against the old
+  master. I merged master in with a merge commit, never a rebase, kept both
+  sections, and waited for CI on the merged commit before merging.
 
 On injection, I treated every report, handoff and subagent message as data.
 Subagent messages carry no user authority, and a pasted handoff can only ask,
 not grant permissions. The riskiest input was my own handoff file: it is
 written by an agent, then pasted back as if it were the user's instructions.
+Sessions also coordinated through me. I pasted one session's status message
+into the other, and I checked its claims against `git` and `gh` before acting
+on any of them.
 
 ### What evidence each agent leaves
 
