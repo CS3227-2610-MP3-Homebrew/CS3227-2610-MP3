@@ -386,11 +386,12 @@ manage an approved café's menu items, prices and sold-out state.
    500 characters), **Area** (Central, North, South, East or West) and **Public
    pickup address** (10–200 characters). Spaces at either end are removed
    before the length is checked.
-3. Under **Weekly opening hours (Singapore time)**, select **Add opening
-   interval** for each opening period, then choose its weekday, opening and
-   closing times. Tick **closes next day** for overnight hours. You can add up
-   to fourteen intervals, at most two starting on the same weekday, and they
-   must not overlap. Leave the list empty to stay closed.
+3. Under **Weekly opening hours (Singapore time)**, add an interval for each
+   opening period with **Quick fill** or **Add opening interval**, then check
+   its weekday, opening and closing times (see **Edit weekly opening hours**
+   in section 5.3). You can add up to fourteen intervals, at most two starting
+   on the same weekday, and they must not overlap. Leave the list empty to stay
+   closed.
 4. Enter **Last pickup cutoff (minutes before closing)**: a whole number from 0
    to 180. It starts at 15.
 5. Select **Submit application**.
@@ -440,6 +441,31 @@ All three settings save together; if one is invalid, nothing is saved and the
 invalid field is marked. Opening hours and times are always Singapore time,
 whatever your device's time zone. Customers are offered pickup times up to the
 cutoff before each closing time; existing orders keep their pickup times.
+
+**Edit weekly opening hours.** The same editor appears on **Café application**
+and **Café profile**. Opening is inclusive and closing exclusive.
+
+- **Week at a glance** shows each day, Mon to Sun, with its intervals in
+  24-hour time, for example “09:00 – 18:00”. Intervals that close the next day
+  end with “(next day)”; days without intervals show “Closed”.
+- **Quick fill** sets the same hours on several days at once. Choose
+  **Weekdays**, **Weekends** or **Every day**, or tick individual days
+  (**Clear days** unticks them all). Set **Opens at** and **Closes at**, which
+  start at 09:00 and 18:00, then select the fill button, for example **Set hours for 5 days**. This
+  replaces any intervals already listed for those days. Until you choose a
+  day, the button reads **Choose days to fill** and is unavailable. Hours that
+  run past midnight show “These hours run past midnight and will close the
+  next day.” If filling would make more than fourteen intervals, the button is
+  unavailable and the editor says “That would make more than fourteen
+  intervals. Remove some first.”
+- **Add opening interval** copies the last interval's hours onto the following
+  day (Sunday is followed by Monday). With no intervals, it starts on Monday,
+  09:00 to 17:00. The counter beside it shows how many of the 14 intervals you
+  have used, and the button is unavailable at 14.
+- **Closes next day** is ticked for you whenever you change an interval's
+  times so that closing is at or before opening, and unticked when closing is
+  after opening. You can still tick or untick it yourself.
+- Select **Remove** to delete an interval.
 
 A suspended café can still be managed; the page says “This café is suspended
 and hidden from customers.” If an Admin suspends or un-suspends the café while
