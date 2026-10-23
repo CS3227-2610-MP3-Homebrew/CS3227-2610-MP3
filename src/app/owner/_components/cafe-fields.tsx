@@ -39,11 +39,8 @@ const overnight = (opensAt: string, closesAt: string, current: boolean) => {
   const opens = minutesOf(opensAt), closes = minutesOf(closesAt);
   return opens === null || closes === null ? current : closes <= opens;
 };
-const clock = (time: string) => {
-  const m = minutesOf(time); if (m === null) return "--:--";
-  const hour = Math.floor(m / 60);
-  return `${hour % 12 || 12}:${String(m % 60).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
-};
+/** 24-hour HH:mm, matching the Singapore times shown elsewhere on owner pages. */
+const clock = (time: string) => minutesOf(time) === null ? "--:--" : time;
 const byDay = (a: HoursRow, b: HoursRow) => Number(a.weekday) - Number(b.weekday) || a.opensAt.localeCompare(b.opensAt);
 const chip = "rounded-full border px-3 py-1 text-sm";
 

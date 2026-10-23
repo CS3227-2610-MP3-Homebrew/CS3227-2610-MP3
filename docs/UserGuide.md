@@ -398,23 +398,23 @@ manage an approved café's menu items, prices and sold-out state.
 hours and pickup rules** on **Café profile** (section 5.3). Times are Singapore
 time.
 
-- **Week at a glance** lists Monday to Sunday with each day's intervals, for
-  example “9:00 AM – 6:00 PM”, followed by “(next day)” for overnight hours.
-  Days without hours show “Closed”. It updates as you edit.
+- **Week at a glance** lists Monday to Sunday with each day's intervals in
+  24-hour time, for example “09:00 – 18:00”, followed by “(next day)” for
+  overnight hours. Days without hours show “Closed”. It updates as you edit.
 - **Quick fill** sets one interval on several days at once. Select **Weekdays**,
   **Weekends** or **Every day**, or tick individual days; **Clear days** unticks
-  them all. Set **Opens at** (9:00 AM at first) and **Closes at** (6:00 PM at
+  them all. Set **Opens at** (09:00 at first) and **Closes at** (18:00 at
   first), then select **Set hours for N days**. The button reads **Choose days
   to fill** and stays disabled until you tick a day. Quick fill replaces any
   intervals already listed for the ticked days. If the new total would pass
   fourteen intervals, the page says “That would make more than fourteen
   intervals. Remove some first.” and the button stays disabled.
-- **Add opening interval** adds one row. The first row is Monday, 9:00 AM to
-  5:00 PM. Later rows copy the last row's hours onto the following weekday. The
+- **Add opening interval** adds one row. The first row is Monday, 09:00 to
+  17:00. Later rows copy the last row's hours onto the following weekday. The
   page shows how many of the 14 intervals you have used.
 - In each row, choose the **Weekday**, **Opens at** and **Closes at**, or select
   **Remove** to delete the row. **Closes next day** is ticked for you whenever
-  closing is not after opening (for example 6:00 PM to 2:00 AM), and cleared
+  closing is not after opening (for example 18:00 to 02:00), and cleared
   otherwise. You can still tick or untick it yourself. Quick fill shows “These
   hours run past midnight and will close the next day.” for overnight hours.
 - Opening is inclusive and closing is exclusive.
