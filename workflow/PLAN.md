@@ -410,11 +410,11 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Verify [defined core flows](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior) once screens exist.
 - **Work:** Cover sign-up/sign-in/navigation, browsing/pickup/reviews, café/menu/orders, application/moderation and three AI panels/fallbacks. Require no unresolved automated accessibility violations; complete flows at 360 px and representative wider viewports with readable labels/errors, reachable controls and no clipping/overlap/page-level horizontal scrolling. No full-conformance/manual-assessment or invented performance target.
 - **File scope:** Proposed `tests/e2e/core-ui/` browser checks and local/fake fixtures.
-- **Prerequisite:** BLOCKED: merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task. Owner core surfaces are T-54 (application/profile/pickup), T-57 (menu), T-60 (queue) and T-63 (sales/Prep); their contract prerequisites remain explicit in their own tasks.
+- **Prerequisite:** merged core story specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; accessibility-specific testing dependencies belong to this testing task. Owner core surfaces are T-54 (application/profile/pickup), T-57 (menu), T-60 (queue) and T-63 (sales/Prep); their contract prerequisites remain explicit in their own tasks.
 - **Acceptance criteria:**
   - [ ] Every technical core flow has accessibility and viewport completion evidence.
   - [ ] Tests create no missing screens or new product requirements.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#50](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/50)
 
 ### T-20: Implement accessibility and responsive corrections
@@ -425,11 +425,11 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Correct existing screens against [core-flow UI criteria](specs/TECHNICAL-SPEC.md#accessibility-and-responsive-behavior).
 - **Work:** Resolve the automated accessibility and 360 px/wider layout/control findings using existing Tailwind tokens/components. Preserve labels, errors and reachable controls; no new screen, full-conformance claim or performance threshold.
 - **File scope:** Existing `src/app/` screens/styles; proposed shared presentation fixes only.
-- **Prerequisite:** BLOCKED: core specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; T-19 evidence. Owner surface prerequisites are supplied through T-19 and its T-54/T-57/T-60/T-63 dependencies; corrections extend those owners rather than recreating their screens.
+- **Prerequisite:** core specs/screens for SYS-01–SYS-03, CUS-01–CUS-06, OWN-01–OWN-07 and ADM-01–ADM-04; T-19 evidence. Owner surface prerequisites are supplied through T-19 and its T-54/T-57/T-60/T-63 dependencies; corrections extend those owners rather than recreating their screens.
 - **Acceptance criteria:**
   - [ ] Core automated accessibility checks have no unresolved violations; viewport flow checks pass.
   - [ ] `bun run verify` passes with local data/fake AI.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#51](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/51)
 
 ### T-21: Test application AI authorization, rendering and human confirmation
@@ -440,11 +440,11 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Verify application integration of [AI trust boundaries](specs/AI-SECURITY-SPEC.md#assets-actors-and-trust-boundaries) and [human confirmation](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) after the ordinary domain flows exist.
 - **Work:** Exercise every AI endpoint with anonymous/wrong-role/cross-owner/forged-reference/cross-origin requests; assert authorized RLS source selection and no unrelated Admin sales/order access. Scan provider requests, client artifacts, errors and telemetry with synthetic secret/session canaries. Verify whole-result rejection for forged IDs/labels/evidence and inert rendering/no fetching of HTML/script/URL payloads. Exercise explicit per-review Admin confirmation, reason/current-state checks, preserved review text and separate audit, including stale/forged advice. Check that personalized AI responses never enter a shared public cache (SEC-07.2's HTTP part). Use the linked security evaluation cases; ordinary story behavior is a prerequisite, not new scope.
 - **File scope:** Proposed `tests/{unit,integration,e2e}/ai-security/` route/database cases and browser cases under `tests/e2e/ai-security/`, with synthetic local/fake fixtures; extend existing shared test infrastructure without duplicating its owners.
-- **Prerequisite:** BLOCKED: T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred. Owner sales/Prep source, endpoint and rendering are owned by T-63 after T-61 contracts; T-47 and T-33 supply the other two AI features. This pair retains shared SEC ownership.
+- **Prerequisite:** T-01/T-02 contracts must be consistent and merged, T-08/T-10/T-14/T-16 must exist, and merged CUS-01/CUS-02/CUS-05/CUS-06, OWN-06/OWN-07, ADM-03/ADM-04 specs and their required source/query/endpoint/rendering/confirmation surfaces must exist. Account sessions use the existing foundation harness. No missing product rule may be inferred. Owner sales/Prep source, endpoint and rendering are owned by T-63 after T-61 contracts; T-47 and T-33 supply the other two AI features. This pair retains shared SEC ownership.
 - **Acceptance criteria:**
   - [ ] Each owned SEC criterion has deterministic local/fake negative and positive evidence, including browser rendering and stale confirmation cases.
   - [ ] Failing-first results and `bun run verify`/`bun run test:e2e` results are recorded without live provider or hosted access.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#52](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/52)
 
 ### T-22: Integrate application AI authorization, rendering and human confirmation
@@ -455,11 +455,11 @@ Retired IDs: ASM-01. Demo-access and maintenance contracts are specified by T-23
 - **Description:** Connect the shared AI controls to existing authorized application flows under the approved [HTTP](specs/INTEGRATION-SPEC.md#shared-http-boundary) and [security](specs/AI-SECURITY-SPEC.md#cache-rendering-and-human-confirmation) contracts.
 - **Work:** Connect approved endpoints to verified session/role/scope and same-origin gates, authorized RLS source reads, minimal validated feature operations and safe result/error rendering. Close canary leakage paths and reject whole invalid results without executable text or model-driven fetches. Serve AI results as private, uncacheable responses. Integrate explicit per-review confirmation with existing domain validation and T-31's Admin audit persistence, preserving text and requiring a reason. Reuse prior guards/adapters/repositories; do not recreate story queries, domain lifecycles, screens or infrastructure owned by earlier tasks.
 - **File scope:** Existing story route/UI/domain surfaces; shared server-boundary fixes under `src/server/` as required. T-14 retains provider/schema ownership and T-16 persistent cache/audit ownership; serialize shared edits.
-- **Prerequisite:** BLOCKED: all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task. T-21 includes T-63 owner Prep integration and the T-47/T-33 AI surfaces; this task fixes shared boundaries without acquiring their story criteria.
+- **Prerequisite:** all T-21 contract/surface prerequisites and T-21 failing-first evidence. Missing story contracts remain blockers; no new product behavior is authorized by this task. T-21 includes T-63 owner Prep integration and the T-47/T-33 AI surfaces; this task fixes shared boundaries without acquiring their story criteria.
 - **Acceptance criteria:**
   - [ ] All T-21 application security cases pass; no role expansion, automatic moderation, executable model text or secret/content leakage.
   - [ ] `bun run verify` and `bun run test:e2e` pass with local Supabase/fake AI; no live verification or deployment.
-- **Status:** blocked
+- **Status:** todo
 - **Issue:** [#53](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/53)
 
 ### T-23: Specify peer-tester demo access and daily maintenance
