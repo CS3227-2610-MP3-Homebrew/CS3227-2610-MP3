@@ -419,9 +419,9 @@ manage an approved café's menu items, prices and sold-out state.
 hours and pickup rules** on **Café profile** (section 5.3). Times are Singapore
 time.
 
-- **Week at a glance** lists Monday to Sunday with each day's intervals in
-  24-hour time, for example “09:00 – 18:00”, followed by “(next day)” for
-  overnight hours. Days without hours show “Closed”. It updates as you edit.
+- **Week at a glance** lists Monday to Sunday with each day's opening and
+  closing times, followed by “(next day)” for overnight hours. Days without
+  hours show “Closed”. It updates as you edit.
 - **Quick fill** sets one interval on several days at once. Select **Weekdays**,
   **Weekends** or **Every day**, or tick individual days; **Clear days** unticks
   them all. Set **Opens at** (09:00 at first) and **Closes at** (18:00 at
@@ -695,6 +695,8 @@ Main and demo-kit Admins use the same controls within their own workspace.
    in **Audit log**. Approved, non-suspended cafés become eligible for customer
    access; rejected cafés remain hidden. Approval cannot be reversed here.
 
+![cafe application - admin.png](assets/user-guide-photos/cafe%20application%20-%20admin.png)
+
 Reasons retain their submitted text and spacing. They are private to that café's
 owner and Admins in its workspace. The audit log displays them as plain text.
 An empty queue shows “No pending applications.” Loading shows “Loading cafés…”.
@@ -715,6 +717,8 @@ Admins can change the suspension state of approved cafés in their own workspace
    outstanding pending, accepted and ready orders with “Cafe is suspended”.
    Collected purchases and existing menu/hour/review records remain unchanged.
    Un-suspension restores eligibility without reviving cancelled orders.
+
+![Cafes - admin.png](assets/user-guide-photos/Cafes%20-%20admin.png)
 
 The Admin reason remains private; the fixed cancellation reason does not reveal
 it. Owner access to retained café records remains available. Customers see the
@@ -752,6 +756,8 @@ reviews in their own workspace, including existing demo-kit accounts.
    or changing page discards advice. A conflicting action removes the affected
    suggestion and shows the review's current state.
 
+![AI- admin.png](assets/user-guide-photos/AI-%20admin.png)
+
 Usage limits apply per Admin and across the environment; one click permits at
 most one provider attempt. If AI cannot run, the manual queue remains usable:
 
@@ -787,6 +793,11 @@ their own workspace, including demo kits.
    the ordinary filtered catalogue remains below it.
 4. Open a café using its name. Café access is checked again. To order, use the
    separate Pre-order flow in section 4.3; searching never places an order.
+
+In this example, AI returned no suggestions for the request, so the advice
+area shows “No close match found”.
+
+![AI - customer.png](assets/user-guide-photos/AI%20-%20customer.png)
 
 The ordinary filtered catalogue stays sorted by rating. When AI cannot provide
 advice, the page shows one of these messages and keeps that catalogue usable:
@@ -831,6 +842,11 @@ The panel shows your top-items table instead of advice when:
 
 A suggestion is only shown if it agrees with the numbers: “more” needs that
 weekday to be above the item's weekday average, “less” below it.
+
+In this example, AI advice is unavailable, so the panel shows the top-items
+table instead.
+
+![AI - owner.png](assets/user-guide-photos/AI%20-%20owner.png)
 
 ## 8. Reference
 
