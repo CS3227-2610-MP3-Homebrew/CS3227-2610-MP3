@@ -82,3 +82,88 @@ should have finished the MVP owner specs before writing seven stretch stories.
 <!-- Which tasks benefit from specialised agents? How are those agents built and
 tested? What must one agent pass to the next? Where could errors or malicious
 instructions slip through? What evidence does each agent leave? -->
+
+### Which tasks benefit from specialised agents
+
+Splitting testing from implementation paid off most. The testing agent reads
+only the spec, so its tests encode what the spec means, not how the code was
+planned. That separation found a contradiction no single agent would have
+noticed: an existing Prep Advisor fixture (T-14) suggested "more" for an item
+whose weekday was below its average, which the new direction rule OWN-07.16
+forbids. Independent review helped too. The reviewer and security-reviewer
+subagents on the café setup pair found no blockers, but they did flag a
+pre-existing grant that lets owners edit opening times directly (SR-01). No
+task in our plan would have looked at that.
+
+Single-agent mode was faster for the order queue (OWN-05) and sales and Prep
+Advisor (OWN-06, OWN-07). The cost was that I fixed several tests myself, and
+the same author judging whether a test or the code is wrong is a weak check.
+I kept each test fix in its own `test(<ID>)` commit, citing the contract it
+contradicted, so a human could check every change.
+
+### How the agents are built and tested
+
+Each agent is a short wrapper in `.claude/agents/` that points to one
+instruction file in `workflow/agents/` and lists only the tools that role
+needs: the reviewer has no write tools, and the security reviewer can write
+only its own report. When `review.sh` could not run because no Codex or Claude
+CLI was on the path, I ran the reviewers as subagents instead. That opened a
+gap: the reviewer cannot write, so I, as orchestrator, saved its report, and
+nothing stops the orchestrator from editing what it saves. The gates are the
+real tests of an agent:
+- a scope check that the agent touched only its own paths
+- a manifest check on `package.json`
+- `check:specs` and `check:traceability`
+- `bun run verify`, rerun by the orchestrator rather than trusted from a report
+
+### What one agent must pass to the next
+
+A handoff needs more than "completed". It needs the exact route paths and
+seams the tests expect, the criteria it could not assert, and the commands it
+actually ran. Lessons need to travel too. I gave the menu testing agent five
+rules learned from the earlier pairs:
+- scope page assertions to `main`, because the owner navigation repeats link text
+- send raw-string bodies only where 415 is expected
+- keep fixtures inside schema CHECK limits
+- give database-heavy tests explicit timeouts
+- use literal `test.each` titles so traceability counts them
+
+Handoffs also go stale. After I changed the nav link, the implementation report
+still described the old link, and the reviewer flagged that its e2e evidence
+came from an earlier tree. The fix is to rerun the affected tests on the final
+tree before review.
+
+### Where errors and malicious instructions slip through
+
+Most of our failures came from shared state, not from bad agents:
+- One local Supabase database served every worktree, so parallel agents
+  corrupted each other's runs. We had to serialize database suites by hand.
+- I piped `bun run db:reset` through `tail` inside an `&&` chain. The failed
+  migration was hidden, and the queue tests then "passed" against a
+  half-migrated database, because they only checked row-level security that
+  already existed.
+- Untracked work lives only on disk. The menu tests were lost when a scratchpad
+  worktree was deleted at a session restart, before anyone committed them.
+
+On injection, I treated every report, handoff and subagent message as data.
+Subagent messages carry no user authority, and a pasted handoff can only ask,
+not grant permissions. The riskiest input was my own handoff file: it is
+written by an agent, then pasted back as if it were the user's instructions.
+
+### What evidence each agent leaves
+
+Every agent writes a numbered handoff in the pair's folder (testing,
+implementation, reviewer, security-reviewer, docs). Each lists the checks it
+ran, its open issues and any suspicious content. Commits carry `Agent:`
+trailers, PR descriptions link each report, and session logs record the human
+decisions. This made close-out auditable: for each criterion I could point to
+a test title, a report and a commit.
+
+### What I would do differently
+
+I would put worktrees outside temporary folders and commit tests as soon as
+the gate passes. I would give each worktree its own database, or a lock, so
+agents never share one. And I would sequence dependent pairs, café setup
+before the queue and sales, from the start, rather than finding out at
+close-out that `check:specs` refuses to mark a task done before its
+dependencies.
