@@ -7,7 +7,8 @@ export { login, failure } from "../moderation/helpers";
 export { current } from "../owner-cafe/fixtures";
 
 export const list = (r: APIRequestContext, query = "") => r.get(routes.menu + query);
-export const post = (r: APIRequestContext, path: string, data: unknown) => r.post(path, { headers: { origin }, data });
+// Always JSON: Playwright sends a bare string or null as application/octet-stream, which the shared transport refuses with 415.
+export const post = (r: APIRequestContext, path: string, data: unknown) => r.post(path, { headers: { origin, "content-type": "application/json" }, data: JSON.stringify(data) });
 export const create = (r: APIRequestContext, data: unknown) => post(r, routes.menu, data);
 export const save = (r: APIRequestContext, id: string, data: unknown) => post(r, routes.item(id), data);
 export const remove = (r: APIRequestContext, id: string, data: unknown) => post(r, routes.remove(id), data);
