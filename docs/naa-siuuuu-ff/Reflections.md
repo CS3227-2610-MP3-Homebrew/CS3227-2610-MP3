@@ -136,7 +136,8 @@ succeeds in persuading the model, and then limit what that can achieve:
     the previous eligible entry untouched.
 11. **Content-free audit (SEC-09).** Audit events record the outcome (started,
     provider attempt, ready, cache, denied, fallback) and token counts, never
-    the prompt, the sales or the response.
+    the prompt, the sales or the response. The independent security review
+    found one exception, covered under "Where the gaps are".
 
 ### How the features were tested
 
@@ -223,14 +224,27 @@ feature and the feature itself:
 
 ### Where the gaps are
 
-- **No independent security review for OWN-07.** I ran the Sales and Prep
-  Advisor pair in single-agent mode, so I wrote the tests, the code and the
-  self-review. I applied the security reviewer's baseline checks and the
-  evaluation cases myself, which is a weaker check than a separate security
-  reviewer, because the same author judges the code and its tests. The
+- **The security review came late.** I ran the Sales and Prep Advisor pair in
+  single-agent mode, so I wrote the tests, the code and the self-review. The
   self-review found and fixed two P2 issues, a test fixture and a duplicated
-  empty-state message. Neither was a security defect, and it found none, but I cannot rule out
-  one that I missed.
+  empty-state message, and no security defect. On deadline day I ran the
+  security-reviewer agent on the merged code
+  (`workflow/handoffs/118-owner-sales-prep/03-security-reviewer.md`). It
+  confirmed the authorisation, secret, validation, cache and quota controls
+  above and found no P0–P2 issue. It found one P3 issue (SEC-OWN07-01) that I
+  had missed. When a café has too few sales, the handler returns
+  `no_source_data` or `disabled` before the shared operation runs, so that
+  outcome writes no audit event. That breaks SEC-09.1 and OWN-07.14, which
+  say every fallback is audited. The impact is visibility only: nothing
+  reaches the provider and nothing leaks. Scope was frozen, so it stays open
+  as a known gap. The fix needs either a server business date for the
+  insufficient case, or a spec decision that exempts fallbacks decided
+  before the operation starts. My own review missed it because I checked
+  each fallback's output, not whether every path passed through the audit.
+- **Menu names can skip their length limit.** The reviewer also noted, outside
+  this pair, that an owner can rename their own items directly through the
+  Data API without the 2–100 character limit. A very long name would only
+  break that owner's own Prep source, so the risk stays inside one café.
 - **The item name remains a real channel.** Validation stops the model naming
   an item or a number we did not give it, but an injected item name could still
   nudge which allowed suggestions it chooses. The result is wrong advice within
@@ -246,9 +260,12 @@ feature and the feature itself:
 
 ### What I would do differently
 
-I would run the security reviewer on the Prep Advisor and not rely on my own
-self-review, since it is the one feature in my role that sends data to an
-external service. I would also add a test that feeds the validator an
+I would run the security reviewer on the Prep Advisor before merge, not on
+deadline day, since it is the one feature in my role that sends data to an
+external service. Run late, it could only report the audit gap, not get it
+fixed. I would also give the reviewer a worktree with dependencies installed:
+it could not run targeted tests, so its finding rests on reading the code. I
+would also add a test that feeds the validator an
 adversarial label through a stub that follows it, to show the output gate
 failing closed on a model that was fooled. Today the tests show the gate
 rejecting bad results, but not a "fooled" model producing one from an injected
