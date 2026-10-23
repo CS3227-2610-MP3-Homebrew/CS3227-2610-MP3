@@ -13,6 +13,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
   - [Owner order queue](#owner-order-queue)
+  - [Owner prep sheet](#owner-prep-sheet)
   - [Owner café application and settings](#owner-café-application-and-settings)
 - [Authentication and authorization](#authentication-and-authorization)
   - [Demo-kit creation](#demo-kit-creation)
@@ -682,6 +683,36 @@ govern `/owner/orders` and its JSON routes.
 The suites are `tests/integration/owner-queue/` (route failure mapping, body
 bounds and direct RLS) and `tests/e2e/owner-queue/` (API transitions, races
 with Customer cancellation and Admin suspension, isolation and the page).
+
+### Owner prep sheet
+
+The stretch [OWN-09 story](../workflow/specs/stories/OWN-09-prep-sheet.md) and
+the prep-sheet part of the
+[owner stretch operations boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-stretch-operations-boundary)
+govern `/owner/orders/prep-sheet` and `GET /api/owner/prep-sheet`.
+
+- `20261023000500_owner_prep_sheet.sql` adds `public.owner_prep_sheet()`, a
+  SECURITY INVOKER, read-only RPC, so `orders_read`/`order_items_read` RLS
+  supplies café and workspace scope. It derives the owner with the sales
+  helper `private.sales_owner()`, which raises 42501 for other roles. It
+  selects own-café `accepted` orders whose `pickup_at` falls on today's
+  Singapore date (`private.prep_lines`). Item totals group by retained item
+  reference, take the name from the most recently placed included order, and
+  sort by quantity, then name and reference in code-point (`C`) order. Orders
+  sort by pickup, placement, then reference, and `pendingTodayCount` counts
+  today's `pending` orders. No café returns `{prepSheet: null}`.
+- `src/server/owner/prep-sheet.ts` validates the RPC result with a strict Zod
+  `PrepSheet` schema. It serves the GET with the same checks as the sales read:
+  401/403 before any source access, 400 for any query key, and 503 for any
+  source or shape failure. Other methods get 405.
+- The page renders server-side, formats times with `Intl` in `Asia/Singapore`
+  and hides the shell navigation and its own actions under `@media print`.
+  `print-button.tsx` calls `window.print()`. Order queue links to it, and there
+  is no navigation entry.
+
+Tests: `tests/integration/owner-prep-sheet/` (route failure mapping with a
+mocked source) and `tests/e2e/owner-prep-sheet/` (selection, sorting, Singapore
+midnight, isolation, read-only behaviour and the page, including print media).
 
 ### Customer collected-order reviews
 

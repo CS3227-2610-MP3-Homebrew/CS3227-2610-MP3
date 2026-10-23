@@ -369,7 +369,8 @@ queue (section 5.4).
 
 Café owners can apply to register one café, follow its review status, resubmit
 a rejected application, and manage an approved café's description, weekly
-opening hours and pickup cutoff, run the order queue, and view sales with Prep
+opening hours and pickup cutoff, run the order queue and print today's prep
+sheet, and view sales with Prep
 Advisor suggestions on the Dashboard. Menu tools are not yet implemented.
 
 ### 5.2 Apply for a café
@@ -465,6 +466,32 @@ If the customer cancelled, an Admin suspended the café, or someone else already
 acted, the queue shows “Order changed. Refresh to see its current state.” and
 reloads the page you were on. Completed, Rejected and Cancelled orders cannot be
 reopened. Without a café, the queue shows **Apply for a café** instead.
+
+#### Print today's prep sheet
+
+The prep sheet lists what to make for today's pickups. It is read-only and
+uses no AI.
+
+**Where:** **Order queue** → **Prep sheet** (`/owner/orders/prep-sheet`).
+
+1. Open **Order queue** and select **Prep sheet**.
+2. Check the header for the Singapore business date and the time the sheet was
+   generated.
+3. **Item totals** shows each item with its total quantity and the number of
+   orders containing it, largest quantity first.
+4. **Orders** lists each order by pickup time (`HH:mm`, Singapore time) with
+   the customer's name and the items and quantities. Prices and contact details
+   are not shown.
+5. Select **Print** to open your browser's print dialog. The printout leaves
+   out navigation and buttons. Select **Back to Order queue** to return.
+
+Only orders you have accepted with a pickup today are included. New orders
+that have not been accepted yet are summarised as “N new orders for today are
+not included until accepted.” Orders accepted after you open the sheet appear
+when you reload the page. With no accepted orders, the sheet shows “No accepted
+orders for today.” If the sheet cannot be loaded, it shows “The prep sheet is
+temporarily unavailable. Try again.” Without a café, it shows **Apply for a
+café**.
 
 ### 5.5 View your sales
 
