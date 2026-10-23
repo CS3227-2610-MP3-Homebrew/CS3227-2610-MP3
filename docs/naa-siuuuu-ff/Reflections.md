@@ -435,6 +435,40 @@ trailers, PR descriptions link each report, and session logs record the human
 decisions. This made close-out auditable: for each criterion I could point to
 a test title, a report and a commit.
 
+### Context management: spreading the work across agents
+
+A multi-agent loop takes longer than a single agent, but it manages context
+better. A model reads its whole context window on every turn, so as one agent's
+session grows, each step costs more than the last. The total over a session
+grows faster than linearly, though prompt caching softens this. A long window
+is also harder to use well, because early details get diluted or dropped. That
+happened to me in single-agent sessions, which grew long enough that I wrote
+handoff files so a fresh orchestrator could take over.
+
+Splitting the work gives each agent a small, focused window. The testing agent
+reads only the spec. The reviewer starts fresh with the diff and the spec. Each
+agent receives a compact handoff instead of the full history, so its reading
+cost per turn stays low and its attention stays on one job. The processing is
+spread across specialised agents, not piled into one ever-growing context.
+
+This is not a way to save tokens, and I should be careful not to claim that.
+Overall a multi-agent run uses more tokens, not the same number. Anthropic's
+engineering write-up of its own multi-agent research system says token
+usage is the main driver of its results, and secondary coverage puts the
+multi-agent figure at around 15 times a plain chat. What we gain is that the
+extra tokens go further, because each agent works in a small window, and that
+we can run more work in total than one window could hold. We pay for it in
+time and cost: every handoff is a sequential step, so our loop was slower than
+single-agent mode, as the owner queue and sales pairs showed. The same write-up
+warns that multi-agent setups suit work that splits into independent strands,
+and are weaker for tightly interdependent tasks such as coding. That matches
+what we saw. The pairs worked because the spec cut testing, implementation and
+review into separable pieces. The gains disappeared whenever one piece needed
+another's context, and I had to carry it across in a handoff.
+
+Sources: [Anthropic, How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system);
+[ByteByteGo summary, for the 15x figure](https://blog.bytebytego.com/p/how-anthropic-built-a-multi-agent).
+
 ### What I would do differently
 
 I would put worktrees outside temporary folders and commit tests as soon as
