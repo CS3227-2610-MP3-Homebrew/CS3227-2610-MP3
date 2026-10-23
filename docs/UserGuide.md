@@ -386,14 +386,38 @@ manage an approved café's menu items, prices and sold-out state.
    500 characters), **Area** (Central, North, South, East or West) and **Public
    pickup address** (10–200 characters). Spaces at either end are removed
    before the length is checked.
-3. Under **Weekly opening hours (Singapore time)**, select **Add opening
-   interval** for each opening period, then choose its weekday, opening and
-   closing times. Tick **closes next day** for overnight hours. You can add up
-   to fourteen intervals, at most two starting on the same weekday, and they
-   must not overlap. Leave the list empty to stay closed.
+3. Under **Weekly opening hours (Singapore time)**, set your opening periods
+   as described in “Set the weekly opening hours” below. You can have up to
+   fourteen intervals, at most two starting on the same weekday, and they must
+   not overlap. Leave the list empty to stay closed.
 4. Enter **Last pickup cutoff (minutes before closing)**: a whole number from 0
    to 180. It starts at 15.
 5. Select **Submit application**.
+
+**Set the weekly opening hours.** The same editor appears under **Profile,
+hours and pickup rules** on **Café profile** (section 5.3). Times are Singapore
+time.
+
+- **Week at a glance** lists Monday to Sunday with each day's intervals, for
+  example “9:00 AM – 6:00 PM”, followed by “(next day)” for overnight hours.
+  Days without hours show “Closed”. It updates as you edit.
+- **Quick fill** sets one interval on several days at once. Select **Weekdays**,
+  **Weekends** or **Every day**, or tick individual days; **Clear days** unticks
+  them all. Set **Opens at** (9:00 AM at first) and **Closes at** (6:00 PM at
+  first), then select **Set hours for N days**. The button reads **Choose days
+  to fill** and stays disabled until you tick a day. Quick fill replaces any
+  intervals already listed for the ticked days. If the new total would pass
+  fourteen intervals, the page says “That would make more than fourteen
+  intervals. Remove some first.” and the button stays disabled.
+- **Add opening interval** adds one row. The first row is Monday, 9:00 AM to
+  5:00 PM. Later rows copy the last row's hours onto the following weekday. The
+  page shows how many of the 14 intervals you have used.
+- In each row, choose the **Weekday**, **Opens at** and **Closes at**, or select
+  **Remove** to delete the row. **Closes next day** is ticked for you whenever
+  closing is not after opening (for example 6:00 PM to 2:00 AM), and cleared
+  otherwise. You can still tick or untick it yourself. Quick fill shows “These
+  hours run past midnight and will close the next day.” for overnight hours.
+- Opening is inclusive and closing is exclusive.
 
 The page then shows **Application status** with “Pending review”, the
 submission time in SGT and your **Submitted details**. Your café stays hidden
@@ -433,7 +457,9 @@ café is un-suspended.
    address, which cannot be changed.
 4. Under **Profile, hours and pickup rules**, edit **Description**, the weekly
    opening intervals and **Last pickup cutoff (minutes before closing)** using
-   the same limits as the application.
+   the same limits as the application. The opening hours editor, with its week
+   at a glance and quick fill, is described under “Set the weekly opening
+   hours” in section 5.2.
 5. Select **Save changes**. The page says “Café settings saved.”
 
 All three settings save together; if one is invalid, nothing is saved and the
