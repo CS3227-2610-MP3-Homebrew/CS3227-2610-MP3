@@ -4,7 +4,7 @@
 Work out why the owner Dashboard's Prep Advisor shows the "AI advice is unavailable" fallback, and make the weekly opening-hours editor easier to use with frontend-only changes.
 
 ## Scope
-Two user-assistant exchanges. The first was a status question about remaining owner work. The second covered two refinement tasks: an AI fallback diagnosis and an hours-editor UI improvement.
+Two user-assistant exchanges. The first was a status question about remaining owner work. The second covered an AI fallback diagnosis and an hours-editor improvement.
 
 ## Key prompts
 - "What other tasks do we have left with regards to feature implementation for the cafe owner?" The answer, from upstream PLAN.md: all MVP owner pairs and OWN-09 are done; only stretch work remains.
@@ -21,7 +21,7 @@ Two user-assistant exchanges. The first was a status question about remaining ow
   - "Add opening interval" now continues from the last interval's day and hours
   - shorter visible labels; the "Interval N" accessible names are kept with screen-reader-only text
 - New control names avoid words the e2e tests match by regex (save, submit, apply, area, description).
-- Correction during the work: jsdom dropped the trailing space at the end of a screen-reader-only span (names came out as "Quick fillFriday"), so the spaces moved outside those spans. A lint rule rejected a module variable reassigned during render in the new test, so it moved into `onChange`.
+- Corrections: jsdom dropped trailing spaces inside screen-reader-only spans ("Quick fillFriday"), so spaces moved outside them; a lint rule rejected a render-time reassignment in the new test.
 - Checks: lint and typecheck pass, all 426 unit tests pass, and 6 new editor tests pass. The owner-cafe e2e tests and `bun run verify` are not yet run because they need the shared database.
 
 ## Files created or modified
