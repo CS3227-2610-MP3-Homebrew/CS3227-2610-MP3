@@ -443,3 +443,27 @@ agents never share one. And I would sequence dependent pairs, café setup
 before the queue and sales, from the start, rather than finding out at
 close-out that `check:specs` refuses to mark a task done before its
 dependencies.
+
+### Skipping heavy checks on documentation-only PRs
+
+Every PR runs the full CI suite, even one that edits only a reflection or a
+session log. The workflow runs lint, typecheck, build, the sharded Vitest
+suites against a fresh local Supabase, and the Playwright end-to-end tests.
+These take a long time, and a documentation PR cannot break any of them. Most
+of my later PRs were logs or reflections, so I spent much of the deadline
+waiting on checks that told me nothing. The required `verify` check also made
+me wait on a merge before I could start the next step.
+
+We would benefit from running only the relevant checks on a PR that touches
+only `docs/`, `logs/` or other prose. `check:specs` and `check:traceability`
+still matter there, because they validate links, IDs and the guide inventory.
+The database, unit and end-to-end suites and the build do not.
+
+The caveat is the branch ruleset, which requires `verify`. A workflow skipped
+by a `paths-ignore` filter never reports a status, so a required check would
+stay pending and block the merge. The fix would be to keep one always-running
+`verify` job that detects what changed, runs the full suite for code and only
+the cheap checks for documentation, and passes in both cases. I have not tried
+this, so the exact setup is untested. The saving would come from trusting the
+change filter, so the filter must default to the full suite for anything
+unfamiliar, such as workflow, configuration or `package.json` changes.
