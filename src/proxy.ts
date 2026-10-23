@@ -5,6 +5,7 @@ import { markCatalogueQuery } from "@/server/catalogue/proxy-query";
 import { markReviewQuery } from "@/server/reviews/customer-query";
 import { markOrderQuery } from "@/server/orders/query";
 import { markQueueQuery } from "@/server/owner-orders/query";
+import { markMenuQuery } from "@/server/owner/menu-query";
 
 /** Refresh transport and preserve strict customer query validation; never authorize. */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
@@ -15,6 +16,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   markOrderQuery(request);
   markReviewQuery(request);
   markQueueQuery(request);
+  markMenuQuery(request);
   const configuration = getConfiguration().public;
   const updates = new Map<string, { value: string; options: CookieOptions }>();
   const responseHeaders = new Headers();

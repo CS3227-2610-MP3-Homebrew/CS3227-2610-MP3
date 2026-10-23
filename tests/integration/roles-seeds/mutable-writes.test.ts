@@ -32,6 +32,8 @@ test.each(cases)("SYS-06.3 SYS-12.2: $source $actorName cannot change $destinati
   const table = qualified(f.fixture.tables[entity]);
   const row = f.data[destination][key];
   const owner = f.data[destination].profiles.owner.actor;
+  // OWN-03.9: only an approved café's owner may change its menu.
+  if (entity === "menu_items") f.eligibility(f.data[destination].cafe, "approved", false);
   f.proveSetup();
 
   const observed = (target: Row) => `select coalesce(json_agg(json_build_object('id',id,'value',${column}::text)),'[]'::json)

@@ -995,7 +995,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] All nine listed OWN-03 criteria have named failing-first cases; no unspecified deletion/history behavior is inferred.
   - [ ] Exact `bun run verify` and relevant `bun run test:e2e` outcomes are recorded in an issue-scoped handoff with local-only fixtures.
-- **Status:** todo
+- **Status:** done
 - **Issue:** [#112](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/112)
 
 ### T-57: Implement owner menu management
@@ -1010,7 +1010,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-56 suite passes, including all nine OWN-03 criteria, cross-parent denial, availability changes and retained purchase snapshots.
   - [ ] Exact `bun run verify` and relevant browser checks pass; an issue-scoped handoff records results without hosted services or acceptance-test edits.
-- **Status:** blocked
+- **Status:** done
 - **Issue:** [#113](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/113)
 
 ### T-58: Finalize owner order queue read and action contracts
@@ -1100,7 +1100,7 @@ implementation also requires the paired failing-first evidence.
 - **Acceptance criteria:**
   - [ ] T-62 suite passes for all 27 criteria; ordinary sales and every authorized fallback remain useful; advice quotes only source numbers and changes no domain record.
   - [ ] Exact `bun run verify` and relevant browser tests pass; issue-scoped handoff records controlled fake-provider/evaluation evidence and any quality limitations.
-- **Status:** blocked
+- **Status:** done
 - **Issue:** [#119](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/119)
 
 ### T-64: Finalize stretch owner boost contracts
