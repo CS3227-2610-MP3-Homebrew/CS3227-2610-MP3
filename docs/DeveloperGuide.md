@@ -8,9 +8,14 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Setting up, getting started](#setting-up-getting-started)
   - [Local demonstration data](#local-demonstration-data)
 - [Development workflow](#development-workflow)
+- [Architectural design](#architectural-design)
+  - [Design decisions](#design-decisions)
+- [Shared UI conventions](#shared-ui-conventions)
 - [Data model and database schema](#data-model-and-database-schema)
   - [Manual moderation and Admin audit](#manual-moderation-and-admin-audit)
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
+  - [Customer pickup orders and retained history](#customer-pickup-orders-and-retained-history)
+  - [Customer collected-order reviews](#customer-collected-order-reviews)
   - [Café applications and suspension](#café-applications-and-suspension)
   - [Owner order queue](#owner-order-queue)
   - [Owner menu](#owner-menu)
@@ -27,6 +32,9 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
 - [Security](#security)
 - [How to test](#how-to-test)
 - [Deployment and environments](#deployment-and-environments)
+- [Planned enhancements](#planned-enhancements)
+- [Design considerations](#design-considerations)
+- [Appendix: Requirements](#appendix-requirements)
 - [Known limitations](#known-limitations)
 
 ## Acknowledgements
@@ -409,20 +417,190 @@ for verification, limits and caller-coordinated fixes.
 
 ## Architectural design
 
-<!-- Describe the architecture, component responsibilities and request flow.
-Include architecture and sequence diagrams for implemented use cases, and
-class or component collaboration diagrams where useful. Link to workflow/specs/. -->
+Homebrew runs one Next.js App Router application on Vercel. The
+[architecture contract](../workflow/specs/TECHNICAL-SPEC.md#architecture) and
+[rendering decisions](../workflow/specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches)
+define these boundaries; the implementation divides responsibilities as follows.
+
+| Component | Implemented responsibility |
+| --- | --- |
+| `src/app/` pages, layouts and client components | Stream role-gated Server Component reads; provide browser forms, navigation and transient interaction state. |
+| `src/app/api/` route handlers | Adapt HTTP requests to server-only feature handlers for accounts, catalogue, orders, owner management, Admin actions, AI, demo kits and maintenance. |
+| `src/proxy.ts` and `src/server/auth/` | Refresh Supabase cookies, resolve verified Auth identities and protected profiles, and enforce role/workspace access. Proxy checks do not replace feature authorization. |
+| Domain modules in `src/server/` | Catalogue, orders, owner orders/menu/settings/sales/prep, reviews and café administration validate inputs and database projections, acquire authorized sources and invoke constrained database operations. Demo-kit and maintenance modules own privileged provisioning. |
+| `src/server/http/` | Shared exact-Origin and JSON media checks, bounded streamed UTF-8 body reading, request IDs, safe error envelopes and `private, no-store` JSON responses. Individual handlers retain their feature-specific validation and check order. |
+| Supabase Auth and PostgreSQL | Email/password sessions, protected role/workspace profiles, RLS-scoped reads, relational constraints and transactional RPC writers; durable usage counters, feature caches and separate AI/Admin audit records. Ordinary domain clients carry the user's session and publishable key. Privileged provisioning and AI-state clients remain server-only. |
+| `src/server/llm/` | Fixed feature prompts/schemas, minimal source context, durable admission, bounded provider transport, typed fallbacks, cache validation and content-free AI accounting. Feature adapters authorize sources before invoking it. |
+| Vercel and GitHub Actions | Vercel hosts the Node application and production maintenance cron. Actions verifies code and runs environment-bound migration/build/prebuilt delivery jobs. GitHub Pages serves only the static product site. |
+
+```mermaid
+flowchart TD
+    Browser[Customer / Owner / Admin browser] --> Proxy[Next.js proxy: session refresh]
+    Proxy --> Pages[App Router pages and role shells]
+    Proxy --> Routes[API route handlers]
+    Pages --> Domain[Server-only auth and domain modules]
+    Routes --> HTTP[Shared HTTP primitives]
+    HTTP --> Domain
+    Domain --> Auth[Supabase Auth]
+    Domain --> DB[(Supabase PostgreSQL: RLS and transactional RPCs)]
+    Domain --> LLM[Shared LLM operations: admission, cache, audit]
+    LLM --> DB
+    LLM --> Provider[SoCLaaS provider]
+    Actions[GitHub Actions: verify and delivery] --> Vercel[Vercel Node application]
+    Vercel --> Proxy
+    Vercel --> Cron[Production maintenance route]
+    Cron --> Domain
+    Actions --> DB
+```
+
+A browser navigation reaches the proxy, then a Suspense-wrapped role shell and
+feature page. Server reads verify the account and query through a session-bound
+Supabase client. Interactive mutations POST JSON to route handlers, whose server
+modules validate transport, identity, role and inputs before calling the database.
+Transactional writers derive ownership from protected profiles, lock current
+records and repeat state checks; client-supplied references never grant access.
+AI routes first read authorized sources, then use the shared operation and its
+admission/cache/audit layer. Browser responses contain validated projections or
+safe errors. The following success paths show the implemented mutations;
+conflicts and source/provider failures retain the feature's safe error or fallback.
+
+Admin triage is advice. The Admin separately chooses Hide, supplies an editable
+reason and confirms through the ordinary moderation route. See
+[Moderation Assistant](#moderation-assistant) and
+[manual moderation](#manual-moderation-and-admin-audit).
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant UI as Pending moderation queue
+    participant AI as /api/ai/moderation
+    participant LLM as Shared LLM module
+    participant DB as Supabase PostgreSQL
+    participant Provider as SoCLaaS
+    participant Hide as /api/admin/reviews/{id}/moderation
+    Admin->>UI: Triage pending reviews on current page
+    UI->>AI: POST reviewIds
+    AI->>AI: Validate transport and verified Admin/workspace
+    AI->>DB: Read selected pending reviews under session RLS
+    DB-->>AI: Authorized review references and text
+    AI->>LLM: Validated minimal review context
+    LLM->>DB: Reserve durable action and provider capacity
+    LLM->>Provider: One bounded classification attempt
+    Provider-->>LLM: Suggested labels and reasons
+    LLM->>LLM: Validate complete result and source references
+    LLM->>DB: Record content-free AI outcome
+    LLM-->>AI: Validated advisory result
+    AI-->>UI: Transient AI suggestions
+    Admin->>UI: Choose Hide, enter reason, Confirm Hide
+    UI->>Hide: POST action=hide and human reason
+    Hide->>Hide: Independently validate Origin, body and Admin
+    Hide->>DB: moderate_review: lock and recheck workspace/state
+    Note over DB: Hide review and append Admin audit atomically
+    DB-->>Hide: Confirmed hidden state
+    Hide-->>UI: Success; refresh queue
+```
+
+The pickup flow uses server-priced snapshots and a Customer-scoped submission
+key; its successful path requires a valid protected Customer name. Owner actions
+use the same café-before-order lock order as cancellation and suspension. See
+[Customer pickup orders](#customer-pickup-orders-and-retained-history) and
+[Owner order queue](#owner-order-queue).
+
+```mermaid
+sequenceDiagram
+    actor Customer
+    participant Form as Pre-order / My orders pages and forms
+    participant Orders as Customer order routes
+    participant DB as Supabase PostgreSQL
+    actor Owner
+    participant Queue as Owner order queue
+    participant Actions as Owner order action routes
+    Customer->>Form: Open café Pre-order
+    Note over Form,DB: Server pages use session-bound source modules
+    Form->>DB: Authorized menu and pickup source reads
+    DB-->>Form: Current items, database clock and pickup rules
+    Customer->>Form: Select quantities and pickup time; submit
+    Form->>Orders: POST items, pickup time, expected total, submission key
+    Orders->>Orders: Validate transport, Customer and strict input
+    Orders->>DB: create_customer_order
+    Note over DB: Serialize key; lock café/sources; validate eligibility and slot
+    Note over DB: Snapshot names/prices; commit pending order, items and key
+    DB-->>Orders: Pending order (or identical replay)
+    Orders-->>Form: Success; navigate to My orders
+    Owner->>Queue: Open Order queue
+    Queue->>DB: owner_order_queue under owner/workspace RLS
+    DB-->>Queue: Own café orders with retained Customer name
+    Owner->>Queue: Accept order
+    Queue->>Actions: POST /accept with empty body
+    Actions->>DB: owner_order_action: pending to accepted
+    Owner->>Queue: Mark ready for pick up
+    Queue->>Actions: POST /ready with empty body
+    Actions->>DB: owner_order_action: accepted to ready
+    Customer->>Owner: Collect pickup; pay at counter
+    Owner->>Queue: Mark collected
+    Queue->>Actions: POST /collect with empty body
+    Actions->>DB: owner_order_action: ready to collected
+    Note over Actions,DB: Each action reauthorizes, locks café then order, and records event time
+    Customer->>Form: Refresh My orders
+    Form->>DB: Read retained own history
+    DB-->>Form: Collected order with review link
+```
+
+Payment at the counter is the product's offline arrangement; marking collected
+records fulfilment and does not process or verify payment.
 
 ### Design decisions
 
 | Decision | Why |
 | --- | --- |
+| Next.js App Router, React, strict TypeScript, Tailwind, Bun and Node 24; Supabase Auth/Postgres; Vercel hosting. | One application supplies server-rendered role screens and HTTP handlers with managed identity and relational storage; see the [stack contract](../workflow/specs/TECHNICAL-SPEC.md#architecture), `package.json` and `src/app/`. |
+| Session-bound RLS reads plus constrained transactional writers. | Enforce workspace, role and record access at the database as well as the application boundary; see [RLS and exposure](../workflow/specs/TECHNICAL-SPEC.md#rls-and-database-exposure) and the migrations. |
+| Keep `cacheComponents` and `partialPrefetching`; stream authenticated reads behind Suspense without catalogue `use cache`. | Preserve a public shell while reading current session/RLS data; `next.config.ts` and role/page boundaries implement the [rendering decision](../workflow/specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches). |
+| Postgres owns durable admission windows, counters and AI caches. | Serverless process memory cannot provide persistent global enforcement; `src/server/llm/usage.ts` and AI-state RPCs implement [admission and windows](../workflow/specs/TECHNICAL-SPEC.md#admission-and-windows). |
+| Actions runs `vercel build` then `vercel deploy --prebuilt`, after migrations. | Use the selected CI toolchain and environment settings for the delivered artifact; Secret-type application credentials are read at request time. See the [delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery) and deployment workflows. |
 | Minimal pickup-slot rules (for example, a last pickup time before closing) are in the MVP; saving favourite cafés is a stretch goal. | Pickup slots must already fall within opening hours, and no core flow needs favourites. |
 
 ## Shared UI conventions
 
-<!-- Describe shared components, design tokens, forms, loading and error states,
-accessibility and responsive behaviour once implemented. -->
+All three role layouts use `AccountRoleShell` in
+`src/app/_components/account-boundary.tsx`, with a labelled Main navigation,
+Sign out and one main content area. The shell verifies the account at request
+time; anonymous/ended sessions go to Sign in and a wrong-role request goes to
+the caller's own home. Feature pages and APIs independently enforce access.
+
+| Role | Shared navigation |
+| --- | --- |
+| Customer | Browse cafés; My orders. Brew Finder is within Browse cafés; Pre-order and review forms are reached from café/order context. |
+| Café owner | Café application; Dashboard; Order queue; Menu; Café profile. Prep Advisor is on Dashboard; Prep sheet is reached from Order queue. `/owner/profile` redirects to `/owner/cafe`. |
+| Admin | Moderation queue; Café applications; Cafés; Audit log. Triage is within the Pending moderation queue. |
+
+`src/app/layout.tsx` applies the shared theme to the document body.
+`globals.css` defines light/dark brown, cream, rust and sage tokens and maps
+Tailwind theme colours to them. `homey-theme.module.css` supplies serif headings,
+Geist body typography, rounded cards/inputs, consistent control sizes, disabled
+states, focus-visible outlines and alert/status styling. Navigation and forms
+wrap; content uses bounded widths and fluid heading/padding sizes. Wide tables
+retain a minimum width, with scroll wrappers in the Admin screens. These are
+implemented styles, not evidence that the planned accessibility/responsive
+verification has passed.
+
+Request-time account checks and protected page reads sit behind Suspense with
+public loading text, including “Checking account…”. Account failures distinguish
+a temporary retry from an unavailable protected profile; the latter offers Sign
+out. Domain pages use feature-specific loading, empty and failure feedback with
+retry/refresh links. Client forms disable actions while saving and show status
+or alert feedback; account fields connect labels, `aria-invalid` and field-error
+text. Shared constants/schemas live in `src/lib/`, while server validation remains
+authoritative.
+
+Confirmation is specific to the operation. Admin café/review actions open inline
+reason controls with Confirm and Cancel; moderation offers fixed editable quick
+reasons. AI suggestions only highlight possible actions and never select or
+submit them. Customer pre-orders retain the same submission key for an unchanged
+mounted selection after an uncertain response. Owner rejection collects a public
+reason, while accept/ready/collected actions submit directly. Stored and
+AI-generated text renders through React text nodes. See the feature sections for
+exact state, validation and conflict handling.
 
 ## Data model and database schema
 
@@ -430,8 +608,9 @@ The core migrations implement the structural and role-policy foundation of
 [SYS-06](../workflow/specs/TECHNICAL-SPEC.md#sys-06--relational-integrity-roles-and-rls)
 and [SYS-12.1–12.3](../workflow/specs/TECHNICAL-SPEC.md#sys-12--workspaces-and-demo-kits).
 The [data ownership contract](../workflow/specs/TECHNICAL-SPEC.md#data-model-and-ownership)
-also describes later product fields and permissions. Current tables store these
-relationships and the shared fields needed for permission checks:
+defines the relationships; feature migrations extend the foundation as described
+in the subsections below. The core domain tables store these relationships and
+shared permission fields:
 
 | Table | Implemented relationships and constraints |
 | --- | --- |
@@ -450,7 +629,7 @@ Profile and café workspace membership is immutable: changes raise
 reverse-edge queries with that rule so an older transaction snapshot cannot
 permit a parent workspace move.
 
-Migrations are replayed in filename order:
+Migrations are replayed in filename order. The foundation starts with:
 
 1. `supabase/migrations/20261019000000_core_schema.sql` creates the eight core
    tables, identities, constraints, supporting indexes, main workspace and RLS/grants.
@@ -470,10 +649,11 @@ count. `private.ai_usage_admissions` retains successful single-use admission
 identities and timestamps, referencing their operation. All three tables enable
 RLS and revoke direct access from PUBLIC, anon, authenticated and service_role.
 
-Demo-kit creation is described [below](#demo-kit-creation). Remaining story
-fields/lifecycle transitions remain later work. Internal AI caches/audit and callable retention cleanup are implemented as
-[described below](#ai-caches-eligibility-and-audit); [daily maintenance](#daily-maintenance)
-now wires cleanup to the production schedule and post-deploy call.
+Subsequent migrations add the implemented feature fields and lifecycle writers
+covered below. [Demo-kit creation](#demo-kit-creation),
+[AI caches/audit and retention cleanup](#ai-caches-eligibility-and-audit), and
+[daily maintenance](#daily-maintenance) have their own storage/RPCs. Maintenance
+wires cleanup to the production schedule and post-deploy call.
 
 ### Manual moderation and Admin audit
 
@@ -630,7 +810,9 @@ order/key. Current SYS-01 signup and older unnamed accounts do not populate
 this field; new demo kits seed a valid protected Customer name. The CUS-03 pair
 does not add a profile repair endpoint or change account contracts; successful
 order tests also provision valid synthetic protected names.
-Owner acceptance/collection and menu/settings writers remain separate work.
+Owner acceptance/collection and menu/settings writers are implemented in the
+[Owner order queue](#owner-order-queue), [Owner menu](#owner-menu) and
+[Owner café settings](#owner-café-application-and-settings) modules.
 
 The order suites contain 37 spec-derived Vitest cases in `tests/unit/orders/`
 and `tests/integration/orders/`, six supplementary internal cases across
@@ -645,8 +827,9 @@ snapshots and Cancel/Review controls after fresh same-page payload delivery.
 Two browser session setups explicitly sign out before switching customers to
 respect SYS-02's active-account conflict. Role-denial cases use literal titles
 so static traceability can recognize their criterion IDs; interpolated titles
-are intentionally ignored by that scanner. Actual owner acceptance/collection
-race integration remains unverified until the owning writers exist.
+are intentionally ignored by that scanner. The
+[Owner order queue](#owner-order-queue) suites add the implemented owner
+transitions and races with Customer cancellation and Admin suspension.
 
 ### Owner order queue
 
@@ -800,9 +983,10 @@ eligibility. Five supplementary tests in
 `tests/unit/customer-review-internals.test.ts` cover direct RPC validation and
 role checks, schema precision and raw-query markers. The review page helper
 waits for streamed controls under SYS-05.1 and scopes field feedback to main
-content, excluding Next's separate route announcer. Actual owner collection
-writer/race integration remains unavailable; local fixtures arrange collected
-purchases without granting Customer fulfilment authority. No review submission
+content, excluding Next's separate route announcer. These review-specific tests
+arrange collected purchases through local fixtures;
+the [Owner order queue](#owner-order-queue) suites separately exercise the
+implemented collection writer and lifecycle races. No review submission
 invokes an LLM or changes Admin-action/AI accounting.
 
 ### Café applications and suspension
@@ -825,9 +1009,9 @@ fields and `suspension_version`, weekly-hour fields and canonical order `state`,
 `cancellation_reason` and `cancelled_at`. It consumes the merged owner/order
 contracts. Owner submission and settings writers are described in
 [Owner café application and settings](#owner-café-application-and-settings);
-fulfilment writers remain separate work and must use the café lock and current
-state/version contracts in the
-[shared boundaries](../workflow/specs/INTEGRATION-SPEC.md#owner-cafe-management-boundary).
+the implemented [fulfilment writers](#owner-order-queue) share the café-before-order
+lock with cancellation and suspension, and independently check the current order
+state under the [owner order boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-order-queue-boundary).
 
 `decide_cafe` permits only pending→approved/rejected. `set_cafe_suspension`
 permits a changed boolean only on an approved café and increments its version
@@ -1040,12 +1224,11 @@ The sign-in screen also mounts the [Create demo kit flow](#demo-kit-creation).
   consumed once; absent/invalid values and other provider headers are omitted.
 - `src/app/_components/account-boundary.tsx` uses request-time `connection()`
   and Suspense with public loading text, then fixed homes and role-only links.
-  Wrong-role browser requests go to the caller's own home. Customer catalogue
-  and Admin moderation/audit pages provide the domain reads described in this
-  guide; owner application and café profile pages are described under
-  [Owner café application and settings](#owner-café-application-and-settings);
-  remaining entry pages contain headings. Owner Dashboard adds an
-  RLS-bound, owner/workspace café-existence check and no-café application link.
+  Wrong-role browser requests go to the caller's own home. The role shells
+  expose the implemented Customer, Owner and Admin screens described in
+  [Shared UI conventions](#shared-ui-conventions). Owner Dashboard includes
+  sales and Prep Advisor, with an RLS-bound owner/workspace café-existence
+  check and a no-café application link.
   The shared shell itself grants no domain operation permission.
 - `/api/auth/sign-up`, `/api/auth/sign-in` and `/api/auth/sign-out` own cookie
   admission, so the proxy skips refresh there. Other requests retain normal
@@ -1100,9 +1283,11 @@ own the demo flow; its public contract is
   Historical item names/quantities/prices and SGD-cent totals are stored as
   snapshots. Seed items populate CUS-03’s canonical `name` and `item_ref`;
   orders carry `SGD` currency and the Customer profile
-  has the protected name `Demo Customer`. The merged CUS-03 screens support
-  kit ordering/history/cancellation; owner writers remain separate work. Dashboard/Prep result quality is
-  verified by T-62, rather than inferred from this dataset's date span.
+  has the protected name `Demo Customer`. Customer screens support kit
+  ordering/history/cancellation and reviews; owner screens support the same
+  kit-scoped management and fulfilment operations described above. Dashboard/Prep
+  source and result validation have their own [test evidence](#owner-sales-and-prep-advisor);
+  the dataset's date span alone establishes no advice-quality claim.
 - Existing workspace RLS, role restrictions, reason/audit/text-preservation and
   reversible Admin actions are unchanged. Kit user AI counters remain separate
   while global AI provider caps are shared with main. No expiry field,
@@ -1287,9 +1472,10 @@ The server-only usage foundation implements
 and the assigned [usage controls](../workflow/specs/AI-SECURITY-SPEC.md#sec-06--durable-bounded-usage).
 It supplies an internal reservation and dispatch seam. Shared validated feature
 operations, provider transport, durable AI result caches and content-free AI
-audit are also implemented under `src/server/llm/`. Admin Moderation Assistant
-consumes them through `POST /api/ai/moderation` and the Pending queue. Other AI
-feature endpoints/screens remain separate integrations.
+audit are also implemented under `src/server/llm/`. The implemented
+[Moderation Assistant](#moderation-assistant), [Brew Finder](#brew-finder) and
+[Prep Advisor](#owner-sales-and-prep-advisor) adapters consume this shared layer
+through their respective feature routes and screens.
 
 The operations implement the shared
 [LLM boundary](../workflow/specs/TECHNICAL-SPEC.md#llm-module),
@@ -1340,10 +1526,12 @@ falls back without dispatch or a success write. The optional `recordUsage` hook
 receives only validated supplied token counts; it supplies no persistent audit.
 
 Feature routes call these operations through the cache and audit layer below
-rather than directly. Endpoint integration still needs session/role/origin checks,
-authorized source acquisition and current-eligibility rechecks before delivery,
-ordinary authorized fallback reads, inert text rendering and separate authorized
-human mutations. Prep aggregation windows and data sufficiency remain story-owned.
+rather than directly. The Brew Finder, Moderation Assistant and Prep Advisor
+integrations supply
+session/role/origin checks, authorized source acquisition and current-eligibility
+rechecks before delivery, ordinary authorized fallback reads, inert text rendering
+and separate authorized human mutations where applicable. Prep aggregation
+windows and data sufficiency follow the owner story contract.
 
 `src/server/llm/usage-client.ts` uses the installed `@supabase/supabase-js`
 2.118.0 client with `NEXT_PUBLIC_SUPABASE_URL` and server-only
@@ -1500,10 +1688,11 @@ including unexposed schemas. It excludes PostgreSQL system schemas, named
 Supabase-managed schemas and extension-owned tables. A query/tooling failure also
 exits nonzero. This checks RLS coverage; the separate role matrix tests check
 current policy correctness. Future tables and consumers need their own tests. See the
-[security specification](../workflow/specs/AI-SECURITY-SPEC.md) for later application
-and AI requirements. The usage RPC described above is the deliberately exposed
-AI infrastructure operation. The Admin triage HTTP boundary consumes it only
-after verifying the session, role and authorized pending review selection.
+[security specification](../workflow/specs/AI-SECURITY-SPEC.md) for application
+and AI requirements. The usage RPC described above is a deliberately exposed,
+service-role-only AI infrastructure operation. Each implemented AI HTTP boundary
+verifies the session, role and authorized feature sources before using the shared
+admission/cache/audit layer.
 
 <!-- The allow rule runs package.json scripts and config files outside the
 sandbox, so changes to package.json, next.config.ts, eslint.config.mjs and .codex/
@@ -1565,8 +1754,9 @@ callers. Forty mutable-field cases cover main→kit, kit→main and kit→kit: e
 first proves that the actual owner can change the same menu name/opening time,
 then observes that a foreign actor cannot change the stored value. Privileged
 fixture setup/observation is separate from the attempted ordinary operation.
-These fixtures do not implement public kit creation or maintenance provisioning.
-Scope-helper tests do not establish actual AI source/cache/route isolation.
+These foundation fixtures use synthetic kits; public kit creation and maintenance
+have their own suites described above. Scope-helper tests alone do not establish
+feature-level AI source/cache/route isolation.
 
 The 29 cases in `tests/{unit,integration}/auth/` cover rendering flags and the
 absence of instant exceptions, proxy cookie propagation, protected-profile
@@ -1621,14 +1811,14 @@ authorization, persistent cache isolation or browser rendering.
 
 CI installs locked dependencies and runs `verify`'s steps and Chromium Playwright
 in parallel jobs; each test shard and the browser job start and reset their own
-local Supabase, and the test shards run `db:check`. Local verification
-passes all 942 tests across 36 files and the production build, including source
+local Supabase, and the test shards run `db:check`. The Shared account pair's historical verification
+passed 942 tests across 36 files and the production build, including source
 and client-artifact isolation checks, as recorded in the
 [round-3 review](../workflow/handoffs/99-shared-sign-up-sessions-navigation/07-reviewer.md#checks-run).
 The Shared account implementation reports 42/42 production-browser cases,
 including all 14 prior session-foundation cases; the shared LLM layer adds no
 browser surface.
-Remote CI execution remains unobserved. The implementation
+That local report does not establish remote CI execution. Its implementation
 handoff records a manual
 two-session workspace concurrency check; that scenario is not a committed
 automated regression.
@@ -1768,96 +1958,190 @@ workflow commands or contacting hosted targets.
 
 ## Planned enhancements
 
-<!-- List agreed enhancements and link to their specs or issues. -->
+The following work is specified but not implemented. Statuses below come from
+[PLAN.md](../workflow/PLAN.md); shipped MVP screens are described in the feature
+sections above.
+
+| Enhancement | Spec and planned tasks | PLAN status |
+| --- | --- | --- |
+| Customer favourite cafés | [CUS-07](../workflow/specs/stories/CUS-07-favourite-cafes.md); T-48/T-49 | Both todo. |
+| Owner usage boost requests | [OWN-08](../workflow/specs/stories/OWN-08-boost-request.md); T-65/T-66 | Both blocked. |
+| Pause new orders | [OWN-10](../workflow/specs/stories/OWN-10-pause-orders.md); T-69/T-70 | Testing todo; implementation blocked. |
+| One-off closure dates | [OWN-11](../workflow/specs/stories/OWN-11-closure-dates.md); T-71/T-72 | Testing todo; implementation blocked. |
+| Per-slot order limits | [OWN-12](../workflow/specs/stories/OWN-12-slot-order-limit.md); T-73/T-74 | Testing todo; implementation blocked. |
+| Menu-item archiving | [OWN-13](../workflow/specs/stories/OWN-13-archive-menu-items.md); T-75/T-76 | Testing todo; implementation blocked. |
+| No-show marking | [OWN-14](../workflow/specs/stories/OWN-14-no-show.md); T-77/T-78 | Testing todo; implementation blocked. |
+| Sales CSV export | [OWN-15](../workflow/specs/stories/OWN-15-sales-export.md); T-79/T-80 | Testing todo; implementation blocked. |
+| Customer consumers of owner stretch controls | T-83/T-84 in [PLAN.md](../workflow/PLAN.md) | Both blocked; depend on the owning stretch writers. |
+| Accessibility and responsive verification/corrections across core flows | [SYS-11](../workflow/specs/TECHNICAL-SPEC.md#sys-11--accessible-responsive-core-flows); T-19/T-20 ([#50](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/50), [#51](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/51)) | Both todo; existing labels, focus styles and wrapping do not complete this verification. |
+| Cross-feature AI authorization, inert rendering and human-confirmation coverage/integration | [AI security criteria](../workflow/specs/AI-SECURITY-SPEC.md#security-requirements-and-acceptance-criteria); T-21/T-22 ([#52](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/52), [#53](https://github.com/CS3227-2610-MP3-Homebrew/CS3227-2610-MP3/issues/53)) | Both todo; individual feature tests do not close this separate cross-feature task pair. |
 
 ## Design considerations
 
-<!-- Record tradeoffs, constraints and rejected designs with supporting evidence. -->
+These decisions have recorded rationale or review evidence; they do not add
+new product behaviour.
+
+- **Single-agent or full-loop execution:** the human chooses the mode for each
+  pair. Single-agent mode trades independent assessment for lower coordination
+  time and budget use; its implementation report includes self-review and
+  passing verification. Full-loop mode keeps separate testing, implementation,
+  review, security review and docs evidence. The existing
+  [workflow decisions](#workflow-decisions) record the reason for this option;
+  [sdd-orchestrate](../.agents/skills/sdd-orchestrate/SKILL.md) defines its gates.
+- **Project-scoped deployment authority:** the narrow Vercel token cannot use
+  CLI operations that first resolve its account. Development aliasing therefore
+  calls the REST API, with the bearer header supplied through stdin. This keeps
+  the selected token scope but requires an explicit API integration; see the
+  [delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery)
+  and [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
+- **Fail-closed hosted limits:** missing or invalid hosted AI policy disables
+  provider work rather than selecting permissive defaults. Invalid demo-kit caps
+  reject creation; manual/non-AI feature paths remain the relevant fallback.
+  Durable admission serializes per-environment transactions to reserve all
+  applicable windows together, trading throughput for consistent admission.
+  See [limits](../workflow/specs/AI-SECURITY-SPEC.md#limits-and-configuration),
+  `src/server/llm/usage.ts`, `src/server/demo-kits/index.ts` and
+  [admission review](../workflow/handoffs/42-durable-admission-windows-quota-telemetry/04-security-reviewer.md).
+- **Current RLS data over catalogue caching:** session-bound streaming reads
+  preserve current eligibility and workspace visibility. There is no catalogue
+  `use cache`; durable AI caches have separate scope/source/expiry checks and
+  reauthorize current sources. The [rendering decision](../workflow/specs/TECHNICAL-SPEC.md#decisions-rendering-authentication-and-caches)
+  records that a catalogue cache adds no meaningful benefit at this scale.
+- **Separate Auth and domain publication:** demo kits and maintenance cannot
+  commit Auth creation and Postgres publication as one transaction. Demo creation
+  uses bounded compensation, while maintenance avoids deleting/resetting existing
+  identities and uses reservations/reconciliation. This protects established
+  accounts but leaves partial-failure recovery limits; see
+  [demo review](../workflow/handoffs/54-demo-kits/03-security-reviewer.md#open-issues-and-coverage-limits)
+  and [maintenance recovery](#maintenance-recovery-limits).
+- **Release checkpoint rather than separation of duties:** production environment
+  approval permits self-review and administrator bypass, as specified by the
+  [delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery).
+  Approval covers the combined migration/deploy job; humans verify the resulting
+  hosted configuration and outcomes.
 
 ## Appendix: Requirements
 
-<!-- Link to the user stories in workflow/specs/PRODUCT-SPEC.md, the story specs
-and workflow/PLAN.md rather than copying requirements here. -->
+Homebrew serves home cafés: Customers discover cafés, pre-order for pickup,
+pay at the counter and review collected purchases; owners manage a single café,
+menu, fulfilment queue and sales/prep views; Admins decide applications, suspend
+cafés and moderate reviews. Each role has an advisory AI feature: Brew Finder,
+Prep Advisor or Moderation Assistant. Shared accounts, isolated demo access and
+daily maintenance support these flows. Stretch scope remains listed under
+[Planned enhancements](#planned-enhancements).
+
+The linked specifications own the requirements and acceptance criteria:
+
+- [PRODUCT-SPEC](../workflow/specs/PRODUCT-SPEC.md): product scope, roles,
+  top-level use cases and MVP/stretch split.
+- Shared stories: [SYS-01 sign-up](../workflow/specs/stories/SYS-01-sign-up.md),
+  [SYS-02 sign-in/out](../workflow/specs/stories/SYS-02-sign-in-out.md),
+  [SYS-03 role navigation](../workflow/specs/stories/SYS-03-role-navigation.md).
+- Customer stories: [CUS-01 catalogue](../workflow/specs/stories/CUS-01-browse-cafes.md),
+  [CUS-02 café page](../workflow/specs/stories/CUS-02-cafe-page.md),
+  [CUS-03 pre-order](../workflow/specs/stories/CUS-03-pre-order.md),
+  [CUS-04 My orders](../workflow/specs/stories/CUS-04-my-orders.md),
+  [CUS-05 reviews](../workflow/specs/stories/CUS-05-review-order.md),
+  [CUS-06 Brew Finder](../workflow/specs/stories/CUS-06-brew-finder.md),
+  [CUS-07 favourites](../workflow/specs/stories/CUS-07-favourite-cafes.md).
+- Owner MVP stories: [OWN-01 application](../workflow/specs/stories/OWN-01-cafe-application.md),
+  [OWN-02 profile/hours](../workflow/specs/stories/OWN-02-cafe-profile-hours.md),
+  [OWN-03 menu](../workflow/specs/stories/OWN-03-menu-management.md),
+  [OWN-04 pickup rules](../workflow/specs/stories/OWN-04-pickup-rules.md),
+  [OWN-05 queue](../workflow/specs/stories/OWN-05-order-queue.md),
+  [OWN-06 sales](../workflow/specs/stories/OWN-06-sales-dashboard.md),
+  [OWN-07 Prep Advisor](../workflow/specs/stories/OWN-07-prep-advisor.md),
+  [OWN-09 prep sheet](../workflow/specs/stories/OWN-09-prep-sheet.md).
+  Owner stretch specs OWN-08 and OWN-10–OWN-15 are linked individually in
+  [Planned enhancements](#planned-enhancements).
+- Admin stories: [ADM-01 applications](../workflow/specs/stories/ADM-01-cafe-applications.md),
+  [ADM-02 suspension](../workflow/specs/stories/ADM-02-cafe-suspension.md),
+  [ADM-03 moderation/audit](../workflow/specs/stories/ADM-03-review-moderation.md),
+  [ADM-04 Moderation Assistant](../workflow/specs/stories/ADM-04-moderation-assistant.md).
+- [TECHNICAL-SPEC](../workflow/specs/TECHNICAL-SPEC.md): architecture, ownership,
+  RLS, rendering, environments, usage admission, demo kits and maintenance.
+- [INTEGRATION-SPEC](../workflow/specs/INTEGRATION-SPEC.md): HTTP boundaries,
+  provider wire formats, exact feature schemas and error/fallback contracts.
+- [AI-SECURITY-SPEC](../workflow/specs/AI-SECURITY-SPEC.md): trust/data boundaries,
+  usage policies, retention and security evaluation cases.
+- [PLAN.md](../workflow/PLAN.md): task/criterion ownership, dependencies, issue
+  links and completion status; planned status alone is not implementation evidence.
+
+| Term | Meaning in this project |
+| --- | --- |
+| Workspace | Protected data scope: the shared main workspace or one isolated kit workspace. A verified profile supplies the actor's workspace; request input cannot select it. |
+| Demo kit | An isolated workspace with seeded role accounts and café/order data, created for peer testing. Credentials are returned by the creation flow and are not logged or stored in guides. |
+| Pair | One testing task and one implementation task on one branch and PR, named after the testing issue; up to three related stories of one role. |
+| Handoff | A numbered agent report in `workflow/handoffs/` recording scope, criterion evidence, checks and unresolved gaps for the next workflow stage. |
+| Café states | Application state is `pending`, `approved` or `rejected`. Suspension is a separate flag on an approved café; approval is not reversed by suspension. Public Customer eligibility requires approved and not suspended. |
 
 ## Known limitations
 
-Owner one-café and duplicate name/address rules are enforced by the serialized
-owner writers, not by database unique constraints; any future café writer must
-reuse those functions or locks. Non-ASCII case-insensitive duplicate detection
-depends on the database `lower()` locale and is untested.
-
-The database supplies structural relationships, the current domain role matrix,
-protected Customer/owner Auth provisioning in main, and explicit local
-demonstration data, session refresh/resolution and reusable streaming role gates.
-Shared account screens, account HTTP flows and role navigation are available.
-Manual Admin moderation, advisory Admin triage, the read-only audit screen,
-Customer catalogue/detail reads, Brew Finder and Customer pickup/history/cancellation and collected-order review surfaces
-are available. Ordering requires a valid protected Customer name: new demo kits
-supply it, while current signup and older unnamed accounts do not. Customer
-review writing and other role domain pages remain unavailable or entry headings,
-with the owner no-café state. Owner café application, resubmission and
-settings are available. Owner fulfilment race integration remains unverified;
-the remaining AI screens, maintenance provisioning, scheduled
-retention cleanup and remaining story fields/transitions are not yet available. Durable usage admission, shared validated LLM operations/provider
-transport and AI caches/audit are implemented internally and consumed by Admin
-triage and Brew Finder. Live provider compatibility and model quality remain unverified;
-remaining features' source authorization, persistent cache eligibility and browser
-rendering require their owning integrations. The admission service's
-per-environment transaction lock serializes admissions; no production load test
-has been run. [Maintenance recovery limits](#maintenance-recovery-limits) cover
-Auth/publication partial failures; no monetary quota guarantee is supplied.
-Demo creation's Auth staging and domain publication are separate service operations.
-Publication is atomic and ordinary failure compensation is tested, but retries
-are bounded and no durable recovery worker is implemented. Process termination
-or simultaneous Auth/Postgres unavailability can leave unprofiled staged
-identities; a complete kit may remain if publication committed but its
-acknowledgement stays unavailable. The
-[security review](../workflow/handoffs/54-demo-kits/03-security-reviewer.md#open-issues-and-coverage-limits)
-records this SYS-12.6 fault-tolerance/coverage limitation without asserting a
-credential-disclosure or authority bypass. Such unprofiled identities have no
-protected domain role; no hosted crash-recovery claim is made.
-
-The workspace helper requires trusted actor context and supplies only a scope
-prerequisite; Admin triage now supplies its own RLS source/route consumer and
-uses no result cache.
-Hosted confirmation-off evidence is the recorded human check, not automated
-configuration or drift prevention. The catalogue check proves RLS is enabled;
-the role matrix tests cover current policies, not future consumers. The
-workspace-identity concurrency repair has manual two-session evidence and
-single-transaction acceptance coverage; no concurrent regression is committed.
-The authentication browser harness controls session resolution; separate actual
-local Auth coverage proves expired-cookie refresh and deletion-based revocation,
-not every logout/ban/password-change policy or its propagation time. Future
-callers must integrate the gate and independently enforce domain permissions;
-the Shared account browser cases additionally use real local Auth. Domain
-endpoint authorization remains the owning integration's responsibility.
-
-The catalogue RPC and app review responses omit reviewer account/order fields,
-but the pre-existing reviews-table SELECT grant/RLS permits another Customer’s
-visible review account and order references through the direct Supabase Data API.
-[SR-01](../workflow/handoffs/71-customer-catalogue/08-security-reviewer.md#sr-01--p2--pre-existing-raw-review-access-exposes-reviewer-and-order-references)
-records this P2 limitation; the catalogue projection does not remediate it.
-
-The account routes set stricter initial cookie attributes, but the pre-existing
-proxy uses SSR default cookie options: a normal refresh can replace HttpOnly/Secure
-attributes. The [security assessment](../workflow/handoffs/99-shared-sign-up-sessions-navigation/04-security-reviewer.md#open-issues-for-the-next-step)
-records this lifecycle limitation without establishing an exploitable regression.
-It predates the adapter retry/delay fixes; those fixes have functional transport
-coverage and independent review, not a repeated dedicated security audit. Hosted
-Auth settings, canonical custom-domain Origin, TLS/HSTS and provider faults are
-not established by local account verification.
-
-Delivery validation is local and static. It cannot prove hosted environment
-protections, secret storage, Vercel/Supabase settings, runner PATH behavior or
-migration/deployment outcomes. Exact pinned delivery CLIs were not executed by
-agents. The token-free Vercel build from pulled settings remains unverified on
-hosted runners; if the first human-run workflow establishes that authentication
-is required, the human can add the token to that build step alone. Step-level
-env limits direct token inheritance but does not isolate steps from compromised
-tools on the same runner; CLI global installation is outside the application
-lockfile. See the [security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
-for the inspected fixes and remaining verification limits.
-- Delivery validation in the repository is static. It cannot prove hosted environment protections, secret storage, Vercel or Supabase settings, or migration and deployment outcomes; humans check those on each delivery run.
-- `VERCEL_TOKEN` is project-scoped. Vercel CLI commands that first look up the token's account, such as `vercel alias` and `vercel promote`, fail with "User not found", so the development alias is set through Vercel's REST API. Future delivery changes should use the REST API for those operations.
-- Production approval allows self-review and administrator bypass, so it is a human release checkpoint rather than separation of duties: whoever pushes a `v*` tag can approve its deployment.
-- Step-level `env` limits which steps receive the token but does not isolate steps from a compromised tool on the same runner, and the globally installed Vercel CLI is outside the application lockfile. See the [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
+- Owner one-café and duplicate name/address rules depend on the serialized owner
+  writers rather than database unique constraints; new writers must reuse those
+  functions/locks. Non-ASCII duplicate matching depends on PostgreSQL `lower()`
+  locale and is untested. See [Owner café setup](#owner-café-application-and-settings)
+  and `supabase/migrations/20261023000000_owner_cafe.sql`.
+- Ordering requires a valid protected `profiles.name`. New demo kits supply it;
+  current sign-up and older unnamed accounts do not. There is no profile repair
+  endpoint, so those accounts receive the account-setup conflict rather than an
+  order. See [Customer orders](#customer-pickup-orders-and-retained-history).
+- Direct Supabase reviews-table reads still expose another visible reviewer's
+  account/order references to Customers, although catalogue/app projections omit
+  them. The [catalogue security review, SR-01 (P2)](../workflow/handoffs/71-customer-catalogue/08-security-reviewer.md#sr-01--p2--pre-existing-raw-review-access-exposes-reviewer-and-order-references)
+  records the pre-existing disclosure; order contents and foreign profiles remain
+  separately protected.
+- An owner can directly update their own `opening_hours.opens_at` through the
+  inherited column grant/RLS, bypassing the validated settings writer. Fresh
+  application submission keys can also accumulate without a configured cap or
+  owner write rate limit. Both P3 findings and the required policy decisions are
+  recorded in the [owner setup security review](../workflow/handoffs/109-owner-cafe-setup/04-security-reviewer.md#open-issues-for-the-next-step).
+  The inherited own-menu-name update grant also remains in
+  `20261020000000_role_matrix.sql`; these direct grants must be considered when
+  assessing writer-only guarantees.
+- Account routes set stricter initial cookies, but ordinary proxy refresh uses
+  SSR defaults and can replace HttpOnly/Secure attributes. The
+  [account security assessment](../workflow/handoffs/99-shared-sign-up-sessions-navigation/04-security-reviewer.md#open-issues-for-the-next-step)
+  records this lifecycle limit. Later adapter retry fixes had functional and
+  independent review evidence, without a repeated dedicated security audit.
+- Local Auth/browser verification does not establish hosted email-confirmation
+  configuration or prevent drift, custom-domain Origin/TLS/HSTS, every
+  logout/ban/password-change policy or revocation delay, or real provider outages.
+  The foundation browser harness controls session resolution; separate account
+  suites use actual local Auth. Workspace-identity concurrency has a manual
+  two-session check and single-transaction coverage, without a committed concurrent
+  regression. See [How to test](#how-to-test) and
+  [account review](../workflow/handoffs/99-shared-sign-up-sessions-navigation/07-reviewer.md).
+- Fake/mocked AI verification establishes structure, references and boundary
+  handling, not live SoCLaaS compatibility or advice quality. Per-environment
+  admission transactions serialize; there is no production load-test evidence or
+  monetary quota guarantee. The separate cross-feature and accessibility tasks
+  remain planned as listed in [Planned enhancements](#planned-enhancements).
+- Demo-kit Auth staging and atomic domain publication are separate operations.
+  Compensation/retries are bounded and no durable recovery worker exists.
+  Process termination or simultaneous Auth/Postgres failure can leave unprofiled
+  staged identities; an acknowledgement loss can leave a complete kit. Unprofiled
+  identities have no protected domain role. See the
+  [demo-kit recovery review](../workflow/handoffs/54-demo-kits/03-security-reviewer.md#open-issues-and-coverage-limits).
+- Maintenance does not delete/reset identities to recover provisioning. A main
+  Admin created before a lost response/publication may cause a later conflict;
+  showcase reconciliation only adopts its own marked unpublished identity.
+  Humans must inspect sanitized outcomes and resolve account/configuration
+  conflicts. See [Maintenance recovery limits](#maintenance-recovery-limits).
+- Delivery tests are local/static: they cannot prove hosted environment
+  protections, secret storage, Vercel/Supabase settings, runner PATH behaviour,
+  cron execution, domain reachability or migration/deployment results. Exact
+  pinned delivery CLIs and token-free build from pulled settings were not executed
+  by agents. If human execution establishes build authentication is required,
+  the token mapping needs a reviewed build-step change. See the
+  [delivery security re-check](../workflow/handoffs/48-delivery-workflows/09-security-reviewer.md)
+  and [Deployment and environments](#deployment-and-environments).
+- `VERCEL_TOKEN` is project-scoped. Account-lookup CLI commands such as
+  `vercel alias` and `vercel promote` fail with “User not found”; the development
+  alias uses Vercel's REST API. Step-level token mappings limit direct inheritance
+  but do not isolate a compromised tool on the same runner; the globally installed
+  CLI is outside the application lockfile. See the
+  [alias security review](../workflow/handoffs/48-delivery-workflows/14-security-reviewer.md).
+- Production approval allows self-review and administrator bypass. The tag pusher
+  can approve the deployment: this is a human release checkpoint, not separation
+  of duties. See the [delivery contract](../workflow/specs/TECHNICAL-SPEC.md#environments-and-delivery).
