@@ -18,6 +18,7 @@
   - [5.3 Manage your café profile, hours and pickup rules](#53-manage-your-café-profile-hours-and-pickup-rules)
   - [5.4 Run the order queue](#54-run-the-order-queue)
   - [5.5 View your sales](#55-view-your-sales)
+  - [5.6 Manage your menu](#56-manage-your-menu)
 - [6. Admin guide](#6-admin-guide)
   - [6.1 Moderate a review](#61-moderate-a-review)
   - [6.2 Inspect the audit log](#62-inspect-the-audit-log)
@@ -108,8 +109,8 @@ again.” and does not confirm that sign-out succeeded.
 Browse cafés provides the Customer tools in section 4; Moderation queue and
 Audit log provide the Admin tools in section 6. My orders provides retained
 purchases and pending-order cancellation. Café application, Café profile,
-Order queue and Dashboard provide the owner tools in section 5, and Dashboard
-also holds the Prep Advisor (section 7.3); Menu opens a role page heading.
+Order queue, Dashboard and Menu provide the owner tools in section 5, and
+Dashboard also holds the Prep Advisor (section 7.3).
 
 ### 1.5 Demo accounts for testers
 
@@ -370,8 +371,8 @@ queue (section 5.4).
 Café owners can apply to register one café, follow its review status, resubmit
 a rejected application, and manage an approved café's description, weekly
 opening hours and pickup cutoff, run the order queue and print today's prep
-sheet, and view sales with Prep
-Advisor suggestions on the Dashboard. Menu tools are not yet implemented.
+sheet, and view sales with Prep Advisor suggestions on the Dashboard, and
+manage an approved café's menu items, prices and sold-out state.
 
 ### 5.2 Apply for a café
 
@@ -510,6 +511,37 @@ The Dashboard covers the last 28 days, including today so far:
 With no completed sales in that period, the Dashboard shows “No completed sales
 in the last 28 days.” If sales cannot be loaded, it says so instead of showing
 zeros. Without a café, it links to **Café application**.
+
+### 5.6 Manage your menu
+
+**Where:** owner navigation → **Menu** (`/owner/menu`).
+
+The Menu lists your own café's items in name order, 20 per page, each with its
+name, drink type, price in `S$` and a **Sold out** label when it is sold out.
+Use **Next items** and **Previous items** to page. Customers see every item,
+including sold-out ones, but cannot order a sold-out item.
+
+1. To add an item, fill in **Name**, **Drink type** and **Price (S$)** under
+   **Add an item** and select **Add item**. New items start available.
+2. To change an item, edit its **Name**, **Drink type**, **Price (S$)** or
+   **Sold out** checkbox and select **Save**.
+3. To remove an item, select **Remove**, then **Confirm removal**. **Keep
+   item** cancels. Removal cannot be undone; adding the same name again creates
+   a new item.
+
+Names are 2–100 characters and must be unique on your menu, ignoring spaces and
+letter case; a duplicate shows “Another item on your menu already has this
+name.” Prices are entered in dollars, from S$0.01 to S$10000.00 with at most two
+decimal places. Changing or removing an item never changes orders customers
+already placed: they keep the name and price they bought at.
+
+Menu changes need an approved café. While your application is pending or
+rejected you can still view your items, but saving shows “Menu changes are
+available once your café is approved.” and keeps what you typed. A suspended
+café can still change its menu while it stays hidden from customers. If an Admin
+suspends or un-suspends the café while you are editing, saving opens **Café
+application**; when you return to **Menu**, your unsaved changes are restored.
+Without a café, Menu shows **Apply for a café** instead.
 
 ## 6. Admin guide
 
@@ -731,7 +763,7 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Favourites and the Café owner menu tools remain entry shells or unavailable.
+Favourites remain an entry shell. Removed menu items cannot be restored.
 Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
 kits supply it; current signup and older unnamed accounts do not. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device

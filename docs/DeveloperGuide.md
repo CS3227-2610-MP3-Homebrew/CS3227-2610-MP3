@@ -13,6 +13,7 @@ This guide records Homebrew's design, development process and reuse for CS3227 M
   - [Customer catalogue and café details](#customer-catalogue-and-café-details)
   - [Café applications and suspension](#café-applications-and-suspension)
   - [Owner order queue](#owner-order-queue)
+  - [Owner menu](#owner-menu)
   - [Owner prep sheet](#owner-prep-sheet)
   - [Owner café application and settings](#owner-café-application-and-settings)
 - [Authentication and authorization](#authentication-and-authorization)
@@ -437,7 +438,7 @@ relationships and the shared fields needed for permission checks:
 | `workspaces` | UUID identity and `is_main`; a partial unique index allows at most one main workspace. Migration replay inserts exactly one. |
 | `profiles` | UUID identity references `auth.users`; required workspace and protected role enum (`customer`, `owner`, `admin`); nullable `name` consumed and validated by Customer ordering. |
 | `cafes` | UUID identity, workspace and owner profile; a composite foreign key requires the owner to share the café's workspace. `application_state` is `pending` (default), `approved` or `rejected`; independent `suspended` defaults to false. |
-| `menu_items`, `opening_hours` | UUID identities and required café references; menu `name` and opening time `opens_at` support the narrow owner updates. |
+| `menu_items`, `opening_hours` | UUID identities and required café references; menu `name` and opening time `opens_at` support the narrow owner updates (menu updates require an approved café). |
 | `orders` | UUID identity, customer profile and café references; a trigger rejects a customer/café workspace mismatch. Retained café/customer/total/pickup snapshots, lifecycle fields and a unique non-null customer/submission-key pair support purchase history and replay. |
 | `order_items` | UUID identity; composite foreign keys require the parent order and live menu item to belong to the same café. Snapshots retain item identity/name/quantity/unit and line prices; live menu removal clears only the nullable live reference. |
 | `reviews` | UUID identity and customer reference; a composite foreign key ties the customer to the order. A unique order reference prevents a second review for that order. The café is derived through the order. `moderation_state` is `pending` (default), `kept` or `hidden`. |
@@ -683,6 +684,47 @@ govern `/owner/orders` and its JSON routes.
 The suites are `tests/integration/owner-queue/` (route failure mapping, body
 bounds and direct RLS) and `tests/e2e/owner-queue/` (API transitions, races
 with Customer cancellation and Admin suspension, isolation and the page).
+
+### Owner menu
+
+The [OWN-03 story](../workflow/specs/stories/OWN-03-menu-management.md) and
+[owner menu boundary](../workflow/specs/INTEGRATION-SPEC.md#owner-menu-boundary)
+govern `/owner/menu` and its JSON routes.
+
+- `src/server/owner/menu-query.ts` accepts only `page`, once, as a positive
+  safe integer. Like the order queue, the proxy validates the raw URL and
+  overwrites any caller-supplied flag; the handler parses again.
+- `src/server/owner/menu-http.ts` serves `GET /api/owner/menu` and
+  `POST /api/owner/menu`, `/api/owner/menu/{itemId}` and
+  `/api/owner/menu/{itemId}/remove`. POSTs check the trusted Origin, JSON media
+  type and owner session, then the bounded body and strict Zod schemas in
+  `src/lib/owner/menu-input.ts` (names trimmed to 2–100 code points, shared
+  `DrinkType`, integer cents 1–1,000,000, `expectedSuspensionVersion`). A 409
+  carries the approval message, the shared suspension message or the
+  duplicate-name message; missing, foreign and non-UUID item references share
+  one 404 body.
+- `20261023000450_owner_menu.sql` adds `owner_menu`, a SECURITY INVOKER read
+  that pages the owner's own café items by name (`collate "C"`, so Unicode code
+  point order) then reference, and `owner_menu_write`, a SECURITY DEFINER
+  create/save/remove with an empty search path. It repeats strict validation,
+  derives the owner, locks the café row and applies the boundary's order: no
+  café 404, not approved 409, missing item 404, stale suspension version 409,
+  duplicate name 409. The café lock serializes menu writes, so duplicate-name
+  and update/remove races have one winner. Duplicate keys remove ECMAScript
+  whitespace and lowercase with ICU (`private.menu_name_key`). Removal deletes
+  the row; `order_items` keeps `item_ref` and snapshots because its live
+  foreign key is `on delete set null (menu_item_id)`.
+- The same migration narrows the existing `menu_owner_update` RLS policy (the
+  SYS-06 direct name-update grant) to approved cafés, so a pending or rejected
+  owner cannot bypass the route through the Data API.
+- The page is a server component; `menu-editor.tsx` posts changes, shows
+  errors in place without clearing input, and on a suspension conflict stores
+  the draft in `sessionStorage` and opens `/owner/application`. Prices are typed
+  in dollars and converted to cents by string parsing, never floating point.
+
+The suites are `tests/integration/owner-menu/` (route failure mapping, body
+bounds and direct RLS) and `tests/e2e/owner-menu/` (API lifecycle, check order,
+races, snapshots and the page).
 
 ### Owner prep sheet
 

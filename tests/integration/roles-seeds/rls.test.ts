@@ -74,7 +74,10 @@ test("SYS-06.3: owner retains cafe/menu/hour access to their suspended cafe", ()
 
 test.each(["menu_items", "opening_hours"] as const)("SYS-06.3: only the cafe owner can update their %s", (entity) => {
   const f = matrixFixture();
-  const column = f.editableColumn(entity); f.proveSetup();
+  const column = f.editableColumn(entity);
+  // OWN-03.9: only an approved café's owner may change its menu.
+  if (entity === "menu_items") for (const workspace of workspaces) f.eligibility(f.data[workspace].cafe, "approved", false);
+  f.proveSetup();
   const key = entity === "menu_items" ? "menu" : "hours";
   for (const workspace of workspaces) for (const name of actorNames) f.mutation(f.data[workspace].profiles[name].actor, entity, f.data[workspace][key], `${column}=${column}`, name === "owner");
 }, 120_000);
