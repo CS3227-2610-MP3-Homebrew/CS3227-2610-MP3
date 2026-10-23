@@ -114,6 +114,40 @@ It extends the existing production deployment workflow and follows the installed
 Next.js Route Handler guidance. No external snippet, new dependency or new
 workflow file was added; MP2 reuse totals are unchanged.
 
+### AI assistance
+
+The team used OpenAI Codex and Anthropic Claude Code as coding assistants, as
+the brief allows. They ran as the specialised agents described under
+[Development workflow](#development-workflow) (spec, testing, implementation,
+reviewer, security-reviewer and docs) and as the coordinating session. Their
+commits carry an `Agent:` trailer, and Claude Code commits also carry a
+`Co-Authored-By` trailer. Each agent's work is recorded in its numbered handoff
+under `workflow/handoffs/`, and the prompts and interactions are summarised in
+`logs/`. Humans approved the specifications, reviewed every diff, committed,
+opened and merged the pull requests, and approved production deployments. No
+spec-driven development toolkit was used; the workflow files are the team's own.
+
+The runtime AI features call the SoC LLM service (SoCLaaS) through
+`src/server/llm/`, following its
+[documentation](https://dochub.comp.nus.edu.sg/cf/guides/soclaas/start).
+
+### Third-party software and documentation
+
+Homebrew depends on these libraries and tools; the exact versions are in
+`package.json` and `bun.lock`. No third-party application code was copied into
+the repository beyond the MP2 files listed above.
+
+| Library or tool | Used for |
+| --- | --- |
+| [Next.js](https://nextjs.org/) and [React](https://react.dev/) | App Router pages, route handlers and UI. The Next.js guides installed in `node_modules/next/dist/docs/` informed several patterns, as noted in the reuse paragraphs above. |
+| [Supabase](https://supabase.com/) (PostgreSQL, Auth, `@supabase/ssr`, CLI) | Database, row-level security, authentication and local development stack. |
+| [Zod](https://zod.dev/) | Validation of untrusted inputs and AI outputs. |
+| [Tailwind CSS](https://tailwindcss.com/) | Styling. |
+| [Vitest](https://vitest.dev/) and [Playwright](https://playwright.dev/) | Unit, integration and browser tests. |
+| [TypeScript](https://www.typescriptlang.org/), [ESLint](https://eslint.org/) and [Bun](https://bun.sh/) | Language, linting and package management. |
+| [Vercel](https://vercel.com/) and GitHub Actions | Hosting and the CI and deployment workflows. |
+| [GitHub Pages](https://pages.github.com/) with the [Cayman theme](https://github.com/pages-themes/cayman) | The product website in `docs/`. |
+
 ## Setting up, getting started
 
 Use Node.js 24, Bun 1.4.3 and a running Docker engine with the `docker` command
