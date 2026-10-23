@@ -39,10 +39,11 @@ role. Admins can decide café applications, suspend or un-suspend approved café
 manually moderate reviews and inspect their workspace’s audit log. Customers
 can browse cafés, inspect menus, opening hours and public reviews, place pickup
 pre-orders with a valid protected account name, read order history, cancel pending orders, and review collected purchases.
-Café owners can apply for a café and manage an approved café's description,
-opening hours and pickup cutoff.
-Customers can also use Brew Finder on Browse cafés for advisory drink suggestions.
-Owner café management tools are not yet available.
+Café owners can apply for a café, manage an approved café's description,
+opening hours, pickup cutoff and menu, run the order queue, print today's prep
+sheet and view sales. Each role also has one advisory AI feature: Brew Finder
+for Customers, Prep Advisor for Café owners and the Moderation Assistant for
+Admins (section 7).
 
 ### 1.1 What you need
 
@@ -128,15 +129,17 @@ accounts without signing in.
 3. Enter one account's details in the ordinary sign-in form. To try another
    role, select **Sign out**, then sign in with that account's saved details.
 4. As Customer, browse the approved café and its menu, including a sold-out item.
-   As Admin, inspect the pending second café application and the clearly
-   synthetic pending reviews. Approval, suspension and moderation controls use
-   the ordinary reasons, confirmations and audit log within your kit.
+   As Café owner, run the order queue, edit the menu and open the Dashboard's
+   sales and Prep Advisor. As Admin, inspect the pending second café application
+   and the clearly synthetic pending reviews. Approval, suspension and
+   moderation controls use the ordinary reasons, confirmations and audit log
+   within your kit.
 
 Each kit also has about four weeks of sample collected purchases, unreviewed
 collected orders and a pending order. New kit Customers can use Pre-order for
-pickup and My orders, including pending-order cancellation. Review submission
-remains unavailable in this build. Kit owners can use the order queue and the
-Dashboard's sales and Prep Advisor. The pending café's separate owner has no published
+pickup and My orders, including pending-order cancellation, and can review the
+unreviewed collected orders (section 4.5). Kit owners can use the order queue,
+the Menu and the Dashboard's sales and Prep Advisor. The pending café's separate owner has no published
 credentials. Kits have no automatic expiry or deletion, and creating a kit
 makes no AI request. Kit accounts keep their own AI user allowances while the
 application's global AI limits remain shared.
@@ -763,7 +766,7 @@ applying sign-up's eight-code-point minimum or changing its spaces/case.
 
 ## 9. Known limitations
 
-Favourites remain an entry shell. Removed menu items cannot be restored.
+Saving favourite cafés is not available. Removed menu items cannot be restored.
 Customer ordering requires the protected account name described in [Pre-order for pickup](#43-pre-order-for-pickup). New demo
 kits supply it; current signup and older unnamed accounts do not. Account password/email changes,
 password reset, account deletion, role/workspace switching and all-device
