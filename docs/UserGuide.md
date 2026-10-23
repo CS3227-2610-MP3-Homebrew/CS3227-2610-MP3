@@ -695,6 +695,8 @@ Main and demo-kit Admins use the same controls within their own workspace.
    in **Audit log**. Approved, non-suspended cafés become eligible for customer
    access; rejected cafés remain hidden. Approval cannot be reversed here.
 
+![cafe application - admin.png](assets/user-guide-photos/cafe%20application%20-%20admin.png)
+
 Reasons retain their submitted text and spacing. They are private to that café's
 owner and Admins in its workspace. The audit log displays them as plain text.
 An empty queue shows “No pending applications.” Loading shows “Loading cafés…”.
@@ -715,6 +717,8 @@ Admins can change the suspension state of approved cafés in their own workspace
    outstanding pending, accepted and ready orders with “Cafe is suspended”.
    Collected purchases and existing menu/hour/review records remain unchanged.
    Un-suspension restores eligibility without reviving cancelled orders.
+
+![Cafes - admin.png](assets/user-guide-photos/Cafes%20-%20admin.png)
 
 The Admin reason remains private; the fixed cancellation reason does not reveal
 it. Owner access to retained café records remains available. Customers see the
@@ -763,6 +767,8 @@ most one provider attempt. If AI cannot run, the manual queue remains usable:
 | “The queue changed. Reload before triaging.” | The submitted selection is no longer valid; select **Reload queue**. |
 | “Unable to triage reviews. Reload and try again.” | The request could not obtain a successful response; reload explicitly. |
 
+![AI- admin.png](assets/user-guide-photos/AI-%20admin.png)
+
 AI suggestions can be wrong. Local checks use fake responses and do not measure
 classification accuracy.
 
@@ -798,6 +804,8 @@ advice, the page shows one of these messages and keeps that catalogue usable:
 | “Brew Finder AI is temporarily unavailable. Browse the cafés below, sorted by rating.” | AI processing failed, advice became stale, or a successful response/current suggestion could not be obtained. |
 | “No available matching items to recommend. Browse the cafés below, sorted by rating.” | No filtered café has an available matching item; sold-out-only cafés may still be browsable. |
 
+![AI - customer.png](assets/user-guide-photos/AI%20-%20customer.png)
+
 One search can make at most one provider request, with no automatic retry.
 Eligible results can be reused for the same account and exact query/filters for
 less than ten minutes; catalogue changes or disabled AI prevent reuse. Usage
@@ -828,6 +836,9 @@ The panel shows your top-items table instead of advice when:
 | “AI advice has reached its usage limit for now. Showing your top items instead.” | A usage cap or provider limit applied. |
 | “AI advice is unavailable right now. Showing your top items instead.” | The AI call failed or returned advice that did not match your sales. |
 | “Not enough completed sales yet for preparation advice. Showing your top items instead.” | Fewer than 7 different days had sales in the period, or no sold item is still on your menu. |
+
+**AI advice disabled example:**
+![AI - owner.png](assets/user-guide-photos/AI%20-%20owner.png)
 
 A suggestion is only shown if it agrees with the numbers: “more” needs that
 weekday to be above the item's weekday average, “less” below it.
