@@ -20,7 +20,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (!result.hasCafe) return <section className="space-y-4"><h1 className="text-3xl font-semibold">Order queue</h1>
     <p>You do not have a café yet, so there are no orders to manage.</p>
     <Link className="inline-block rounded border px-4 py-2 underline" href="/owner/application">Apply for a café</Link></section>;
-  return <section className="space-y-6"><header><h1 className="text-3xl font-semibold">Order queue</h1><p className="mt-2">Pre-orders for pickup. Customers pay at the counter. Times are shown in Singapore (SGT).</p></header>
+  return <section className="space-y-6"><header><h1 className="text-3xl font-semibold">Order queue</h1><p className="mt-2">Pre-orders for pickup. Customers pay at the counter. Times are shown in Singapore (SGT).</p>
+    {/* Full document load: the sheet always reflects a fresh read and prints without retained queue content. */}
+    <a className="mt-2 inline-block underline" href="/owner/orders/prep-sheet">Prep sheet</a></header>
     <nav aria-label="Queue views" className="flex flex-wrap gap-4">{(['active', 'history'] as const).map(view => <Link key={view} aria-current={query.view === view ? 'page' : undefined} className="underline aria-[current=page]:font-semibold" href={href({ view })}>{view === 'active' ? 'Active' : 'History'}</Link>)}</nav>
     <nav aria-label="Order state filters" className="flex flex-wrap gap-4">{queueViews[query.view].map(filter => <Link key={filter} aria-current={query.filter === filter ? 'page' : undefined} className="underline aria-[current=page]:font-semibold" href={href({ view: query.view, filter })}>{filter === 'all' && query.view === 'history' ? 'All history' : filter === 'all' ? 'Active' : labels[filter]}</Link>)}</nav>
     <QueueList key={`${query.view}-${query.filter}-${query.page}`} initialOrders={result.items} active={query.view === 'active'} />
